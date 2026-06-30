@@ -3,7 +3,6 @@ export const AuthEndpoints = {
 } as const;
 
 export const ArnClientEndpoints = {
-  CLIENT_KPIS: "/arn/clients/kpis",
   CLIENTS: "/arn/clients",
   CLIENT_DETAIL: "/arn/clients/{clientId}",
   SHARE_REPORT: "/arn/clients/{clientId}/share-report",
