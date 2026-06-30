@@ -1,20 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import ArnKpiCard from "@/components/common/ArnKpiCard";
-import ArnErrorState from "@/components/common/ArnErrorState";
-import { getArnSipBookKpis } from "@/services/arnSipBookService";
 import type { ArnSipBookKpis as ArnSipBookKpisData } from "@/types/arnSipBook";
 
 type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
 
 interface KpiConfig {
   label: string;
-  value: keyof ArnSipBookKpisData;
+  value: string;
   trendText: string;
   tone: ArnTone;
   trend: "up" | "down" | "neutral";
   icon?: string;
+}
+
+interface ArnSipBookKpisProps {
+  summary: ArnSipBookKpisData | null;
 }
 
 const kpiConfigs: KpiConfig[] = [
@@ -49,37 +50,8 @@ const kpiConfigs: KpiConfig[] = [
   },
 ];
 
-function formatValue(key: keyof ArnSipBookKpisData, data: ArnSipBookKpisData): string {
-  if (key === "activeSips" || key === "atRiskSips" || key === "pausedSips") {
-    return String(data[key]);
-  }
-
-  return data.totalSipBook;
-}
-
-export default function ArnSipBookKpis() {
-  const [data, setData] = useState<ArnSipBookKpisData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      setData(await getArnSipBookKpis());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load SIP book KPIs.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  if (isLoading) {
+export default function ArnSipBookKpis({ summary }: ArnSipBookKpisProps) {
+  if (!summary) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
@@ -93,25 +65,42 @@ export default function ArnSipBookKpis() {
     );
   }
 
-  if (error || !data) {
-    return (
-      <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
-        <ArnErrorState
-          title="Could not load SIP book KPIs"
-          message={error || "No SIP book data is available."}
-          retry={loadData}
-        />
-      </div>
-    );
-  }
+  const getValue = (key: string): string => {
+    if (key === "totalSipBook") return summary.totalSipBook;
+    if (key === "activeSips") return String(summary.activeSips);
+    if (key === "atRiskSips") return String(summary.atRiskSips);
+    if (key === "pausedSips") return String(summary.pausedSips);
+    return "";
+  };
+
+  const kpis = [
+    {
+      ...kpiConfigs[0],
+      value: getValue("totalSipBook"),
+      trendText: `+${summary.newSipsThisMonth ?? 0} SIPs this month`,
+    },
+    {
+      ...kpiConfigs[1],
+      value: getValue("activeSips"),
+      trendText: `across ${summary.activeSipClients ?? 0} clients`,
+    },
+    {
+      ...kpiConfigs[2],
+      value: getValue("atRiskSips"),
+    },
+    {
+      ...kpiConfigs[3],
+      value: getValue("pausedSips"),
+    },
+  ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
-      {kpiConfigs.map((config) => (
+      {kpis.map((config) => (
         <ArnKpiCard
           key={config.label}
           label={config.label}
-          value={formatValue(config.value, data)}
+          value={config.value}
           trendText={config.trendText}
           tone={config.tone}
           trend={config.trend}

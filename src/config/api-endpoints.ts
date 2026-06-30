@@ -11,10 +11,7 @@ export const ArnClientEndpoints = {
 } as const;
 
 export const ArnSipBookEndpoints = {
-  SIP_KPIS: "/arn/sipbook/kpis",
-  SIP_TREND: "/arn/sipbook/trend",
-  SIP_HEALTH: "/arn/sipbook/health",
-  SIP_BOOK: "/arn/sipbook",
+  SIP_BOOK: "/arn/sip-book",
 } as const;
 
 export const ArnOrderEndpoints = {

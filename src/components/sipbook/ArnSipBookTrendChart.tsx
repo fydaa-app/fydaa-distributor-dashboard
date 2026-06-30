@@ -2,11 +2,9 @@
 
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnChartPeriodTabs from "@/components/common/ArnChartPeriodTabs";
-import ArnErrorState from "@/components/common/ArnErrorState";
-import { getArnSipBookTrend } from "@/services/arnSipBookService";
 import type { ArnSipBookTrendPoint } from "@/types/arnSipBook";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
@@ -18,30 +16,28 @@ const chartCategories: Record<TrendRange, string[]> = {
   "1Y": ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"],
 };
 
-export default function ArnSipBookTrendChart() {
-  const [range, setRange] = useState<TrendRange>("6M");
-  const [trend, setTrend] = useState<ArnSipBookTrendPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface ArnSipBookTrendChartProps {
+  inflowTrend: ArnSipBookTrendPoint[];
+  trendPeriod: "6M" | "1Y";
+  onPeriodChange: (period: "6M" | "1Y") => void;
+}
 
-  const loadTrend = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      setTrend(await getArnSipBookTrend({ range }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load SIP inflow trend.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [range]);
+export default function ArnSipBookTrendChart({
+  inflowTrend,
+  trendPeriod,
+  onPeriodChange,
+}: ArnSipBookTrendChartProps) {
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadTrend();
-  }, [loadTrend]);
+    setIsLoading(false);
+  }, [inflowTrend]);
 
-  const categories = chartCategories[range];
+  const categories =
+    inflowTrend.length > 0
+      ? inflowTrend.map((point) => point.month)
+      : chartCategories[trendPeriod];
+
   const options: ApexOptions = {
     chart: {
       type: "bar",
@@ -106,17 +102,15 @@ export default function ArnSipBookTrendChart() {
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
       <ArnCardHeader title="SIP inflow trend">
-        <ArnChartPeriodTabs options={["6M", "1Y"]} active={range} onChange={(value) => setRange(value as TrendRange)} />
+        <ArnChartPeriodTabs
+          options={["6M", "1Y"]}
+          active={trendPeriod}
+          onChange={(value) => onPeriodChange(value as "6M" | "1Y")}
+        />
       </ArnCardHeader>
 
       {isLoading ? (
         <div className="relative h-[140px] animate-pulse rounded-[14px] bg-[var(--arn-bg-2)]" />
-      ) : error ? (
-        <ArnErrorState
-          title="Could not load trend"
-          message={error}
-          retry={loadTrend}
-        />
       ) : (
         <div className="relative h-[140px] sm:h-[160px]">
           <ReactApexChart
@@ -124,7 +118,7 @@ export default function ArnSipBookTrendChart() {
             series={[
               {
                 name: "SIP book",
-                data: trend.map((point) => Number((point.valueInPaise / 100000).toFixed(1))),
+                data: inflowTrend.map((point) => Number((point.valueInPaise / 100000).toFixed(1))),
               },
             ]}
             type="bar"
