@@ -43,3 +43,7 @@ export const ArnShareEndpoints = {
   SEND: "/arn/share/send",
   RESEND: "/arn/share/{shareId}/resend",
 } as const;
+
+export const ArnDashboardEndpoints = {
+  DASHBOARD: "/arn/dashboard",
+} as const;

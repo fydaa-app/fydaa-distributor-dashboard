@@ -4,61 +4,46 @@ import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
 import Link from "next/link";
+import type { ArnDashboardSipBookItem } from "@/types/arnDashboard";
 
 type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
-type SipStatus = "Active" | "Due today" | "Paused";
 
-interface SipBookItem {
-  initials: string;
-  name: string;
-  sipDate: string;
-  amount: string;
-  status: SipStatus;
-  tone: ArnTone;
+const toneOrder: ArnTone[] = ["amber", "blue", "green", "teal", "purple", "red"];
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const sipBook: SipBookItem[] = [
-  {
-    initials: "RS",
-    name: "Rahul Sharma",
-    sipDate: "10th monthly",
-    amount: "₹15,000",
-    status: "Active",
-    tone: "amber",
-  },
-  {
-    initials: "PG",
-    name: "Priya Gupta",
-    sipDate: "5th monthly",
-    amount: "₹25,000",
-    status: "Due today",
-    tone: "blue",
-  },
-  {
-    initials: "AK",
-    name: "Amit Kumar",
-    sipDate: "15th monthly",
-    amount: "₹10,000",
-    status: "Active",
-    tone: "green",
-  },
-  {
-    initials: "SM",
-    name: "Sunita Mehta",
-    sipDate: "20th monthly",
-    amount: "₹5,000",
-    status: "Paused",
-    tone: "teal",
-  },
-];
+// function normalizeStatus(status: string): "active" | "due" | "paused" {
+//   const normalized = status.toLowerCase();
+//   if (normalized.includes("due")) return "due";
+//   if (normalized.includes("pause")) return "paused";
+//   return "active";
+// }
 
-const statusVariant: Record<SipStatus, "active" | "due" | "paused"> = {
-  Active: "active",
-  "Due today": "due",
-  Paused: "paused",
-};
+interface ArnSipBookListProps {
+  sipBook: ArnDashboardSipBookItem[];
+}
 
-export default function ArnSipBookList() {
+export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
+  const items = sipBook.map((item, index) => ({
+    initials: getInitials(item.clientName),
+    name: item.clientName,
+    sipDate: item.sipDay,
+    amount: item.amount,
+    status: (item.statusLabel || item.status || "Active") as "Active" | "Due today" | "Paused",
+    tone: toneOrder[index % toneOrder.length],
+  }));
+
+  const statusVariant: Record<string, "active" | "due" | "paused"> = {
+    Active: "active",
+    "Due today": "due",
+    Paused: "paused",
+  };
+
   return (
     <div className="rounded-[16px] border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1c1a] sm:p-6">
       <ArnCardHeader
@@ -70,7 +55,7 @@ export default function ArnSipBookList() {
         }
       />
       <div className="flex flex-col gap-3">
-        {sipBook.map((sip) => (
+        {items.map((sip) => (
           <div
             key={`${sip.initials}-${sip.sipDate}`}
             className="flex items-center gap-3 rounded-[12px] bg-[#f6f5f2] p-3 dark:bg-[#252522] sm:p-4"
@@ -86,7 +71,7 @@ export default function ArnSipBookList() {
               <div className="text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
                 {sip.amount}
               </div>
-              <ArnStatusTag label={sip.status} variant={statusVariant[sip.status]} />
+              <ArnStatusTag label={sip.status} variant={statusVariant[sip.status] || "active"} />
             </div>
           </div>
         ))}
