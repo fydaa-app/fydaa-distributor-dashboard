@@ -14,9 +14,6 @@ export const ArnSipBookEndpoints = {
 } as const;
 
 export const ArnOrderEndpoints = {
-  ORDERS_KPIS: "/arn/orders/kpis",
-  ORDERS_ACTIVITY: "/arn/orders/activity",
-  ORDERS_TYPE_SPLIT: "/arn/orders/type-split",
   ORDERS: "/arn/orders",
 } as const;
 

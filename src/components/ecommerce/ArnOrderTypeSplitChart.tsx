@@ -2,10 +2,8 @@
 
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
-import { useCallback, useEffect, useState } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnErrorState from "@/components/common/ArnErrorState";
-import { getArnOrdersTypeSplit } from "@/services/arnOrdersService";
 import type { ArnOrderTypeSplit } from "@/types/arnOrders";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
@@ -19,28 +17,15 @@ function getToneColor(tone: ArnOrderTypeSplit["tone"]): string {
   return "#BA7517";
 }
 
-export default function ArnOrderTypeSplitChart() {
-  const [splits, setSplits] = useState<ArnOrderTypeSplit[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface ArnOrderTypeSplitChartProps {
+  splits: ArnOrderTypeSplit[];
+  isLoading?: boolean;
+  error?: string | null;
+  retry?: () => void;
+  totalOrders?: number;
+}
 
-  const loadSplit = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      setSplits(await getArnOrdersTypeSplit());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load order type split.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSplit();
-  }, [loadSplit]);
-
+export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry, totalOrders }: ArnOrderTypeSplitChartProps) {
   const options: ApexOptions = {
     chart: {
       type: "donut",
@@ -76,7 +61,7 @@ export default function ArnOrderTypeSplitChart() {
               label: "Jun",
               color: "#a8a8a3",
               fontSize: "11px",
-              formatter: () => "147",
+              formatter: () => String(totalOrders ?? 0),
             },
           },
         },
@@ -103,7 +88,7 @@ export default function ArnOrderTypeSplitChart() {
         <ArnErrorState
           title="Could not load order split"
           message={error}
-          retry={loadSplit}
+          retry={retry}
         />
       ) : (
         <>
