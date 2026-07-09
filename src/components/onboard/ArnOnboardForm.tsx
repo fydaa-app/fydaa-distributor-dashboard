@@ -5,11 +5,12 @@ import { setCookie } from "cookies-next";
 import {
   requestArnOtp,
   verifyArnOtp,
+  fetchKycData,
   type RiskProfileQuestion,
 } from "@/services/arnOnboardService";
 
 interface ArnOnboardFormProps {
-  phase: "mobile" | "otp" | "risk" | "riskScore" | "welcome";
+  phase: "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "welcome";
   mobile: string;
   onMobileChange: (value: string) => void;
   otpValues: string[];
@@ -18,6 +19,10 @@ interface ArnOnboardFormProps {
   onGoToMobile: () => void;
   onGoToWelcome: () => void;
   onReset: () => void;
+  onGoToKyc: () => void;
+  onKycVerified: () => void;
+  onGoToRiskScore: () => void;
+  kycError: string | null;
   referredBy: string;
   onOtpVerified: (token: string) => void;
   riskQuestions: RiskProfileQuestion[];
@@ -138,6 +143,10 @@ export default function ArnOnboardForm({
   onGoToMobile,
   onGoToWelcome,
   onReset,
+  onGoToKyc,
+  onKycVerified,
+  onGoToRiskScore,
+  kycError,
   referredBy,
   onOtpVerified,
   riskQuestions,
@@ -161,6 +170,44 @@ export default function ArnOnboardForm({
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [fullName, setFullName] = useState("");
+  const [pan, setPan] = useState("");
+  const [dob, setDob] = useState("");
+  const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
+  const [kycLocalError, setKycLocalError] = useState<string | null>(null);
+
+  const panValid = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim());
+  const isKycValid =
+    fullName.trim().length > 0 && panValid && dob.trim().length > 0;
+
+  const handleKycSubmit = async () => {
+    if (!isKycValid) return;
+
+    setIsSubmittingKyc(true);
+    setKycLocalError(null);
+
+    try {
+      const result = await fetchKycData({
+        pan: pan.trim().toUpperCase(),
+        date_of_birth: dob,
+        name: fullName.trim(),
+      });
+
+      if (result.isKycCompliant) {
+        onKycVerified();
+      } else {
+        const reason = result.reason ? ` — ${result.reason}` : "";
+        setKycLocalError(`${result.message}${reason}`.trim());
+      }
+    } catch (err) {
+      setKycLocalError(
+        err instanceof Error ? err.message : "KYC verification failed. Please try again."
+      );
+    } finally {
+      setIsSubmittingKyc(false);
+    }
+  };
 
   useEffect(() => {
     setResendTimer(30);
@@ -616,7 +663,7 @@ export default function ArnOnboardForm({
 
               <button
                 type="button"
-                onClick={onGoToWelcome}
+                onClick={onGoToKyc}
                 className="btn-primary btn-wide"
                 style={{ marginTop: 24 }}
               >
@@ -626,6 +673,113 @@ export default function ArnOnboardForm({
           )}
         </div>
       )}
+      {phase === "kyc" && (
+        <div className="step-panel">
+          <div className="flex justify-center mb-5">
+            <div className="back-btn" onClick={onGoToRiskScore} role="button" tabIndex={0}>
+              <i className="ti ti-arrow-left" aria-hidden="true" />
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="step-eyebrow">Identity Verification</p>
+            <h2 className="step-title">Complete your PAN details</h2>
+            <p className="step-helper">
+              Please provide your PAN number, date of birth and full name to complete your profile.
+            </p>
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">
+              Full Name <span className="req">Required</span>
+            </label>
+            <input
+              className="field-input"
+              placeholder="Enter your full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">
+              PAN Number <span className="req">Required</span>
+            </label>
+            <input
+              className="field-input"
+              placeholder="ABCDE1234F"
+              value={pan}
+              maxLength={10}
+              onChange={(e) => setPan(e.target.value.toUpperCase())}
+            />
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">
+              Date of Birth <span className="req">Required</span>
+            </label>
+            <input
+              className="field-input"
+              type="date"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+            />
+          </div>
+
+          {(kycError || kycLocalError) && (
+            <div className="field-error justify-center">
+              <i className="ti ti-alert-circle" aria-hidden="true" />
+              {kycLocalError || kycError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleKycSubmit}
+            disabled={!isKycValid || isSubmittingKyc}
+            className="btn-primary btn-wide"
+            style={{ marginTop: 8 }}
+          >
+            {isSubmittingKyc ? "Verifying..." : "Verify"}
+          </button>
+        </div>
+      )}
+
+      {phase === "kycCompliant" && (
+        <div className="step-panel">
+          <p className="step-eyebrow" style={{ textAlign: "center" }}>
+            Identity Verification
+          </p>
+          <h2 className="step-title" style={{ textAlign: "center" }}>
+            KYC compliance status
+          </h2>
+          <p className="step-helper" style={{ textAlign: "center" }}>
+            We&apos;ve checked your KYC status with the CKYC Registry (CERSAI) and SEBI databases.
+          </p>
+
+          <div className="glass-card gold" style={{ textAlign: "center", padding: "34px 26px" }}>
+            <div className="success-ring">
+              <i className="ti ti-shield-check" aria-hidden="true" />
+            </div>
+            <div className="card-title" style={{ textAlign: "center" }}>
+              You&apos;re KYC Compliant!
+            </div>
+            <div className="card-sub" style={{ textAlign: "center" }}>
+              Your KYC is complete and up to date. You can proceed without any additional verification.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onGoToWelcome}
+            className="btn-primary btn-wide"
+            style={{ marginTop: 20 }}
+          >
+            Continue <i className="ti ti-arrow-right" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       {phase === "welcome" && (
         <div className="step-panel welcome-panel">
           <div className="success-ring">
@@ -659,6 +813,15 @@ export default function ArnOnboardForm({
                 <span className="summary-val">
                   <i className="ti ti-circle-check" aria-hidden="true" />
                   {displayScore} · {riskAppetite}
+                </span>
+              </div>
+            )}
+            {phase === "welcome" && (
+              <div className="summary-row">
+                <span className="summary-label">KYC Status</span>
+                <span className="summary-val">
+                  <i className="ti ti-circle-check" aria-hidden="true" />
+                  Verified
                 </span>
               </div>
             )}

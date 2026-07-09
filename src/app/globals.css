@@ -684,6 +684,32 @@ body {
   color: var(--arn-red);
 }
 
+.glass-card {
+  border: 1px solid var(--arn-bdr);
+  border-radius: var(--arn-radius);
+  background: var(--arn-bg);
+  padding: 28px 22px;
+}
+
+.glass-card.gold {
+  border-color: rgba(186, 117, 23, 0.35);
+  background: var(--arn-amber-bg);
+}
+
+.card-title {
+  margin-top: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--arn-txt);
+}
+
+.card-sub {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--arn-txt-2);
+}
+
 .welcome-panel {
   text-align: center;
 }

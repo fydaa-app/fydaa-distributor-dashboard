@@ -5,7 +5,7 @@ import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
 import type { RiskProfileQuestion } from "@/services/arnOnboardService";
 
-type Phase = "mobile" | "otp" | "risk" | "riskScore" | "welcome";
+type Phase = "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "welcome";
 
 export default function ArnOnboardPage() {
   const [phase, setPhase] = useState<Phase>("mobile");
@@ -21,6 +21,7 @@ export default function ArnOnboardPage() {
   const [riskScoreData, setRiskScoreData] = useState<Record<string, unknown> | null>(null);
   const [isLoadingScore, setIsLoadingScore] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
+  const [kycError, setKycError] = useState<string | null>(null);
 
   const rawUserData = getCookie("userData");
   const userData = rawUserData ? JSON.parse(rawUserData as string) : {};
@@ -40,8 +41,16 @@ export default function ArnOnboardPage() {
     setRiskScoreData(null);
     setIsLoadingScore(false);
     setScoreError(null);
+    setKycError(null);
     setPhase("mobile");
   };
+
+  const goToKyc = () => {
+    setKycError(null);
+    setPhase("kyc");
+  };
+
+  const goToRiskScore = () => setPhase("riskScore");
 
   const loadRiskScore = async (token: string) => {
     setIsLoadingScore(true);
@@ -141,6 +150,10 @@ export default function ArnOnboardPage() {
           onGoToMobile={goToMobile}
           onGoToWelcome={goToWelcome}
           onReset={resetOnboard}
+          onGoToKyc={goToKyc}
+          onKycVerified={() => setPhase("kycCompliant")}
+          onGoToRiskScore={goToRiskScore}
+          kycError={kycError}
           referredBy={referredBy}
           onOtpVerified={handleOtpVerified}
           riskQuestions={riskQuestions}

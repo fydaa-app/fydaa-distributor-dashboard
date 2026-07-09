@@ -297,3 +297,98 @@ export async function getRiskIndicators(
       ? data
       : {}) as Record<string, unknown>;
 }
+
+export interface KycFetchParams {
+  pan: string;
+  date_of_birth: string;
+  name: string;
+}
+
+export interface KycFetchIssue {
+  field: string;
+  code: string;
+  reason: string;
+}
+
+export interface KycFetchResult {
+  status: boolean;
+  message: string;
+  data: Record<string, unknown> | null;
+  isKycCompliant: boolean;
+  reason: string | null;
+  action: string | null;
+  issues: KycFetchIssue[];
+  recommendations: string[];
+  verificationStatus: Record<string, unknown> | null;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item);
+}
+
+function asIssueArray(value: unknown): KycFetchIssue[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (item): item is KycFetchIssue =>
+        isRecord(item) &&
+        typeof item.field === "string" &&
+        typeof item.code === "string" &&
+        typeof item.reason === "string"
+    )
+    .map((item) => ({
+      field: item.field,
+      code: item.code,
+      reason: item.reason,
+    }));
+}
+
+export async function fetchKycData(
+  params: KycFetchParams,
+  token?: string
+): Promise<KycFetchResult> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/kyc/fetch-kyc-data`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "KYC verification failed. Please try again.";
+    throw new Error(message);
+  }
+
+  return {
+    status: payload.status === true,
+    message:
+      typeof payload.message === "string" ? payload.message : "",
+    data: isRecord(payload.data) ? payload.data : null,
+    isKycCompliant: payload.isKycCompliant === true,
+    reason: typeof payload.reason === "string" ? payload.reason : null,
+    action: typeof payload.action === "string" ? payload.action : null,
+    issues: asIssueArray(payload.issues),
+    recommendations: asStringArray(payload.recommendations),
+    verificationStatus: isRecord(payload.verificationStatus)
+      ? payload.verificationStatus
+      : null,
+  };
+}
