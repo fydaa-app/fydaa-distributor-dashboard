@@ -2,19 +2,81 @@
 
 import { useEffect, useState, useRef } from "react";
 import { setCookie } from "cookies-next";
-import { requestArnOtp, verifyArnOtp } from "@/services/arnOnboardService";
+import {
+  requestArnOtp,
+  verifyArnOtp,
+  type RiskProfileQuestion,
+} from "@/services/arnOnboardService";
 
 interface ArnOnboardFormProps {
-  phase: "mobile" | "otp" | "welcome";
+  phase: "mobile" | "otp" | "risk" | "riskScore" | "welcome";
   mobile: string;
   onMobileChange: (value: string) => void;
   otpValues: string[];
   onOtpChange: (values: string[]) => void;
   onGoToOtp: () => void;
-  onGoToWelcome: () => void;
   onGoToMobile: () => void;
+  onGoToWelcome: () => void;
   onReset: () => void;
   referredBy: string;
+  onOtpVerified: (token: string) => void;
+  riskQuestions: RiskProfileQuestion[];
+  riskAnswers: Record<number, number>;
+  onRiskAnswerChange: (questionId: number, optionIndex: number) => void;
+  riskIndex: number;
+  onRiskIndexChange: (index: number) => void;
+  onSubmitRisk: () => void;
+  riskError: string | null;
+  isLoadingRisk: boolean;
+  isSubmittingRisk: boolean;
+  riskScoreData: Record<string, unknown> | null;
+  isLoadingScore: boolean;
+  scoreError: string | null;
+}
+
+function RiskScoreArc({ score }: { score: number }) {
+  const clamped = Math.max(0, Math.min(100, Number(score) || 0));
+  const radius = 80;
+  const circumference = 2 * Math.PI * radius;
+  const halfCircumference = circumference / 2;
+  const progressOffset = halfCircumference * (1 - clamped / 100);
+
+  return (
+    <svg
+      className="risk-gauge-svg"
+      width="190"
+      height="110"
+      viewBox="0 0 190 110"
+      aria-hidden="true"
+    >
+      <g transform="rotate(180 95 95)">
+        <circle
+          cx="95"
+          cy="95"
+          r={radius}
+          fill="none"
+          stroke="rgba(186,117,23,0.18)"
+          strokeWidth="9"
+          strokeLinecap="round"
+          strokeDasharray={`${halfCircumference} ${circumference}`}
+        />
+        <circle
+          cx="95"
+          cy="95"
+          r={radius}
+          fill="none"
+          stroke="var(--arn-amber)"
+          strokeWidth="9"
+          strokeLinecap="round"
+          strokeDasharray={`${halfCircumference} ${circumference}`}
+          strokeDashoffset={progressOffset}
+          style={{
+            transition: "stroke-dashoffset 700ms ease",
+          }}
+        />
+      </g>
+    </svg>
+  );
 }
 
 const COUNTRY_CODES = [
@@ -73,10 +135,23 @@ export default function ArnOnboardForm({
   otpValues,
   onOtpChange,
   onGoToOtp,
-  onGoToWelcome,
   onGoToMobile,
+  onGoToWelcome,
   onReset,
   referredBy,
+  onOtpVerified,
+  riskQuestions,
+  riskAnswers,
+  onRiskAnswerChange,
+  riskIndex,
+  onRiskIndexChange,
+  onSubmitRisk,
+  riskError,
+  isLoadingRisk,
+  isSubmittingRisk,
+  riskScoreData,
+  isLoadingScore,
+  scoreError,
 }: ArnOnboardFormProps) {
   const [resendTimer, setResendTimer] = useState(30);
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -174,7 +249,11 @@ export default function ArnOnboardForm({
       }
       setCookie("onboardedUserData", JSON.stringify(userData), { path: "/" });
 
-      onGoToWelcome();
+      const token =
+        userData.accessToken && typeof userData.accessToken === "string"
+          ? (userData.accessToken as string)
+          : "";
+      onOtpVerified(token);
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "OTP verification failed. Please try again.");
     } finally {
@@ -204,6 +283,56 @@ export default function ArnOnboardForm({
   };
 
   const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode) || COUNTRY_CODES[1];
+
+  const riskProfileBlock =
+    riskScoreData &&
+    typeof riskScoreData.riskProfile === "object" &&
+    riskScoreData.riskProfile !== null
+      ? (riskScoreData.riskProfile as Record<string, unknown>)
+      : null;
+
+  const assetAllocationBlock =
+    riskScoreData &&
+    typeof riskScoreData.assetAllocation === "object" &&
+    riskScoreData.assetAllocation !== null
+      ? (riskScoreData.assetAllocation as Record<string, unknown>)
+      : null;
+
+  const totalPoints = Number(riskProfileBlock?.totalPoints ?? 0);
+  const riskScore = totalPoints * (100 / 70);
+  const displayScore = Math.round(
+    Math.max(0, Math.min(100, riskScore))
+  );
+  const fallbackAppetite =
+    riskScore <= 30
+      ? "Conservative"
+      : riskScore <= 60
+        ? "Moderate"
+        : "Aggressive";
+  const riskAppetite =
+    typeof assetAllocationBlock?.smallCasePortfolioName === "string" &&
+    assetAllocationBlock.smallCasePortfolioName
+      ? (assetAllocationBlock.smallCasePortfolioName as string)
+      : fallbackAppetite;
+
+  const handleRiskSelect = (questionId: number, optionIndex: number) => {
+    onRiskAnswerChange(questionId, optionIndex);
+
+    const isLast = riskIndex >= riskQuestions.length - 1;
+    if (isLast) {
+      window.setTimeout(() => onSubmitRisk(), 260);
+    } else {
+      window.setTimeout(() => onRiskIndexChange(riskIndex + 1), 260);
+    }
+  };
+
+  const handleRiskBack = () => {
+    if (riskIndex > 0) {
+      onRiskIndexChange(riskIndex - 1);
+    } else {
+      onGoToMobile();
+    }
+  };
 
   const masked = (() => {
     const digits = mobile.replace(/\D/g, "");
@@ -348,6 +477,155 @@ export default function ArnOnboardForm({
         </div>
       )}
 
+      {phase === "risk" && (
+        <div className="step-panel">
+          <div className="flex justify-center mb-5">
+            <div className="back-btn" onClick={handleRiskBack} role="button" tabIndex={0}>
+              <i className="ti ti-arrow-left" aria-hidden="true" />
+            </div>
+          </div>
+
+          {isLoadingRisk ? (
+            <div className="text-center py-10">
+              <p className="step-eyebrow">Risk Assessment</p>
+              <h2 className="step-title">Loading your risk profile</h2>
+              <p className="step-helper">Please wait a moment…</p>
+            </div>
+          ) : riskQuestions.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="step-eyebrow">Risk Assessment</p>
+              <h2 className="step-title">Couldn&apos;t load questions</h2>
+              <p className="step-helper">
+                {riskError || "Something went wrong. Please try again."}
+              </p>
+              <button
+                type="button"
+                onClick={onGoToMobile}
+                className="btn-primary btn-wide"
+              >
+                Back to Mobile
+              </button>
+            </div>
+          ) : (
+            (() => {
+              const question = riskQuestions[riskIndex];
+              const selected = riskAnswers[question.id];
+              const pct = ((riskIndex + 1) / riskQuestions.length) * 100;
+
+              return (
+                <div>
+                  <div className="q-header-row">
+                    <p className="step-eyebrow">Risk Assessment</p>
+                    <span className="q-counter">
+                      {riskIndex + 1} / {riskQuestions.length}
+                    </span>
+                  </div>
+
+                  <h2 className="step-title" style={{ marginBottom: 6 }}>
+                    {question.question}
+                  </h2>
+
+                  <div className="q-progress-track">
+                    <div className="q-progress-fill" style={{ width: `${pct}%` }} />
+                  </div>
+
+                  <p className="step-helper" style={{ marginBottom: 30 }}>
+                    Select the option that best describes you.
+                  </p>
+
+                  <div className="answer-grid">
+                    {question.option.map((opt, index) => {
+                      const isSelected = selected === index;
+                      return (
+                        <div
+                          key={index}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleRiskSelect(question.id, index)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleRiskSelect(question.id, index);
+                            }
+                          }}
+                          className={`answer-card ${isSelected ? "selected" : ""}`}
+                        >
+                          {opt.answer}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {riskError && (
+                    <div className="field-error justify-center mt-4">
+                      <i className="ti ti-alert-circle" aria-hidden="true" />
+                      {riskError}
+                    </div>
+                  )}
+
+                  {riskIndex === riskQuestions.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={onSubmitRisk}
+                      disabled={
+                        selected === undefined || isSubmittingRisk
+                      }
+                      className="btn-primary btn-wide"
+                      style={{ marginTop: 24 }}
+                    >
+                      {isSubmittingRisk ? "Submitting..." : "Submit"}
+                    </button>
+                  )}
+                </div>
+              );
+            })()
+          )}
+        </div>
+      )}
+
+      {phase === "riskScore" && (
+        <div className="step-panel">
+          {isLoadingScore ? (
+            <div className="text-center py-10">
+              <p className="step-eyebrow">Risk Assessment</p>
+              <h2 className="step-title">Generating your risk score</h2>
+              <p className="step-helper">Please wait a moment…</p>
+            </div>
+          ) : (
+            <div>
+              <p className="step-eyebrow" style={{ textAlign: "center" }}>
+                Risk Assessment
+              </p>
+              <h2 className="step-title" style={{ textAlign: "center" }}>
+                Your Risk Profile
+              </h2>
+
+              <div className="risk-gauge-wrap">
+                <RiskScoreArc score={riskScore} />
+                <div className="risk-score">{displayScore}</div>
+                <div className="risk-appetite">{riskAppetite}</div>
+                <div className="risk-score-sub">Your risk score is</div>
+              </div>
+
+              {scoreError && (
+                <div className="field-error justify-center">
+                  <i className="ti ti-alert-circle" aria-hidden="true" />
+                  {scoreError}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={onGoToWelcome}
+                className="btn-primary btn-wide"
+                style={{ marginTop: 24 }}
+              >
+                Continue <i className="ti ti-arrow-right" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {phase === "welcome" && (
         <div className="step-panel welcome-panel">
           <div className="success-ring">
@@ -375,6 +653,15 @@ export default function ArnOnboardForm({
                 Ready
               </span>
             </div>
+            {riskScoreData && (
+              <div className="summary-row">
+                <span className="summary-label">Risk Profile</span>
+                <span className="summary-val">
+                  <i className="ti ti-circle-check" aria-hidden="true" />
+                  {displayScore} · {riskAppetite}
+                </span>
+              </div>
+            )}
           </div>
 
           <button

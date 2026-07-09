@@ -29,6 +29,7 @@ export interface ArnDashboardSipBookItem {
   amount: string;
   status: string;
   statusLabel?: string;
+  userId?: number | string;
 }
 
 export interface ArnDashboardTopClient {

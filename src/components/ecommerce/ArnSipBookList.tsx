@@ -4,6 +4,7 @@ import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
 import Link from "next/link";
+import { useState } from "react";
 import type { ArnDashboardSipBookItem } from "@/types/arnDashboard";
 
 type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
@@ -29,6 +30,8 @@ interface ArnSipBookListProps {
 }
 
 export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
+  const [expanded, setExpanded] = useState(false);
+
   const items = sipBook.map((item, index) => ({
     initials: getInitials(item.clientName),
     name: item.clientName,
@@ -36,6 +39,7 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
     amount: item.amount,
     status: (item.statusLabel || item.status || "Active") as "Active" | "Due today" | "Paused",
     tone: toneOrder[index % toneOrder.length],
+    userId: item.userId,
   }));
 
   const statusVariant: Record<string, "active" | "due" | "paused"> = {
@@ -43,6 +47,8 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
     "Due today": "due",
     Paused: "paused",
   };
+
+  const visibleItems = expanded ? items : items.slice(0, 4);
 
   return (
     <div className="rounded-[16px] border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1c1a] sm:p-6">
@@ -55,9 +61,9 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
         }
       />
       <div className="flex flex-col gap-3">
-        {items.map((sip) => (
+        {visibleItems.map((sip, index) => (
           <div
-            key={`${sip.initials}-${sip.sipDate}`}
+            key={`${sip.userId ?? "x"}-${sip.initials}-${index}`}
             className="flex items-center gap-3 rounded-[12px] bg-[#f6f5f2] p-3 dark:bg-[#252522] sm:p-4"
           >
             <ArnClientAvatar initials={sip.initials} tone={sip.tone} size="md" />
@@ -76,6 +82,24 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
           </div>
         ))}
       </div>
+      {items.length > 4 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="mt-3 flex w-full items-center justify-center gap-1 rounded-[12px] py-2 text-xs font-bold text-[#BA7517] sm:text-sm"
+        >
+          {expanded ? "View less" : "View more"}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 150ms" }}
+          >
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

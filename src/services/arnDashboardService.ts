@@ -36,6 +36,15 @@ function getNestedRecord(
   return source && isRecord(source[key]) ? source[key] : undefined;
 }
 
+function formatCurrency(value: unknown): string {
+  const num = getNumber(value);
+  if (num === 0) {
+    const raw = typeof value === "string" ? value.trim() : "";
+    return raw || "₹0";
+  }
+  return `₹${num.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
 function getArray<T>(value: unknown, mapper: (item: unknown) => T): T[] {
   if (!Array.isArray(value)) return [];
   return value.map(mapper);
@@ -78,11 +87,12 @@ function normalizeSipBook(source: JsonObject): ArnDashboardSipBookItem[] {
           record.sip_date ||
           record.nextSipDate
       ),
-      amount: getString(record.amount || record.sipAmount || record.amountText, "₹0"),
+      amount: formatCurrency(record.amount || record.sipAmount || record.amountText),
       status: getString(record.status || record.sipStatus || record.statusText),
       statusLabel: getString(
         record.statusLabel || record.status_label || record.statusText
       ),
+      userId: getNumber(record.userId || record.user_id) || undefined,
     };
   });
 }
@@ -119,11 +129,9 @@ function normalizeDashboardPayload(payload: unknown): ArnDashboardResponse {
       euin: getString(employee.euin) || null,
     },
     summary: normalizeSummary((data.summary || data) as JsonObject),
-    aumTrend: normalizeAumTrend((data.aumTrend || data) as JsonObject),
-    sipBook: normalizeSipBook((data.sipBook || data) as JsonObject),
-    topClientsByAum: normalizeTopClients(
-      (data.topClientsByAum || data) as JsonObject
-    ),
+    aumTrend: normalizeAumTrend(data),
+    sipBook: normalizeSipBook(data),
+    topClientsByAum: normalizeTopClients(data),
   };
 }
 

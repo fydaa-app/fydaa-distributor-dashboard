@@ -21,6 +21,18 @@ function getApiUrl(): string {
   return process.env.NEXT_PUBLIC_AUTHENTICATION_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005";
 }
 
+function getOnboardingApiUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_ONBOARDING_API_URL || "https://onboarding.fydaa.com"
+  );
+}
+
+function getOnboardedUserToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/onboardedUserToken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 function getDeviceId(): string {
   if (typeof window === "undefined") {
     return "server-" + Math.random().toString(36).slice(2);
@@ -116,4 +128,172 @@ export async function verifyArnOtp(params: {
     (typeof data === "string" ? { raw: data } : {});
 
   return { message, data: responseData };
+}
+
+export interface RiskProfileOption {
+  answer: string;
+  points: string;
+}
+
+export interface RiskProfileQuestion {
+  id: number;
+  secondaryQuestionId: string;
+  question: string;
+  option: RiskProfileOption[];
+  range: string | null;
+  imageUrl: string | null;
+  backgroundImageUrl: string | null;
+  title: string | null;
+  description: string | null;
+  questionType: string;
+  questionCategory: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface CreateRiskProfileOption {
+  answerId: number;
+  questionId: number;
+  secondaryQuestionId: string;
+}
+
+export async function getRiskProfileQuestionnaire(
+  token?: string
+): Promise<RiskProfileQuestion[]> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getOnboardingApiUrl()}/risk-profile-questionnaire/getRiskProfileQuestionnaire`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, { method: "GET", headers });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Failed to load risk profile questions. Please try again.";
+    throw new Error(message);
+  }
+
+  const questions = Array.isArray(data) ? data : [];
+
+  return questions
+    .filter(
+      (q): q is RiskProfileQuestion =>
+        isRecord(q) && q.questionType === "OPTION" && Array.isArray(q.option)
+    )
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+export async function createUserRiskProfile(
+  options: CreateRiskProfileOption[],
+  token?: string
+): Promise<Record<string, unknown>> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getOnboardingApiUrl()}/risk-profile/createUserRiskProfile`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ option: options }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Failed to submit risk profile. Please try again.";
+    throw new Error(message);
+  }
+
+  return (data && typeof data === "object" && isRecord(data.data)
+    ? data.data
+    : isRecord(data)
+      ? data
+      : {}) as Record<string, unknown>;
+}
+
+export interface UserStage {
+  isRiskProfileComplete: boolean;
+  [key: string]: unknown;
+}
+
+export async function getUserStage(token?: string): Promise<UserStage> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/user/getUserStage`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, { method: "GET", headers });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Failed to fetch user stage. Please try again.";
+    throw new Error(message);
+  }
+
+  return (isRecord(data) ? data : {}) as UserStage;
+}
+
+export async function getRiskIndicators(
+  token?: string
+): Promise<Record<string, unknown>> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getOnboardingApiUrl()}/risk-profile/getIndicators`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, { method: "GET", headers });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Failed to load risk indicators. Please try again.";
+    throw new Error(message);
+  }
+
+  return (data && typeof data === "object" && isRecord(data.data)
+    ? data.data
+    : isRecord(data)
+      ? data
+      : {}) as Record<string, unknown>;
 }
