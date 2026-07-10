@@ -1,178 +1,115 @@
 import { ArnReportEndpoints } from "@/config/api-endpoints";
-import type { ArnPaginatedResponse } from "@/types/arnClient";
+import type { ArnTone } from "@/types/arnClient";
 import type {
-  ArnPortfolioSummaryParams,
   ArnPortfolioSummaryRow,
+  ArnQuickReportItem,
   ArnReportDateOption,
   ArnReportPreview,
-  ArnReportPreviewParams,
-  ArnReportScope,
   ArnReportType,
+  ArnReportsPagination,
+  ArnReportsParams,
+  ArnReportsResult,
 } from "@/types/arnReports";
 
 type JsonObject = Record<string, unknown>;
 
-//const PAGE_SIZE = 5;
-const TOTAL_CLIENTS = 48;
+const TONES: ArnTone[] = ["amber", "blue", "green", "teal", "purple", "red"];
 
-const portfolioSummaryRows: ArnPortfolioSummaryRow[] = [
-  {
-    id: "rahul-sharma",
-    name: "Rahul S.",
-    initials: "RS",
-    tone: "amber",
-    invested: "₹53 L",
-    current: "₹62 L",
-    pnl: "+₹9 L",
-    pnlPositive: true,
-    xirr: "14.7%",
-    xirrPositive: true,
-    sipMonthly: "₹15,000",
-    updated: "Today",
-  },
-  {
-    id: "priya-gupta",
-    name: "Priya G.",
-    initials: "PG",
-    tone: "blue",
-    invested: "₹43 L",
-    current: "₹48 L",
-    pnl: "+₹5 L",
-    pnlPositive: true,
-    xirr: "12.1%",
-    xirrPositive: true,
-    sipMonthly: "₹25,000",
-    updated: "5 Jun",
-  },
-  {
-    id: "nikhil-joshi",
-    name: "Nikhil J.",
-    initials: "NJ",
-    tone: "green",
-    invested: "₹43 L",
-    current: "₹39 L",
-    pnl: "-₹4 L",
-    pnlPositive: false,
-    xirr: "9.8%",
-    xirrPositive: false,
-    sipMonthly: "₹0",
-    updated: "1 Jun",
-  },
-  {
-    id: "sunita-mehta",
-    name: "Sunita M.",
-    initials: "SM",
-    tone: "teal",
-    invested: "₹27 L",
-    current: "₹31 L",
-    pnl: "+₹4 L",
-    pnlPositive: true,
-    xirr: "11.3%",
-    xirrPositive: true,
-    sipMonthly: "₹5,000",
-    updated: "Today",
-  },
-  {
-    id: "amit-kumar",
-    name: "Amit K.",
-    initials: "AK",
-    tone: "purple",
-    invested: "₹24 L",
-    current: "₹28 L",
-    pnl: "+₹4 L",
-    pnlPositive: true,
-    xirr: "16.8%",
-    xirrPositive: true,
-    sipMonthly: "₹10,000",
-    updated: "15 Jun",
-  },
+const CANONICAL_REPORT_TYPES: ArnReportType[] = [
+  "valuation",
+  "capital-gains",
+  "sip-performance",
+  "transaction-history",
+  "xirr-summary",
+  "aum-statement",
 ];
 
-const previewByReport: Record<ArnReportType, Omit<ArnReportPreview, "reportType" | "scope" | "dateOption">> = {
-  valuation: {
-    clientCount: 48,
-    totalInvested: "₹3.41 Cr",
-    currentValue: "₹4.20 Cr",
-    unrealisedPnl: "+₹79 L",
-    unrealisedPnlPercent: "+23.2%",
-    overallXirr: "14.3%",
-    estimatedPages: "~96 pages",
-  },
-  "capital-gains": {
-    clientCount: 48,
-    totalInvested: "₹3.41 Cr",
-    currentValue: "₹4.20 Cr",
-    unrealisedPnl: "STCG ₹12 L",
-    unrealisedPnlPercent: "LTCG ₹28 L",
-    overallXirr: "FY 2025–26",
-    estimatedPages: "~64 pages",
-  },
-  "sip-performance": {
-    clientCount: 38,
-    totalInvested: "₹1.82 Cr",
-    currentValue: "₹2.14 Cr",
-    unrealisedPnl: "Avg XIRR",
-    unrealisedPnlPercent: "13.8%",
-    overallXirr: "62 SIPs",
-    estimatedPages: "~48 pages",
-  },
-  "transaction-history": {
-    clientCount: 48,
-    totalInvested: "1,248 txns",
-    currentValue: "₹18.4 Cr",
-    unrealisedPnl: "Last 12 months",
-    unrealisedPnlPercent: "All types",
-    overallXirr: "SIP + lumpsum",
-    estimatedPages: "~120 pages",
-  },
-  "xirr-summary": {
-    clientCount: 48,
-    totalInvested: "₹3.41 Cr",
-    currentValue: "₹4.20 Cr",
-    unrealisedPnl: "Median XIRR",
-    unrealisedPnlPercent: "12.9%",
-    overallXirr: "14.3%",
-    estimatedPages: "~24 pages",
-  },
-  "aum-statement": {
-    clientCount: 48,
-    totalInvested: "42 schemes",
-    currentValue: "₹4.20 Cr",
-    unrealisedPnl: "Top AMC",
-    unrealisedPnlPercent: "HDFC 28%",
-    overallXirr: "As on today",
-    estimatedPages: "~72 pages",
-  },
+const REPORT_DESCRIPTIONS: Record<ArnReportType, string> = {
+  valuation: "Current value + P&L",
+  "capital-gains": "STCG / LTCG for tax",
+  "sip-performance": "XIRR per SIP",
+  "transaction-history": "Full ledger by date",
+  "xirr-summary": "Returns all clients",
+  "aum-statement": "Scheme-wise snapshot",
 };
+
+function normalizeReportType(raw: unknown): ArnReportType {
+  if (typeof raw === "string") {
+    const candidate = raw.trim().replace(/_/g, "-").toLowerCase();
+    if ((CANONICAL_REPORT_TYPES as string[]).includes(candidate)) {
+      return candidate as ArnReportType;
+    }
+  }
+  return "valuation";
+}
 
 function isRecord(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function withLatency<T>(value: T): Promise<T> {
-  await delay(450);
-  return value;
 }
 
 function getApiUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005";
 }
 
-function isApiEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ARN_REPORTS_API_ENABLED === "true";
+function getAuthToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)authToken=([^;]*)/);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]) || null;
+  } catch {
+    return match[1] || null;
+  }
+}
+
+function formatCurrency(value: unknown): string {
+  const num = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(num) || num === 0) {
+    const raw = typeof value === "string" ? value.trim() : "";
+    return raw || "₹0";
+  }
+  return `₹${num.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+function formatSignedCurrency(value: unknown): string {
+  const num = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(num)) return "₹0";
+  const sign = num > 0 ? "+" : num < 0 ? "-" : "";
+  return `${sign}₹${Math.abs(num).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+function formatPercent(value: unknown): string {
+  const num = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(num)) return "0%";
+  return `${num}%`;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "??";
+  const first = parts[0].charAt(0);
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+function getNumber(value: unknown): number {
+  const num = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(num) ? num : 0;
 }
 
 async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
 
+  const authToken = getAuthToken();
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
   const response = await fetch(url, {
     ...options,
     headers,
+    cache: "no-store",
   });
 
   const payload = await response.json().catch(() => null);
@@ -188,98 +125,132 @@ async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> 
   return payload as T;
 }
 
-function getDummyPreview(params: ArnReportPreviewParams): ArnReportPreview {
-  const base = previewByReport[params.reportType];
-  const clientCount = params.scope === "select-clients" ? 2 : base.clientCount;
+function buildArnReportPreview(
+  reportType: ArnReportType,
+  summary: JsonObject | undefined,
+  pagination: ArnReportsPagination
+): ArnReportPreview {
+  const s = summary || {};
 
   return {
-    reportType: params.reportType,
-    scope: params.scope,
-    dateOption: params.dateOption,
-    ...base,
-    clientCount,
-    estimatedPages: params.scope === "select-clients" ? "~4 pages" : base.estimatedPages,
+    reportType,
+    clientCount: getNumber(s.clientCount),
+    totalInvested: formatCurrency(s.totalInvested),
+    currentValue: formatCurrency(s.currentValue),
+    unrealisedPnl: formatSignedCurrency(s.unrealizedPnl ?? s.unrealisedPnl),
+    unrealisedPnlPercent: formatPercent(s.unrealizedPnlPercent ?? s.unrealisedPnlPercent),
+    overallXirr: formatPercent(s.overallXirr),
+    estimatedPages: pagination.totalPages
+      ? `~${pagination.totalPages} pages`
+      : "—",
   };
 }
 
-function getDummyPortfolioSummary(
-  params: ArnPortfolioSummaryParams
-): ArnPaginatedResponse<ArnPortfolioSummaryRow> {
-  const start = (params.page - 1) * params.pageSize;
-  const items = portfolioSummaryRows.slice(start, start + params.pageSize);
+function mapClientRow(row: JsonObject, index: number): ArnPortfolioSummaryRow {
+  const invested = getNumber(row.invested ?? row.totalInvested ?? row.investedAmount);
+  const current = getNumber(row.current ?? row.currentValue ?? row.currentAmount);
+  const pnl = getNumber(row.pnl ?? row.unrealizedPnl ?? row.unrealisedPnl);
+  const xirr = getNumber(row.xirr);
 
   return {
-    items,
-    total: TOTAL_CLIENTS,
-    page: params.page,
-    pageSize: params.pageSize,
+    id: String(row.userId ?? row.id ?? index),
+    name: typeof row.name === "string" ? row.name : typeof row.clientName === "string" ? row.clientName : "Unknown",
+    initials: getInitials(typeof row.name === "string" ? row.name : typeof row.clientName === "string" ? row.clientName : ""),
+    tone: TONES[index % TONES.length],
+    invested: formatCurrency(invested),
+    current: formatCurrency(current),
+    pnl: formatSignedCurrency(pnl),
+    pnlPositive: pnl >= 0,
+    xirr: formatPercent(xirr),
+    xirrPositive: xirr >= 0,
+    sipMonthly:
+      row.sipMonthly !== undefined && row.sipMonthly !== null
+        ? formatCurrency(row.sipMonthly)
+        : undefined,
+    updated:
+      row.updated !== undefined && row.updated !== null
+        ? String(row.updated)
+        : undefined,
   };
 }
 
-async function getArnReportPreviewFromApi(
-  params: ArnReportPreviewParams,
+export async function getArnReports(
+  params: ArnReportsParams,
   signal?: AbortSignal
-): Promise<ArnReportPreview> {
+): Promise<ArnReportsResult> {
   const searchParams = new URLSearchParams({
     reportType: params.reportType,
-    scope: params.scope,
-    dateOption: params.dateOption,
-  });
-
-  const payload = await fetchJson<ArnReportPreview>(
-    `${getApiUrl()}${ArnReportEndpoints.REPORT_PREVIEW}?${searchParams.toString()}`,
-    { signal }
-  );
-
-  return payload;
-}
-
-async function getArnPortfolioSummaryFromApi(
-  params: ArnPortfolioSummaryParams,
-  signal?: AbortSignal
-): Promise<ArnPaginatedResponse<ArnPortfolioSummaryRow>> {
-  const searchParams = new URLSearchParams({
     page: String(params.page),
-    pageSize: String(params.pageSize),
+    limit: String(params.limit),
+    type: params.type || "individual",
   });
 
-  const payload = await fetchJson<ArnPaginatedResponse<ArnPortfolioSummaryRow>>(
-    `${getApiUrl()}${ArnReportEndpoints.PORTFOLIO_SUMMARY}?${searchParams.toString()}`,
+  if (params.asOfDate) {
+    searchParams.set("asOfDate", params.asOfDate);
+  }
+  if (params.search) {
+    searchParams.set("search", params.search);
+  }
+
+  const payload = await fetchJson<JsonObject>(
+    `${getApiUrl()}${ArnReportEndpoints.REPORTS}?${searchParams.toString()}`,
     { signal }
   );
 
-  return payload;
+  const data = isRecord(payload.data) ? payload.data : payload;
+  const summary = isRecord(data.summary) ? data.summary : undefined;
+  const clientsRaw = Array.isArray(data.clients) ? data.clients : [];
+  const rawPagination = isRecord(data.pagination) ? data.pagination : {};
+
+  const pagination: ArnReportsPagination = {
+    page: getNumber(rawPagination.page) || params.page,
+    totalPages: getNumber(rawPagination.totalPages),
+    totalCount: getNumber(rawPagination.totalCount ?? rawPagination.totalItems),
+  };
+
+  const clients = clientsRaw
+    .filter((row): row is JsonObject => isRecord(row))
+    .map((row, index) => mapClientRow(row, index));
+
+  return {
+    preview: buildArnReportPreview(params.reportType, summary, pagination),
+    clients,
+    pagination,
+  };
 }
 
-export async function getArnReportPreview(
-  params: ArnReportPreviewParams,
+export async function getArnQuickReports(
   signal?: AbortSignal
-): Promise<ArnReportPreview> {
-  if (!isApiEnabled()) {
-    return withLatency(getDummyPreview(params));
-  }
+): Promise<ArnQuickReportItem[]> {
+  const payload = await fetchJson<JsonObject>(
+    `${getApiUrl()}${ArnReportEndpoints.QUICK_REPORTS}`,
+    { signal }
+  );
 
-  return getArnReportPreviewFromApi(params, signal);
+  const data = isRecord(payload.data) ? payload.data : payload;
+  const rawList = Array.isArray(data.quickReports)
+    ? data.quickReports
+    : Array.isArray(payload.quickReports)
+      ? payload.quickReports
+      : [];
+
+  return rawList
+    .filter((item): item is JsonObject => isRecord(item))
+    .map((item) => {
+      const type = normalizeReportType(item.id ?? item.type);
+      const title =
+        typeof item.title === "string" && item.title.trim()
+          ? item.title
+          : typeof item.name === "string" && item.name.trim()
+            ? item.name
+            : REPORT_DESCRIPTIONS[type];
+      const description =
+        typeof item.description === "string" && item.description.trim()
+          ? item.description
+          : REPORT_DESCRIPTIONS[type];
+
+      return { id: type, title, description };
+    });
 }
 
-export async function getArnPortfolioSummary(
-  params: ArnPortfolioSummaryParams,
-  signal?: AbortSignal
-): Promise<ArnPaginatedResponse<ArnPortfolioSummaryRow>> {
-  if (!isApiEnabled()) {
-    return withLatency(getDummyPortfolioSummary(params));
-  }
-
-  return getArnPortfolioSummaryFromApi(params, signal);
-}
-
-export async function exportArnPortfolioSummaryCsv(signal?: AbortSignal): Promise<{ ok: boolean; message: string }> {
-  if (!isApiEnabled()) {
-    return withLatency({ ok: true, message: "Portfolio summary CSV export started." });
-  }
-
-  await fetchJson<unknown>(`${getApiUrl()}${ArnReportEndpoints.EXPORT_CSV}`, { signal });
-  return { ok: true, message: "Portfolio summary CSV export started." };
-}
-
-export type { ArnReportType, ArnReportScope, ArnReportDateOption };
+export type { ArnReportType, ArnReportDateOption };

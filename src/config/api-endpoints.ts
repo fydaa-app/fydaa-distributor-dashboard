@@ -25,9 +25,8 @@ export const ArnCommissionEndpoints = {
 } as const;
 
 export const ArnReportEndpoints = {
-  REPORT_PREVIEW: "/arn/reports/preview",
-  PORTFOLIO_SUMMARY: "/arn/reports/portfolio-summary",
-  EXPORT_CSV: "/arn/reports/portfolio-summary/export",
+  REPORTS: "/arn/reports",
+  QUICK_REPORTS: "/arn/reports/quick-reports",
 } as const;
 
 export const ArnShareEndpoints = {
