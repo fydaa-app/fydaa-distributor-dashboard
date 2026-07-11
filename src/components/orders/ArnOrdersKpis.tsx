@@ -1,19 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import ArnKpiCard from "@/components/common/ArnKpiCard";
 import ArnErrorState from "@/components/common/ArnErrorState";
-import { getArnOrdersKpis } from "@/services/arnOrdersService";
 import type { ArnOrdersKpis } from "@/types/arnOrders";
-
-const dummyKpis: ArnOrdersKpis = {
-  ordersToday: 8,
-  successfulToday: 6,
-  processedJune: 147,
-  transactedJuneInPaise: 2840000,
-  failedOrders: 4,
-  pendingOrders: 3,
-};
 
 function formatPaise(value: number): string {
   if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)} Cr`;
@@ -21,56 +10,43 @@ function formatPaise(value: number): string {
   return `₹${value.toLocaleString("en-IN")}`;
 }
 
-export default function ArnOrdersKpis() {
-  const [kpis, setKpis] = useState<ArnOrdersKpis>(dummyKpis);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface ArnOrdersKpisProps {
+  kpis: ArnOrdersKpis | null;
+  isLoading?: boolean;
+  error?: string | null;
+  retry?: () => void;
+}
 
-  const loadKpis = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      setKpis(await getArnOrdersKpis());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load order KPIs.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadKpis();
-  }, [loadKpis]);
-
+export default function ArnOrdersKpis({ kpis, isLoading, error, retry }: ArnOrdersKpisProps) {
   const cards = [
     {
       label: "Orders today",
-      value: String(kpis.ordersToday),
-      trendText: `${kpis.successfulToday} successful`,
+      value: String(kpis?.ordersToday ?? 0),
+      trendText: `${kpis?.successfulToday ?? 0} successful`,
       tone: "amber" as const,
       trend: "up" as const,
     },
     {
       label: "Processed (Jun)",
-      value: String(kpis.processedJune),
-      trendText: formatPaise(kpis.transactedJuneInPaise),
+      value: String(kpis?.processedJune ?? 0),
+      trendText: formatPaise(kpis?.transactedJuneInPaise ?? 0),
       tone: "green" as const,
       trend: "up" as const,
     },
     {
       label: "Failed orders",
-      value: String(kpis.failedOrders),
+      value: String(kpis?.failedOrders ?? 0),
       trendText: "action needed",
       tone: "red" as const,
       trend: "down" as const,
     },
     {
       label: "Pending",
-      value: String(kpis.pendingOrders),
+      value: String(kpis?.pendingOrders ?? 0),
       trendText: "processing",
       tone: "blue" as const,
       trend: "neutral" as const,
+      icon: "ti ti-clock",
     },
   ];
 
@@ -78,7 +54,7 @@ export default function ArnOrdersKpis() {
     <ArnErrorState
       title="Could not load order summary"
       message={error}
-      retry={loadKpis}
+      retry={retry}
     />
   ) : (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">

@@ -1,4 +1,4 @@
-import type { ArnPaginatedResponse, ArnTone } from "@/types/arnClient";
+import type { ArnTone } from "@/types/arnClient";
 
 export type ArnReportType =
   | "valuation"
@@ -8,14 +8,10 @@ export type ArnReportType =
   | "xirr-summary"
   | "aum-statement";
 
-export type ArnReportScope = "all-clients" | "select-clients";
-
-export type ArnReportDateOption = "today" | "fy-end" | "custom";
+export type ArnReportDateOption = "as-on-date" | "custom";
 
 export interface ArnReportPreview {
   reportType: ArnReportType;
-  scope: ArnReportScope;
-  dateOption: ArnReportDateOption;
   clientCount: number;
   totalInvested: string;
   currentValue: string;
@@ -36,19 +32,41 @@ export interface ArnPortfolioSummaryRow {
   pnlPositive: boolean;
   xirr: string;
   xirrPositive: boolean;
-  sipMonthly: string;
-  updated: string;
+  sipMonthly?: string;
+  updated?: string;
 }
 
-export interface ArnPortfolioSummaryParams {
+export interface ArnReportsParams {
+  reportType: ArnReportType;
+  asOfDate?: string;
+  search?: string;
   page: number;
-  pageSize: number;
+  limit: number;
+  type?: "individual" | "team";
 }
 
-export type ArnPortfolioSummaryResponse = ArnPaginatedResponse<ArnPortfolioSummaryRow>;
+export interface ArnReportsPagination {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+}
+
+export interface ArnReportsResult {
+  preview: ArnReportPreview;
+  clients: ArnPortfolioSummaryRow[];
+  pagination: ArnReportsPagination;
+  quickReports?: ArnQuickReportItem[];
+}
+
+export interface ArnQuickReportItem {
+  id: ArnReportType;
+  title: string;
+  description: string;
+}
 
 export interface ArnReportPreviewParams {
   reportType: ArnReportType;
-  scope: ArnReportScope;
   dateOption: ArnReportDateOption;
+  customDate?: string;
+  search?: string;
 }

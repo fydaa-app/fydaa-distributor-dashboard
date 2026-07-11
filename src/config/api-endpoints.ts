@@ -3,7 +3,6 @@ export const AuthEndpoints = {
 } as const;
 
 export const ArnClientEndpoints = {
-  CLIENT_KPIS: "/arn/clients/kpis",
   CLIENTS: "/arn/clients",
   CLIENT_DETAIL: "/arn/clients/{clientId}",
   SHARE_REPORT: "/arn/clients/{clientId}/share-report",
@@ -11,16 +10,10 @@ export const ArnClientEndpoints = {
 } as const;
 
 export const ArnSipBookEndpoints = {
-  SIP_KPIS: "/arn/sipbook/kpis",
-  SIP_TREND: "/arn/sipbook/trend",
-  SIP_HEALTH: "/arn/sipbook/health",
-  SIP_BOOK: "/arn/sipbook",
+  SIP_BOOK: "/arn/sip-book",
 } as const;
 
 export const ArnOrderEndpoints = {
-  ORDERS_KPIS: "/arn/orders/kpis",
-  ORDERS_ACTIVITY: "/arn/orders/activity",
-  ORDERS_TYPE_SPLIT: "/arn/orders/type-split",
   ORDERS: "/arn/orders",
 } as const;
 
@@ -32,9 +25,8 @@ export const ArnCommissionEndpoints = {
 } as const;
 
 export const ArnReportEndpoints = {
-  REPORT_PREVIEW: "/arn/reports/preview",
-  PORTFOLIO_SUMMARY: "/arn/reports/portfolio-summary",
-  EXPORT_CSV: "/arn/reports/portfolio-summary/export",
+  REPORTS: "/arn/reports",
+  QUICK_REPORTS: "/arn/reports/quick-reports",
 } as const;
 
 export const ArnShareEndpoints = {
@@ -42,4 +34,8 @@ export const ArnShareEndpoints = {
   RECENT_SHARES: "/arn/share/recent",
   SEND: "/arn/share/send",
   RESEND: "/arn/share/{shareId}/resend",
+} as const;
+
+export const ArnDashboardEndpoints = {
+  DASHBOARD: "/arn/dashboard",
 } as const;

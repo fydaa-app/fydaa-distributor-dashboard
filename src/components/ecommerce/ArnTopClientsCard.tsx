@@ -3,26 +3,36 @@
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import Link from "next/link";
+import type { ArnDashboardTopClient } from "@/types/arnDashboard";
 
 type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
 
-interface TopClient {
-  initials: string;
-  name: string;
-  aum: string;
-  growth: string;
-  tone: ArnTone;
+const toneOrder: ArnTone[] = ["amber", "blue", "green", "teal", "purple", "red"];
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-const clients: TopClient[] = [
-  { initials: "RS", name: "Rahul Sharma", aum: "₹62 L", growth: "+9.2%", tone: "amber" },
-  { initials: "PG", name: "Priya Gupta", aum: "₹48 L", growth: "+7.1%", tone: "blue" },
-  { initials: "NJ", name: "Nikhil Joshi", aum: "₹39 L", growth: "-1.3%", tone: "green" },
-  { initials: "SM", name: "Sunita Mehta", aum: "₹31 L", growth: "+4.8%", tone: "teal" },
-  { initials: "AK", name: "Amit Kumar", aum: "₹28 L", growth: "+11.2%", tone: "purple" },
-];
+function formatLakhs(value: number): string {
+  const l = value / 100000;
+  return `₹${l.toFixed(2).replace(/\.00$/, "")} L`;
+}
 
-export default function ArnTopClientsCard() {
+interface ArnTopClientsCardProps {
+  topClients: ArnDashboardTopClient[];
+}
+
+export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps) {
+  const clients = topClients.map((client, index) => ({
+    initials: getInitials(client.clientName),
+    name: client.clientName,
+    aum: formatLakhs(client.aum),
+    tone: toneOrder[index % toneOrder.length],
+  }));
+
   return (
     <div className="rounded-[16px] border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1c1a] sm:p-6">
       <ArnCardHeader
@@ -48,13 +58,6 @@ export default function ArnTopClientsCard() {
             <div className="text-right">
               <div className="text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
                 {client.aum}
-              </div>
-              <div
-                className={`text-xs font-bold sm:text-sm ${
-                  client.growth.startsWith("-") ? "text-[#A32D2D]" : "text-[#3B6D11]"
-                }`}
-              >
-                {client.growth}
               </div>
             </div>
           </div>

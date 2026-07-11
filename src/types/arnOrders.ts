@@ -18,7 +18,6 @@ export interface ArnOrderActivity {
   id: string;
   title: string;
   description: string;
-  amountInPaise: number;
   timestamp: string;
   timestampLabel: string;
   status: ArnOrderStatus;
@@ -71,4 +70,76 @@ export interface ArnOrdersResponse extends ArnOrdersKpis {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export interface ArnOrdersSummary {
+  ordersToday: number;
+  successfulToday: number;
+  processedThisMonth: number;
+  transactedAmountThisMonth: number;
+  failedOrders: number;
+  pendingOrders: number;
+  totalOrders: number;
+  totalAmount: number;
+}
+
+export interface ArnOrdersBackendOrderTypeSplit {
+  sipPercent: number;
+  lumpsumPercent: number;
+  redemptionPercent: number;
+  switchPercent: number;
+}
+
+export interface ArnOrdersBackendPagination {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasMore: boolean;
+}
+
+export interface ArnOrdersBackendResponse {
+  success: boolean;
+  distributor: unknown;
+  period: unknown;
+  summary: ArnOrdersSummary;
+  todayActivity: unknown[];
+  orderTypeSplit: ArnOrdersBackendOrderTypeSplit;
+  filterCounts: {
+    all: number;
+    sip: number;
+    lumpsum: number;
+    redemption: number;
+    failed: number;
+  };
+  statusCounts: {
+    all: number;
+    successful: number;
+    failed: number;
+    in_progress: number;
+  };
+  orders: unknown[];
+  pagination: ArnOrdersBackendPagination;
+}
+
+export interface ArnOrdersFetchParams {
+  search?: string;
+  filter?: ArnOrderFilter;
+  status?: ArnOrderStatus | "all";
+  page: number;
+  pageSize: number;
+  type?: "individual" | "team";
+  sortKey?: ArnOrderSortKey;
+  sortDirection?: "asc" | "desc";
+}
+
+export interface ArnOrdersFetchResult {
+  kpis: ArnOrdersKpis;
+  activities: ArnOrderActivity[];
+  typeSplit: ArnOrderTypeSplit[];
+  orders: ArnOrderItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pagination: ArnOrdersBackendPagination;
 }

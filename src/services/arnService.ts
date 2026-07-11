@@ -138,6 +138,20 @@ function setAuthCookies(response: LoginResponse, rememberMe: boolean) {
   setCookie("employeeData", JSON.stringify(response.employee), cookieOptions);
 }
 
+function setUserDataCookie(payload: JsonObject, rememberMe: boolean) {
+  const cookieOptions = getCookieOptions(rememberMe);
+  const userData =
+    isRecord(payload.userData)
+      ? payload.userData
+      : isRecord(getNestedRecord(payload, "data")?.userData)
+        ? getNestedRecord(payload, "data")?.userData
+        : null;
+
+  if (userData) {
+    setCookie("userData", JSON.stringify(userData), cookieOptions);
+  }
+}
+
 export async function loginWithArnApi(
   email: string,
   password: string,
@@ -173,6 +187,7 @@ export async function loginWithArnApi(
   const normalizedResponse: LoginResponse = { token, employee };
 
   setAuthCookies(normalizedResponse, rememberMe);
+  setUserDataCookie(payload, rememberMe);
 
   return normalizedResponse;
 }
@@ -197,6 +212,13 @@ export async function loginTemporarily(
   };
 
   setAuthCookies(temporaryResponse, rememberMe);
+
+  const cookieOptions = getCookieOptions(rememberMe);
+  setCookie(
+    "userData",
+    JSON.stringify({ code: "", number: "", id: 0 }),
+    cookieOptions
+  );
 
   return temporaryResponse;
 }

@@ -10,8 +10,14 @@ import ArnOrdersFilters from "@/components/orders/ArnOrdersFilters";
 import ArnOrdersKpis from "@/components/orders/ArnOrdersKpis";
 import ArnOrdersToolbar from "@/components/orders/ArnOrdersToolbar";
 import ArnOrdersTable from "@/components/tables/ArnOrdersTable";
-import { getArnOrders } from "@/services/arnOrdersService";
-import type { ArnOrderFilter, ArnOrderItem, ArnOrderSortKey, ArnOrderStatus } from "@/types/arnOrders";
+import { fetchOrders } from "@/services/arnOrdersService";
+import type {
+  ArnOrderFilter,
+  ArnOrderItem,
+  ArnOrderStatus,
+  ArnOrderActivity,
+  ArnOrderTypeSplit,
+} from "@/types/arnOrders";
 
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
@@ -20,8 +26,6 @@ export default function ArnOrdersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<ArnOrderFilter>("all");
   const [status, setStatus] = useState<ArnOrderStatus | "all">("all");
-  const [sortKey, setSortKey] = useState<ArnOrderSortKey>("date");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [view, setView] = useState<"table" | "list">("table");
   const [page, setPage] = useState(1);
   const [orders, setOrders] = useState<ArnOrderItem[]>([]);
@@ -29,6 +33,16 @@ export default function ArnOrdersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [kpis, setKpis] = useState<{
+    ordersToday: number;
+    successfulToday: number;
+    processedJune: number;
+    transactedJuneInPaise: number;
+    failedOrders: number;
+    pendingOrders: number;
+  } | null>(null);
+  const [activities, setActivities] = useState<ArnOrderActivity[]>([]);
+  const [typeSplit, setTypeSplit] = useState<ArnOrderTypeSplit[]>([]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedSearch(search), 250);
@@ -40,24 +54,26 @@ export default function ArnOrdersPage() {
     setError(null);
 
     try {
-      const response = await getArnOrders({
+      const response = await fetchOrders({
         search: debouncedSearch,
         filter,
         status,
         page,
         pageSize: 5,
-        sortKey,
-        sortDirection,
+        type: "individual",
       });
 
       setOrders(response.orders);
       setTotal(response.total);
+      setKpis(response.kpis);
+      setActivities(response.activities);
+      setTypeSplit(response.typeSplit);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load orders.");
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, filter, page, sortDirection, sortKey, status]);
+  }, [debouncedSearch, filter, page, status]);
 
   useEffect(() => {
     loadOrders();
@@ -79,11 +95,11 @@ export default function ArnOrdersPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
-      <ArnOrdersKpis />
+      <ArnOrdersKpis kpis={kpis} isLoading={isLoading} error={error} retry={loadOrders} />
 
       <div className="grid grid-cols-1 gap-5 sm:gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <ArnOrderActivityTimeline />
-        <ArnOrderTypeSplitChart />
+        <ArnOrderActivityTimeline activities={activities} isLoading={isLoading} error={error} retry={loadOrders} />
+        <ArnOrderTypeSplitChart splits={typeSplit} isLoading={isLoading} error={error} retry={loadOrders} totalOrders={kpis?.processedJune ?? 0} />
       </div>
 
       <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
@@ -95,11 +111,7 @@ export default function ArnOrdersPage() {
           <ArnOrdersToolbar
             search={search}
             onSearchChange={setSearch}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
             view={view}
-            onSortKeyChange={setSortKey}
-            onSortDirectionChange={setSortDirection}
             onViewChange={setView}
             onRefresh={loadOrders}
           />

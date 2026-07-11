@@ -7,22 +7,20 @@ import type { ApexOptions } from "apexcharts";
 import ArnChartPeriodTabs from "@/components/common/ArnChartPeriodTabs";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import { useState } from "react";
+import type { ArnDashboardAumTrend } from "@/types/arnDashboard";
 
-const chartDataByRange: Record<string, number[]> = {
-  "6M": [2.8, 3.1, 3.3, 3.6, 3.9, 4.2],
-  "1Y": [2.4, 2.7, 2.9, 3.1, 3.3, 3.6, 3.8, 3.9, 4.0, 4.1, 4.15, 4.2],
-  All: [1.8, 2.1, 2.4, 2.7, 2.9, 3.1, 3.3, 3.6, 3.9, 4.2],
-};
+interface ArnAumTrendChartProps {
+  aumTrend: ArnDashboardAumTrend[];
+}
 
-const chartCategories: Record<string, string[]> = {
-  "6M": ["Dec", "Jan", "Feb", "Mar", "Apr", "May"],
-  "1Y": ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May"],
-  All: ["2023", "2024", "2025", "2026"],
-};
+function toCr(value: number): number {
+  return Number((value / 10000000).toFixed(2));
+}
 
-export default function ArnAumTrendChart() {
+export default function ArnAumTrendChart({ aumTrend }: ArnAumTrendChartProps) {
   const [activeRange, setActiveRange] = useState("6M");
-  const xCategories = chartCategories[activeRange];
+  const xCategories = aumTrend.map((point) => point.month);
+  const seriesData = aumTrend.map((point) => toCr(point.aum));
 
   const options: ApexOptions = {
     chart: {
@@ -121,7 +119,7 @@ export default function ArnAumTrendChart() {
           series={[
             {
               name: "AUM",
-              data: chartDataByRange[activeRange],
+              data: seriesData,
             },
           ]}
           type="area"

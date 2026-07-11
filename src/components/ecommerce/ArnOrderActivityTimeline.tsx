@@ -1,11 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
-import { getArnOrdersActivity } from "@/services/arnOrdersService";
 import type { ArnOrderActivity } from "@/types/arnOrders";
+
+function formatActivityTime(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 function getStatusVariant(status: ArnOrderActivity["status"]) {
   if (status === "done") return "active";
@@ -14,28 +23,14 @@ function getStatusVariant(status: ArnOrderActivity["status"]) {
   return "failed";
 }
 
-export default function ArnOrderActivityTimeline() {
-  const [activities, setActivities] = useState<ArnOrderActivity[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface ArnOrderActivityTimelineProps {
+  activities: ArnOrderActivity[];
+  isLoading?: boolean;
+  error?: string | null;
+  retry?: () => void;
+}
 
-  const loadActivities = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      setActivities(await getArnOrdersActivity());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load order activity.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadActivities();
-  }, [loadActivities]);
-
+export default function ArnOrderActivityTimeline({ activities, isLoading, error, retry }: ArnOrderActivityTimelineProps) {
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
       <ArnCardHeader
@@ -43,7 +38,7 @@ export default function ArnOrderActivityTimeline() {
         action={
           <button
             type="button"
-            onClick={loadActivities}
+            onClick={() => retry?.()}
             className="inline-flex items-center gap-1 text-xs font-bold text-[var(--arn-amber)] transition-opacity hover:opacity-80"
           >
             <i aria-hidden="true" className="ti ti-refresh" />
@@ -65,7 +60,7 @@ export default function ArnOrderActivityTimeline() {
         <ArnErrorState
           title="Could not load activity"
           message={error}
-          retry={loadActivities}
+          retry={retry}
         />
       ) : (
         <div className="space-y-1">
@@ -75,6 +70,9 @@ export default function ArnOrderActivityTimeline() {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-bold text-[var(--arn-txt)] sm:text-sm">{activity.title}</div>
                 <div className="mt-0.5 truncate text-[10px] text-[var(--arn-txt-3)] sm:text-xs">{activity.description}</div>
+                {formatActivityTime(activity.timestamp) && (
+                  <div className="mt-0.5 text-[10px] text-[var(--arn-txt-3)]">{formatActivityTime(activity.timestamp)}</div>
+                )}
               </div>
               <ArnStatusTag label={activity.statusLabel} variant={getStatusVariant(activity.status)} size="task" />
             </div>

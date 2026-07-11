@@ -1,40 +1,20 @@
-import type { ArnOrderSortKey } from "@/types/arnOrders";
-
 interface ArnOrdersToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
-  sortKey: ArnOrderSortKey;
-  sortDirection: "asc" | "desc";
   view: "table" | "list";
-  onSortKeyChange: (value: ArnOrderSortKey) => void;
-  onSortDirectionChange: (value: "asc" | "desc") => void;
   onViewChange: (value: "table" | "list") => void;
   onRefresh: () => void;
 }
 
-const sortOptions: Array<{ label: string; value: ArnOrderSortKey }> = [
-  { label: "Date", value: "date" },
-  { label: "Client", value: "clientName" },
-  { label: "Fund", value: "fundName" },
-  { label: "Type", value: "type" },
-  { label: "Amount", value: "amount" },
-  { label: "Units", value: "units" },
-  { label: "Status", value: "status" },
-];
-
 export default function ArnOrdersToolbar({
   search,
   onSearchChange,
-  sortKey,
-  sortDirection,
   view,
-  onSortKeyChange,
-  onSortDirectionChange,
   onViewChange,
   onRefresh,
 }: ArnOrdersToolbarProps) {
   return (
-    <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+    <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
       <div className="relative">
         <i aria-hidden="true" className="ti ti-search absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--arn-txt-3)]" />
         <input
@@ -43,28 +23,6 @@ export default function ArnOrdersToolbar({
           placeholder="Search client, fund, type or status"
           className="w-full rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] py-2.5 pl-10 pr-4 text-sm font-semibold text-[var(--arn-txt)] outline-none transition-colors placeholder:text-[var(--arn-txt-3)] focus:border-[var(--arn-amber)]"
         />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <select
-          value={sortKey}
-          onChange={(event) => onSortKeyChange(event.target.value as ArnOrderSortKey)}
-          className="h-10 rounded-[10px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] px-3 text-xs font-bold text-[var(--arn-txt)] outline-none focus:border-[var(--arn-amber)]"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              Sort: {option.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          aria-label="Toggle sort direction"
-          onClick={() => onSortDirectionChange(sortDirection === "asc" ? "desc" : "asc")}
-          className="grid h-10 w-10 place-items-center rounded-[10px] border border-[var(--arn-bdr)] text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)]"
-        >
-          <i aria-hidden="true" className={sortDirection === "asc" ? "ti ti-arrow-up" : "ti ti-arrow-down"} />
-        </button>
       </div>
 
       <div className="flex items-center gap-2 lg:justify-end">
