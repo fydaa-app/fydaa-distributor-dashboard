@@ -18,7 +18,6 @@ export interface ArnOrderActivity {
   id: string;
   title: string;
   description: string;
-  amountInPaise: number;
   timestamp: string;
   timestampLabel: string;
   status: ArnOrderStatus;

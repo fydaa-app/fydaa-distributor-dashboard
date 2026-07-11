@@ -4,7 +4,6 @@ import type {
   ArnOrderActivity,
   ArnOrderFilter,
   ArnOrderItem,
-  ArnOrderSortKey,
   ArnOrderStatus,
   ArnOrderType,
   ArnOrderTypeSplit,
@@ -65,6 +64,17 @@ const statusLabels: Record<ArnOrderStatus, string> = {
 };
 
 
+function formatOrderDate(value: unknown): string {
+  if (value == null || value === "") return "—";
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function normalizeOrderType(value: unknown): ArnOrderType {
   const type = getString(value).toLowerCase();
   if (type === "sip") return "sip";
@@ -98,10 +108,9 @@ function normalizeActivity(value: unknown, index: number): ArnOrderActivity {
   const source = isRecord(value) ? value : {};
   const status = normalizeOrderStatus(source.status || source.orderStatus);
   return {
-    id: getString(source.id || source.activityId || source._id, `activity-${index}`),
+    id: getString(source.orderId || source.id || source.activityId || source._id, `activity-${index}`),
     title: getString(source.title || source.label || source.description, "Order activity"),
     description: getString(source.description || source.detail || source.subtitle, "Order update received"),
-    amountInPaise: getNumber(source.amountInPaise || source.amount, 0),
     timestamp: getString(source.timestamp || source.createdAt || source.date, ""),
     timestampLabel: getString(source.timestampLabel || source.timestamp_label || source.timeLabel, "—"),
     status,
@@ -126,10 +135,12 @@ function normalizeOrder(value: unknown, index: number): ArnOrderItem {
   const clientName = getString(source.clientName || source.name || source.fullName, `Client ${index + 1}`);
   const clientShortName = getString(source.clientShortName || source.shortName, `${clientName.split(" ")[0]} ${clientName.split(" ")[1]?.[0] || ""}.`);
 
+  const rawDate = getString(source.createdAt || source.date || source.transactionDate, "");
+
   return {
     id: getString(source.id || source.orderId || source._id, `order-${index + 1}`),
-    date: getString(source.date || source.createdAt || source.transactionDate, ""),
-    dateLabel: getString(source.dateLabel || source.date_label || source.timeLabel, "—"),
+    date: rawDate,
+    dateLabel: formatOrderDate(rawDate),
     clientName,
     clientShortName,
     clientId: getString(source.clientId || source.client_id, `client-${index + 1}`),
@@ -172,36 +183,36 @@ async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> 
   return payload as T;
 }
 
-function sortOrders<T extends ArnOrderItem>(items: T[], sortKey?: ArnOrderSortKey, sortDirection?: "asc" | "desc"): T[] {
-  if (!sortKey) return items;
-  const sorted = [...items];
-  sorted.sort((a, b) => {
-    let aValue = (a as Record<string, unknown>)[sortKey] ?? 0;
-    let bValue = (b as Record<string, unknown>)[sortKey] ?? 0;
-
-    if (sortKey === "amount") {
-      aValue = a.amountInPaise;
-      bValue = b.amountInPaise;
-    }
-    if (sortKey === "units") {
-      aValue = a.unitsValue ?? -1;
-      bValue = b.unitsValue ?? -1;
-    }
-    if (sortKey === "date") {
-      aValue = Date.parse(a.date);
-      bValue = Date.parse(b.date);
-    }
-
-    if (typeof aValue === "number" && typeof bValue === "number") {
-      return sortDirection === "asc" ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number);
-    }
-
-    return sortDirection === "asc"
-      ? String(aValue).localeCompare(String(bValue), undefined, { numeric: true })
-      : String(bValue).localeCompare(String(aValue), undefined, { numeric: true });
-  });
-  return sorted;
-}
+// function sortOrders<T extends ArnOrderItem>(items: T[], sortKey?: ArnOrderSortKey, sortDirection?: "asc" | "desc"): T[] {
+//   if (!sortKey) return items;
+//   const sorted = [...items];
+//   sorted.sort((a, b) => {
+//     let aValue = (a as Record<string, unknown>)[sortKey] ?? 0;
+//     let bValue = (b as Record<string, unknown>)[sortKey] ?? 0;
+//
+//     if (sortKey === "amount") {
+//       aValue = a.amountInPaise;
+//       bValue = b.amountInPaise;
+//     }
+//     if (sortKey === "units") {
+//       aValue = a.unitsValue ?? -1;
+//       bValue = b.unitsValue ?? -1;
+//     }
+//     if (sortKey === "date") {
+//       aValue = Date.parse(a.date);
+//       bValue = Date.parse(b.date);
+//     }
+//
+//     if (typeof aValue === "number" && typeof bValue === "number") {
+//       return sortDirection === "asc" ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number);
+//     }
+//
+//     return sortDirection === "asc"
+//       ? String(aValue).localeCompare(String(bValue), undefined, { numeric: true })
+//       : String(bValue).localeCompare(String(aValue), undefined, { numeric: true });
+//   });
+//   return sorted;
+// }
 
 export async function fetchOrders(params: ArnOrdersFetchParams): Promise<ArnOrdersFetchResult> {
   const searchParams = new URLSearchParams();
@@ -234,14 +245,14 @@ export async function fetchOrders(params: ArnOrdersFetchParams): Promise<ArnOrde
     orders = orders.filter((order) => order.status === params.status);
   }
 
-  orders = sortOrders(orders, params.sortKey, params.sortDirection);
+  // orders = sortOrders(orders, params.sortKey, params.sortDirection);
 
   return {
     kpis,
     activities,
     typeSplit,
     orders,
-    total: orders.length,
+    total: payload.pagination?.totalItems ?? orders.length,
     page: payload.pagination.currentPage,
     pageSize: payload.pagination.itemsPerPage,
     pagination: payload.pagination,

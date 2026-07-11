@@ -71,6 +71,25 @@ function getOrdinalSuffix(value: number): string {
   return "th";
 }
 
+function formatDeductionDay(value: unknown): string {
+  const raw = typeof value === "string" ? value.trim() : String(value ?? "");
+  const digits = raw.replace(/\D/g, "");
+  const dayNum = digits ? Number(digits) : NaN;
+  if (!Number.isFinite(dayNum) || dayNum < 1) return raw || "—";
+  return `${dayNum}${getOrdinalSuffix(dayNum)}`;
+}
+
+function formatNextSipDate(value: unknown): string {
+  if (value == null || value === "") return "—";
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function normalizeSummary(summary: ArnSipBookSummary | undefined): ArnSipBookKpis {
   if (!summary) {
     return {
@@ -98,11 +117,12 @@ function normalizeInflowTrend(
 ): ArnSipBookTrendPoint[] {
   if (!Array.isArray(data)) return [];
   return data.map((point) => {
-    const valueInPaise = point.inflow;
-    const lakhs = valueInPaise / 100000;
-    const formatted = lakhs >= 10 ? `₹${Math.round(lakhs)} L` : `₹${Math.round(lakhs * 10) / 10} L`;
+    const amount = getNumber(point.amount, 0);
+    const valueInPaise = amount;
+    const formatted = `₹${Math.round(amount / 1000)}K`;
     return {
       month: point.month,
+      monthLabel: getString(point.monthLabel, point.month),
       value: formatted,
       valueInPaise,
     };
@@ -139,17 +159,8 @@ function normalizeSipRow(row: ArnSipBookBackendSip, index: number): ArnSipBookIt
   const status = normalizeStatus(backendStatus || bookStatus);
   const amountInPaise = getNumber(row.amount, 0);
   const clientName = getString(row.clientName, `Client ${index + 1}`);
-  const deductionDay = getString(String(row.deductionDay), "—");
-  const formattedSipDay = `${deductionDay}${getOrdinalSuffix(getNumber(String(row.deductionDay), 1))}`;
-
-  let nextSipLabel: string;
-  if (row.nextSipDate instanceof Date) {
-    nextSipLabel = row.nextSipDate.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-  } else if (typeof row.nextSipDate === "string") {
-    nextSipLabel = row.nextSipDate;
-  } else {
-    nextSipLabel = "—";
-  }
+  const sipDay = formatDeductionDay(row.deductionDay);
+  const nextSipLabel = formatNextSipDate(row.nextSipDate);
 
   return {
     id: String(row.sipId),
@@ -160,8 +171,8 @@ function normalizeSipRow(row: ArnSipBookBackendSip, index: number): ArnSipBookIt
     fundName: getString(row.fund, "Fund"),
     amount: formatAmount(amountInPaise),
     amountInPaise,
-    sipDay: formattedSipDay,
-    sipDayLabel: formattedSipDay,
+    sipDay,
+    sipDayLabel: sipDay,
     nextSipDate: nextSipLabel,
     nextSipLabel,
     xirr: getNumber(row.xirr, 0),

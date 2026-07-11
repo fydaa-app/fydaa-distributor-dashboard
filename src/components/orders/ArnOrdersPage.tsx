@@ -14,7 +14,6 @@ import { fetchOrders } from "@/services/arnOrdersService";
 import type {
   ArnOrderFilter,
   ArnOrderItem,
-  ArnOrderSortKey,
   ArnOrderStatus,
   ArnOrderActivity,
   ArnOrderTypeSplit,
@@ -27,8 +26,6 @@ export default function ArnOrdersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<ArnOrderFilter>("all");
   const [status, setStatus] = useState<ArnOrderStatus | "all">("all");
-  const [sortKey, setSortKey] = useState<ArnOrderSortKey>("date");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [view, setView] = useState<"table" | "list">("table");
   const [page, setPage] = useState(1);
   const [orders, setOrders] = useState<ArnOrderItem[]>([]);
@@ -64,8 +61,6 @@ export default function ArnOrdersPage() {
         page,
         pageSize: 5,
         type: "individual",
-        sortKey,
-        sortDirection,
       });
 
       setOrders(response.orders);
@@ -78,7 +73,7 @@ export default function ArnOrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, filter, page, sortDirection, sortKey, status]);
+  }, [debouncedSearch, filter, page, status]);
 
   useEffect(() => {
     loadOrders();
@@ -116,11 +111,7 @@ export default function ArnOrdersPage() {
           <ArnOrdersToolbar
             search={search}
             onSearchChange={setSearch}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
             view={view}
-            onSortKeyChange={setSortKey}
-            onSortDirectionChange={setSortDirection}
             onViewChange={setView}
             onRefresh={loadOrders}
           />

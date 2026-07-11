@@ -19,6 +19,7 @@ export interface ArnSipBookKpis {
 
 export interface ArnSipBookTrendPoint {
   month: string;
+  monthLabel: string;
   value: string;
   valueInPaise: number;
 }
@@ -73,7 +74,8 @@ export interface ArnSipBookSummary {
 
 export interface ArnSipBookInflowTrendPoint {
   month: string;
-  inflow: number;
+  monthLabel: string;
+  amount: number;
 }
 
 export interface ArnSipBookHealthData {

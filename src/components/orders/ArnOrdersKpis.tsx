@@ -46,6 +46,7 @@ export default function ArnOrdersKpis({ kpis, isLoading, error, retry }: ArnOrde
       trendText: "processing",
       tone: "blue" as const,
       trend: "neutral" as const,
+      icon: "ti ti-clock",
     },
   ];
 

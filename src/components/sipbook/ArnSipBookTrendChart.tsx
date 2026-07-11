@@ -35,7 +35,7 @@ export default function ArnSipBookTrendChart({
 
   const categories =
     inflowTrend.length > 0
-      ? inflowTrend.map((point) => point.month)
+      ? inflowTrend.map((point) => point.monthLabel)
       : chartCategories[trendPeriod];
 
   const options: ApexOptions = {
@@ -51,9 +51,9 @@ export default function ArnSipBookTrendChart({
     dataLabels: { enabled: false },
     plotOptions: {
       bar: {
-        borderRadius: 6,
+        borderRadius: 3,
         columnWidth: "54%",
-        distributed: true,
+        distributed: false,
       },
     },
     grid: {
@@ -65,13 +65,19 @@ export default function ArnSipBookTrendChart({
         top: 0,
         bottom: 0,
       },
+      xaxis: {
+        lines: { show: false },
+      },
+      yaxis: {
+        lines: { show: true },
+      },
     },
     xaxis: {
       categories,
       labels: {
         style: {
           colors: "#a8a8a3",
-          fontSize: "11px",
+          fontSize: "9px",
         },
       },
       axisBorder: { show: false },
@@ -81,9 +87,9 @@ export default function ArnSipBookTrendChart({
       labels: {
         style: {
           colors: "#a8a8a3",
-          fontSize: "11px",
+          fontSize: "9px",
         },
-        formatter: (value) => `₹${value}L`,
+        formatter: (value) => `₹${Math.round(Number(value) / 1000)}K`,
       },
       min: 0,
     },
@@ -94,7 +100,7 @@ export default function ArnSipBookTrendChart({
         fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
       },
       y: {
-        formatter: (value) => `₹${value} L`,
+        formatter: (value) => `₹${Math.round(Number(value) / 1000)}K`,
       },
     },
   };
@@ -110,15 +116,15 @@ export default function ArnSipBookTrendChart({
       </ArnCardHeader>
 
       {isLoading ? (
-        <div className="relative h-[140px] animate-pulse rounded-[14px] bg-[var(--arn-bg-2)]" />
+        <div className="relative h-[130px] animate-pulse rounded-[14px] bg-[var(--arn-bg-2)] sm:h-[150px] md:h-[170px]" />
       ) : (
-        <div className="relative h-[140px] sm:h-[160px]">
+        <div className="relative h-[130px] sm:h-[150px] md:h-[170px]">
           <ReactApexChart
             options={options}
             series={[
               {
                 name: "SIP book",
-                data: inflowTrend.map((point) => Number((point.valueInPaise / 100000).toFixed(1))),
+                data: inflowTrend.map((point) => point.valueInPaise),
               },
             ]}
             type="bar"

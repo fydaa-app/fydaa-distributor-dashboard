@@ -5,6 +5,17 @@ import ArnErrorState from "@/components/common/ArnErrorState";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
 import type { ArnOrderActivity } from "@/types/arnOrders";
 
+function formatActivityTime(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function getStatusVariant(status: ArnOrderActivity["status"]) {
   if (status === "done") return "active";
   if (status === "pending") return "pending";
@@ -59,6 +70,9 @@ export default function ArnOrderActivityTimeline({ activities, isLoading, error,
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-bold text-[var(--arn-txt)] sm:text-sm">{activity.title}</div>
                 <div className="mt-0.5 truncate text-[10px] text-[var(--arn-txt-3)] sm:text-xs">{activity.description}</div>
+                {formatActivityTime(activity.timestamp) && (
+                  <div className="mt-0.5 text-[10px] text-[var(--arn-txt-3)]">{formatActivityTime(activity.timestamp)}</div>
+                )}
               </div>
               <ArnStatusTag label={activity.statusLabel} variant={getStatusVariant(activity.status)} size="task" />
             </div>
