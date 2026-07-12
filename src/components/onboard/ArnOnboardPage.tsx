@@ -5,7 +5,7 @@ import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
 import type { RiskProfileQuestion } from "@/services/arnOnboardService";
 
-type Phase = "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "welcome";
+type Phase = "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "welcome";
 
 export default function ArnOnboardPage() {
   const [phase, setPhase] = useState<Phase>("mobile");
@@ -29,7 +29,6 @@ export default function ArnOnboardPage() {
 
   const goToOtp = () => setPhase("otp");
   const goToMobile = () => setPhase("mobile");
-  const goToWelcome = () => setPhase("welcome");
   const resetOnboard = () => {
     setMobile("");
     setOtpValues(["", "", "", ""]);
@@ -51,6 +50,9 @@ export default function ArnOnboardPage() {
   };
 
   const goToRiskScore = () => setPhase("riskScore");
+
+  const goToIdentity = () => setPhase("identity");
+  const goToKycCompliant = () => setPhase("kycCompliant");
 
   const loadRiskScore = async (token: string) => {
     setIsLoadingScore(true);
@@ -81,6 +83,10 @@ export default function ArnOnboardPage() {
     import("@/services/arnOnboardService")
       .then(({ getUserStage }) => getUserStage(token))
       .then((stage) => {
+        if (stage.isRiskProfileComplete && stage.isKycCompliant) {
+          setPhase("kycCompliant");
+          return;
+        }
         if (stage.isRiskProfileComplete) {
           return loadRiskScore(token);
         }
@@ -148,10 +154,12 @@ export default function ArnOnboardPage() {
           onOtpChange={setOtpValues}
           onGoToOtp={goToOtp}
           onGoToMobile={goToMobile}
-          onGoToWelcome={goToWelcome}
           onReset={resetOnboard}
           onGoToKyc={goToKyc}
           onKycVerified={() => setPhase("kycCompliant")}
+          onGoToIdentity={goToIdentity}
+          onGoToKycCompliant={goToKycCompliant}
+          onIdentityVerified={() => setPhase("welcome")}
           onGoToRiskScore={goToRiskScore}
           kycError={kycError}
           referredBy={referredBy}

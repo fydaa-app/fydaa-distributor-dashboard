@@ -235,6 +235,7 @@ export async function createUserRiskProfile(
 
 export interface UserStage {
   isRiskProfileComplete: boolean;
+  isKycCompliant?: boolean;
   [key: string]: unknown;
 }
 
@@ -390,5 +391,66 @@ export async function fetchKycData(
     verificationStatus: isRecord(payload.verificationStatus)
       ? payload.verificationStatus
       : null,
+  };
+}
+
+export interface KycExtraParams {
+  father_name: string;
+  gender: "male" | "female" | "others";
+  marital_status: "single" | "married";
+  income_slab:
+    | "upto_1lakh"
+    | "above_1lakh_upto_5lakh"
+    | "above_5lakh_upto_10lakh"
+    | "above_10lakh_upto_25lakh"
+    | "above_25lakh_upto_1cr"
+    | "above_1cr";
+  occupation_type:
+    | "private_sector"
+    | "public_sector"
+    | "government_sector"
+    | "business"
+    | "professional"
+    | "retired"
+    | "housewife"
+    | "student"
+    | "others";
+  pep_details: string;
+}
+
+export async function submitKycExtra(
+  params: KycExtraParams,
+  token?: string
+): Promise<{ status: boolean; message: string }> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/kyc/kyc-extra`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to save profile details. Please try again.";
+    throw new Error(message);
+  }
+
+  return {
+    status: payload.status === true,
+    message: typeof payload.message === "string" ? payload.message : "",
   };
 }

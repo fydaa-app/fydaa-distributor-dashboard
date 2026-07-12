@@ -6,21 +6,24 @@ import {
   requestArnOtp,
   verifyArnOtp,
   fetchKycData,
+  submitKycExtra,
   type RiskProfileQuestion,
 } from "@/services/arnOnboardService";
 
 interface ArnOnboardFormProps {
-  phase: "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "welcome";
+  phase: "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "welcome";
   mobile: string;
   onMobileChange: (value: string) => void;
   otpValues: string[];
   onOtpChange: (values: string[]) => void;
   onGoToOtp: () => void;
   onGoToMobile: () => void;
-  onGoToWelcome: () => void;
   onReset: () => void;
   onGoToKyc: () => void;
   onKycVerified: () => void;
+  onGoToIdentity: () => void;
+  onGoToKycCompliant: () => void;
+  onIdentityVerified: () => void;
   onGoToRiskScore: () => void;
   kycError: string | null;
   referredBy: string;
@@ -141,10 +144,12 @@ export default function ArnOnboardForm({
   onOtpChange,
   onGoToOtp,
   onGoToMobile,
-  onGoToWelcome,
   onReset,
   onGoToKyc,
   onKycVerified,
+  onGoToIdentity,
+  onGoToKycCompliant,
+  onIdentityVerified,
   onGoToRiskScore,
   kycError,
   referredBy,
@@ -176,6 +181,99 @@ export default function ArnOnboardForm({
   const [dob, setDob] = useState("");
   const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
   const [kycLocalError, setKycLocalError] = useState<string | null>(null);
+
+  const [fatherName, setFatherName] = useState("");
+  const [gender, setGender] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [incomeSlab, setIncomeSlab] = useState("");
+  const [occupationType, setOccupationType] = useState("");
+  const [pepChecked, setPepChecked] = useState(false);
+  const [isSubmittingIdentity, setIsSubmittingIdentity] = useState(false);
+  const [identityError, setIdentityError] = useState<string | null>(null);
+
+  const genderOptions = [
+    { value: "male", label: "Male" },
+    { value: "female", label: "Female" },
+    { value: "others", label: "Others" },
+  ];
+  const maritalOptions = [
+    { value: "single", label: "Single" },
+    { value: "married", label: "Married" },
+  ];
+  const incomeSlabOptions = [
+    { value: "upto_1lakh", label: "Up to ₹1 Lakh" },
+    { value: "above_1lakh_upto_5lakh", label: "Above ₹1 Lakh – ₹5 Lakh" },
+    { value: "above_5lakh_upto_10lakh", label: "Above ₹5 Lakh – ₹10 Lakh" },
+    { value: "above_10lakh_upto_25lakh", label: "Above ₹10 Lakh – ₹25 Lakh" },
+    { value: "above_25lakh_upto_1cr", label: "Above ₹25 Lakh – ₹1 Cr" },
+    { value: "above_1cr", label: "Above ₹1 Cr" },
+  ];
+  const occupationOptions = [
+    { value: "private_sector", label: "Private Sector" },
+    { value: "public_sector", label: "Public Sector" },
+    { value: "government_sector", label: "Government Sector" },
+    { value: "business", label: "Business" },
+    { value: "professional", label: "Professional" },
+    { value: "retired", label: "Retired" },
+    { value: "housewife", label: "Housewife" },
+    { value: "student", label: "Student" },
+    { value: "others", label: "Others" },
+  ];
+
+  const isIdentityValid =
+    fatherName.trim().length > 0 &&
+    gender !== "" &&
+    maritalStatus !== "" &&
+    incomeSlab !== "" &&
+    occupationType !== "" &&
+    pepChecked;
+
+  const titleCase = (value: string): string =>
+    value
+      .trim()
+      .split(/\s+/)
+      .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
+      .join(" ");
+
+  const handleIdentitySubmit = async () => {
+    if (!isIdentityValid) return;
+
+    setIsSubmittingIdentity(true);
+    setIdentityError(null);
+
+    try {
+      await submitKycExtra({
+        father_name: titleCase(fatherName),
+        gender: gender as "male" | "female" | "others",
+        marital_status: maritalStatus as "single" | "married",
+        income_slab: incomeSlab as
+          | "upto_1lakh"
+          | "above_1lakh_upto_5lakh"
+          | "above_5lakh_upto_10lakh"
+          | "above_10lakh_upto_25lakh"
+          | "above_25lakh_upto_1cr"
+          | "above_1cr",
+        occupation_type: occupationType as
+          | "private_sector"
+          | "public_sector"
+          | "government_sector"
+          | "business"
+          | "professional"
+          | "retired"
+          | "housewife"
+          | "student"
+          | "others",
+        pep_details: "not_applicable",
+      });
+      onIdentityVerified();
+    } catch (err) {
+      setIdentityError(
+        err instanceof Error ? err.message : "Failed to save profile details. Please try again."
+      );
+    } finally {
+      setIsSubmittingIdentity(false);
+    }
+  };
 
   const panValid = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim());
   const isKycValid =
@@ -771,11 +869,140 @@ export default function ArnOnboardForm({
 
           <button
             type="button"
-            onClick={onGoToWelcome}
+            onClick={onGoToIdentity}
             className="btn-primary btn-wide"
             style={{ marginTop: 20 }}
           >
             Continue <i className="ti ti-arrow-right" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {phase === "identity" && (
+        <div className="step-panel">
+          <div className="flex justify-center mb-5">
+            <div className="back-btn" onClick={onGoToKycCompliant} role="button" tabIndex={0}>
+              <i className="ti ti-arrow-left" aria-hidden="true" />
+            </div>
+          </div>
+
+          <p className="step-eyebrow">Identity Verification</p>
+          <h2 className="step-title">Answer the following questions</h2>
+          <p className="step-helper">
+            Please provide the information below to complete your profile.
+          </p>
+
+          <div className="onboard-section-label">Family Details</div>
+          <div className="field-group">
+            <label className="field-label">
+              Father&apos;s Name <span className="req">Required</span>
+            </label>
+            <input
+              className="field-input"
+              placeholder="Enter father's name"
+              value={fatherName}
+              onChange={(e) => setFatherName(e.target.value)}
+            />
+          </div>
+
+          <div className="onboard-section-label">Personal Details</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="field-group">
+              <label className="field-label">Gender</label>
+              <select
+                className="field-select"
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+              >
+                <option value="">Select your gender</option>
+                {genderOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Marital Status</label>
+              <select
+                className="field-select"
+                value={maritalStatus}
+                onChange={(e) => setMaritalStatus(e.target.value)}
+              >
+                <option value="">Select your marital status</option>
+                {maritalOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="onboard-section-label">Financial Details</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="field-group">
+              <label className="field-label">Income Slab</label>
+              <select
+                className="field-select"
+                value={incomeSlab}
+                onChange={(e) => setIncomeSlab(e.target.value)}
+              >
+                <option value="">Select your income slab range</option>
+                {incomeSlabOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Occupation</label>
+              <select
+                className="field-select"
+                value={occupationType}
+                onChange={(e) => setOccupationType(e.target.value)}
+              >
+                <option value="">Select your occupation</option>
+                {occupationOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <label className="onboard-check">
+            <input
+              type="checkbox"
+              checked={pepChecked}
+              onChange={(e) => setPepChecked(e.target.checked)}
+            />
+            <span>
+              I confirm I am not a politically exposed person (PEP). By continuing, you agree to our{" "}
+              <a href="#" onClick={(e) => e.preventDefault()}>
+                Terms &amp; Conditions
+              </a>
+              .
+            </span>
+          </label>
+
+          {identityError && (
+            <div className="field-error justify-center">
+              <i className="ti ti-alert-circle" aria-hidden="true" />
+              {identityError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleIdentitySubmit}
+            disabled={!isIdentityValid || isSubmittingIdentity}
+            className="btn-primary btn-wide"
+            style={{ marginTop: 8 }}
+          >
+            {isSubmittingIdentity ? "Saving..." : "Save and Continue"}
           </button>
         </div>
       )}

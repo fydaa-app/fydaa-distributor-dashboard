@@ -493,6 +493,70 @@ body {
   box-shadow: 0 0 0 4px rgba(186, 117, 23, 0.12);
 }
 
+.field-select {
+  width: 100%;
+  padding: 14px 38px 14px 16px;
+  border: 1px solid var(--arn-bdr-2);
+  border-radius: var(--arn-radius);
+  background-color: var(--arn-bg-2);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23a8a8a3' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  color: var(--arn-txt);
+  font-size: 15px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.field-select:focus {
+  border-color: var(--arn-amber);
+  background-color: var(--arn-bg);
+  box-shadow: 0 0 0 4px rgba(186, 117, 23, 0.12);
+}
+
+.field-select option {
+  color: var(--arn-txt);
+  background: var(--arn-bg);
+}
+
+.onboard-section-label {
+  margin: 18px 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--arn-txt-2);
+}
+
+.onboard-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--arn-txt-2);
+  cursor: pointer;
+}
+
+.onboard-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--arn-amber);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.onboard-check a {
+  color: var(--arn-amber);
+  text-decoration: underline;
+}
+
 .field-prefix {
   position: relative;
   display: inline-flex;
