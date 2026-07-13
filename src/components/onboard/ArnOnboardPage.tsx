@@ -1,9 +1,10 @@
 "use client";
 
 import { getCookie } from "cookies-next";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
-import type { RiskProfileQuestion } from "@/services/arnOnboardService";
+import type { RiskProfileQuestion, UserStage } from "@/services/arnOnboardService";
 
 type Phase = "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
 
@@ -23,26 +24,16 @@ export default function ArnOnboardPage() {
   const [scoreError, setScoreError] = useState<string | null>(null);
   const [kycError, setKycError] = useState<string | null>(null);
 
+  const router = useRouter();
+  const [skipStage, setSkipStage] = useState<UserStage | null>(null);
+
   const rawUserData = getCookie("userData");
   const userData = rawUserData ? JSON.parse(rawUserData as string) : {};
   const referredBy = userData?.code || "";
 
   const goToOtp = () => setPhase("otp");
   const goToMobile = () => setPhase("mobile");
-  const resetOnboard = () => {
-    setMobile("");
-    setOtpValues(["", "", "", ""]);
-    setOnboardedToken("");
-    setRiskQuestions([]);
-    setRiskAnswers({});
-    setRiskIndex(0);
-    setRiskError(null);
-    setRiskScoreData(null);
-    setIsLoadingScore(false);
-    setScoreError(null);
-    setKycError(null);
-    setPhase("mobile");
-  };
+  const goToDashboard = () => router.push("/");
 
   const goToKyc = () => {
     setKycError(null);
@@ -56,6 +47,7 @@ export default function ArnOnboardPage() {
 
   const goToEmail = () => setPhase("email");
   const goToEmailOtp = () => setPhase("emailOtp");
+  const goToBank = () => setPhase("bank");
   const goToNominee = () => setPhase("nominee");
   const goToWelcome = () => setPhase("welcome");
 
@@ -88,6 +80,17 @@ export default function ArnOnboardPage() {
     import("@/services/arnOnboardService")
       .then(({ getUserStage }) => getUserStage(token))
       .then((stage) => {
+        if (
+          stage.isRiskProfileComplete &&
+          stage.isEmail &&
+          stage.isKycCompliant &&
+          stage.isBank &&
+          stage.isNominee
+        ) {
+          setSkipStage(stage);
+          setPhase("welcome");
+          return;
+        }
         if (
           stage.isRiskProfileComplete &&
           stage.isEmail &&
@@ -172,7 +175,7 @@ export default function ArnOnboardPage() {
           onOtpChange={setOtpValues}
           onGoToOtp={goToOtp}
           onGoToMobile={goToMobile}
-          onReset={resetOnboard}
+          onReset={goToDashboard}
           onKycVerified={() => setPhase("kycCompliant")}
           onGoToIdentity={goToIdentity}
           onGoToKycCompliant={goToKycCompliant}
@@ -182,7 +185,9 @@ export default function ArnOnboardPage() {
           onIdentityVerified={() => setPhase("bank")}
           onBankVerified={goToNominee}
           onGoToWelcome={goToWelcome}
+          onGoToBank={goToBank}
           onGoToRiskScore={goToRiskScore}
+          userStage={skipStage}
           kycError={kycError}
           referredBy={referredBy}
           onOtpVerified={handleOtpVerified}

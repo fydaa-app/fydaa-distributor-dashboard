@@ -27,7 +27,7 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
     title: "Transactions",
     items: [
       { label: "Orders", href: "/arn-orders", icon: "file-invoice" },
-      { label: "Commission", href: "/arn-commission", icon: "coin" },
+      //{ label: "Commission", href: "/arn-commission", icon: "coin" },
     ],
   },
   {
@@ -35,7 +35,7 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { label: "Onboard client", href: "/arn-onboard", icon: "user-plus" },
       { label: "Reports", href: "/arn-reports", icon: "chart-bar" },
-      { label: "Share portfolio", href: "/arn-share", icon: "send" },
+     // { label: "Share portfolio", href: "/arn-share", icon: "send" },
     ],
   },
 ];

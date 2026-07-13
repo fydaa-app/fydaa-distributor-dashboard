@@ -310,6 +310,7 @@ export interface UserStage {
   isKycCompliant?: boolean;
   isEmail?: boolean;
   isBank?: boolean;
+  isNominee?: boolean;
   [key: string]: unknown;
 }
 
@@ -489,7 +490,6 @@ export interface KycExtraParams {
     | "housewife"
     | "student"
     | "others";
-  pep_details: string;
 }
 
 export async function submitKycExtra(
@@ -527,4 +527,113 @@ export async function submitKycExtra(
     status: payload.status === true,
     message: typeof payload.message === "string" ? payload.message : "",
   };
+}
+
+export type NomineeRelationship =
+  | "father"
+  | "mother"
+  | "court_appointed_legal_guardian"
+  | "aunt"
+  | "brother_in_law"
+  | "brother"
+  | "daughter"
+  | "daughter_in_law"
+  | "father_in_law"
+  | "grand_daughter"
+  | "grand_father"
+  | "grand_mother"
+  | "grand_son"
+  | "mother_in_law"
+  | "nephew"
+  | "niece"
+  | "sister"
+  | "sister_in_law"
+  | "son"
+  | "son_in_law"
+  | "spouse"
+  | "uncle"
+  | "others";
+
+export interface NomineePhoneNumber {
+  isd: string;
+  number: string;
+}
+
+export interface NomineeAddress {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+}
+
+export interface CreateNomineeDto {
+  nominee_name: string;
+  nominee_dob: string;
+  allocation_percentage: number;
+  nominee_relationship: NomineeRelationship;
+  nominee_order: number;
+  nominee_pan: string;
+  nominee_aadhaar_number: string;
+  nominee_email_address: string;
+  nominee_phone_number: NomineePhoneNumber;
+  nominee_address?: NomineeAddress;
+  guardian_name?: string;
+  guardian_relationship?: NomineeRelationship;
+  guardian_pan?: string;
+  guardian_email_address?: string;
+  guardian_phone_number?: NomineePhoneNumber;
+  guardian_address?: NomineeAddress;
+}
+
+export interface CreateNominationPayload {
+  opt_out_nomination?: boolean;
+  nominees?: CreateNomineeDto[];
+}
+
+export async function createNominationDetails(
+  payload: CreateNominationPayload,
+  token?: string
+): Promise<Record<string, unknown>> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/kyc/nominee`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (response.status === 409) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) || "You have already added a nominee.";
+    const error = new Error(message) as Error & { isConflict?: boolean };
+    error.isConflict = true;
+    throw error;
+  }
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Failed to save nominee. Please try again.";
+    throw new Error(message);
+  }
+
+  return (data && typeof data === "object" && isRecord(data)
+    ? data
+    : {}) as Record<string, unknown>;
 }

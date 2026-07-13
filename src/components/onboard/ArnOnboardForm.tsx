@@ -9,7 +9,13 @@ import {
   submitKycExtra,
   requestLinkEmail,
   verifyLinkEmail,
+  createNominationDetails,
   type RiskProfileQuestion,
+  type NomineeRelationship,
+  type NomineeAddress,
+  type CreateNomineeDto,
+  type CreateNominationPayload,
+  type UserStage,
 } from "@/services/arnOnboardService";
 import {
   getClientIp,
@@ -27,6 +33,7 @@ interface ArnOnboardFormProps {
   onGoToOtp: () => void;
   onGoToMobile: () => void;
   onReset: () => void;
+  userStage?: UserStage | null;
   onKycVerified: () => void;
   onGoToIdentity: () => void;
   onGoToKycCompliant: () => void;
@@ -36,6 +43,7 @@ interface ArnOnboardFormProps {
   onIdentityVerified: () => void;
   onBankVerified: () => void;
   onGoToWelcome: () => void;
+  onGoToBank: () => void;
   onGoToRiskScore: () => void;
   kycError: string | null;
   referredBy: string;
@@ -148,6 +156,46 @@ const COUNTRY_CODES = [
   { code: "+964", country: "IQ", flag: "🇮🇶", label: "Iraq" },
 ];
 
+export const STATE_CODES: Record<string, string> = {
+  "Andhra Pradesh": "AP",
+  "Arunachal Pradesh": "AR",
+  "Assam": "AS",
+  "Bihar": "BR",
+  "Chhattisgarh": "CG",
+  "Goa": "GA",
+  "Gujarat": "GJ",
+  "Haryana": "HR",
+  "Himachal Pradesh": "HP",
+  "Jharkhand": "JH",
+  "Karnataka": "KA",
+  "Kerala": "KL",
+  "Madhya Pradesh": "MP",
+  "Maharashtra": "MH",
+  "Manipur": "MN",
+  "Meghalaya": "ML",
+  "Mizoram": "MZ",
+  "Nagaland": "NL",
+  "Odisha": "OD",
+  "Punjab": "PB",
+  "Rajasthan": "RJ",
+  "Sikkim": "SK",
+  "Tamil Nadu": "TN",
+  "Telangana": "TS",
+  "Tripura": "TR",
+  "Uttar Pradesh": "UP",
+  "Uttarakhand": "UK",
+  "West Bengal": "WB",
+  "Andaman and Nicobar Islands": "AN",
+  "Chandigarh": "CH",
+  "Dadra and Nagar Haveli and Daman and Diu": "DH",
+  "Delhi": "DL",
+  "Delhi (NCT)": "DL",
+  "Jammu and Kashmir": "JK",
+  "Ladakh": "LA",
+  "Lakshadweep": "LD",
+  "Puducherry": "PY",
+};
+
 export default function ArnOnboardForm({
   phase,
   mobile,
@@ -157,6 +205,7 @@ export default function ArnOnboardForm({
   onGoToOtp,
   onGoToMobile,
   onReset,
+  userStage,
   onKycVerified,
   onGoToIdentity,
   onGoToKycCompliant,
@@ -166,6 +215,7 @@ export default function ArnOnboardForm({
   onIdentityVerified,
   onBankVerified,
   onGoToWelcome,
+  onGoToBank,
   onGoToRiskScore,
   kycError,
   referredBy,
@@ -202,6 +252,173 @@ export default function ArnOnboardForm({
   useEffect(() => {
     setEmailVerified(getCookie("emailVerified") === "1");
   }, []);
+
+  const [nomineeVerified, setNomineeVerified] = useState(false);
+
+  useEffect(() => {
+    setNomineeVerified(getCookie("nomineeVerified") === "1");
+  }, []);
+
+  useEffect(() => {
+    if (userStage) {
+      setEmailVerified(!!userStage.isEmail);
+      setNomineeVerified(!!userStage.isNominee);
+      setBankVerified(!!userStage.isBank);
+    }
+  }, [userStage]);
+
+  const [nomineeName, setNomineeName] = useState("");
+  const [nomineeDob, setNomineeDob] = useState("");
+  const [nomineeRelationship, setNomineeRelationship] = useState<NomineeRelationship | "">("");
+  const [nomineePan, setNomineePan] = useState("");
+  const [nomineeAadhaar, setNomineeAadhaar] = useState("");
+  const [nomineeEmail, setNomineeEmail] = useState("");
+  const [nomineePhoneIsd, setNomineePhoneIsd] = useState("91");
+  const [nomineePhoneNumber, setNomineePhoneNumber] = useState("");
+  const [addrLine1, setAddrLine1] = useState("");
+  const [addrLine2, setAddrLine2] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [addrPostal, setAddrPostal] = useState("");
+  const addrCountry = "IN";
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianRelationship, setGuardianRelationship] = useState<NomineeRelationship | "">("");
+  const [guardianPan, setGuardianPan] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [guardianPhoneIsd, setGuardianPhoneIsd] = useState("91");
+  const [guardianPhoneNumber, setGuardianPhoneNumber] = useState("");
+  const [guardianAddrLine1, setGuardianAddrLine1] = useState("");
+  const [guardianAddrPostal, setGuardianAddrPostal] = useState("");
+  const guardianAddrCountry = "IN";
+  const [isSubmittingNominee, setIsSubmittingNominee] = useState(false);
+  const [nomineeError, setNomineeError] = useState<string | null>(null);
+
+  const nomineeAge = (() => {
+    if (!nomineeDob) return null;
+    const dob = new Date(nomineeDob);
+    if (Number.isNaN(dob.getTime())) return null;
+    const diff = Date.now() - dob.getTime();
+    const age = Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+    return age;
+  })();
+  const isMinor = nomineeAge !== null && nomineeAge < 18;
+
+  const isNomineeValid =
+    nomineeName.trim().length > 0 &&
+    nomineeDob.trim().length > 0 &&
+    nomineeRelationship !== "" &&
+    nomineePan.trim().length > 0 &&
+    nomineeAadhaar.trim().length === 4 &&
+    nomineeEmail.trim().length > 0 &&
+    nomineePhoneNumber.trim().length > 0 &&
+    addrLine1.trim().length > 0 &&
+    addrLine2.trim().length > 0 &&
+    addrCity.trim().length > 0 &&
+    addrState.trim().length > 0 &&
+    addrPostal.trim().length > 0 &&
+    addrCountry.trim().length > 0 &&
+    (!isMinor ||
+      (guardianName.trim().length > 0 &&
+        guardianRelationship !== "" &&
+        guardianPan.trim().length > 0 &&
+        guardianEmail.trim().length > 0 &&
+        guardianPhoneNumber.trim().length > 0 &&
+        guardianAddrLine1.trim().length > 0 &&
+        guardianAddrPostal.trim().length > 0 &&
+        guardianAddrCountry.trim().length > 0));
+
+  const handleNomineeSubmit = async () => {
+    if (!isNomineeValid) {
+      setNomineeError("Please fill in all the required nominee details.");
+      return;
+    }
+
+    setIsSubmittingNominee(true);
+    setNomineeError(null);
+
+    const buildAddress = (): NomineeAddress | undefined => {
+      const hasValue =
+        addrLine1.trim() ||
+        addrLine2.trim() ||
+        addrCity.trim() ||
+        addrState.trim() ||
+        addrPostal.trim() ||
+        addrCountry.trim();
+      if (!hasValue) return undefined;
+      const address: NomineeAddress = {};
+      if (addrLine1.trim()) address.line1 = addrLine1.trim();
+      if (addrLine2.trim()) address.line2 = addrLine2.trim();
+      if (addrCity.trim()) address.city = addrCity.trim();
+      if (addrState.trim()) address.state = addrState.trim();
+      if (addrPostal.trim()) address.postal_code = addrPostal.trim();
+      if (addrCountry.trim()) address.country = addrCountry.trim();
+      return address;
+    };
+
+    const buildGuardianAddress = (): NomineeAddress | undefined => {
+      const hasValue =
+        guardianAddrLine1.trim() || guardianAddrPostal.trim() || guardianAddrCountry.trim();
+      if (!hasValue) return undefined;
+      const address: NomineeAddress = {};
+      if (guardianAddrLine1.trim()) address.line1 = guardianAddrLine1.trim();
+      if (guardianAddrPostal.trim()) address.postal_code = guardianAddrPostal.trim();
+      if (guardianAddrCountry.trim()) address.country = guardianAddrCountry.trim();
+      return address;
+    };
+
+    try {
+      const nominee: CreateNomineeDto = {
+        nominee_name: nomineeName.trim(),
+        nominee_dob: nomineeDob,
+        allocation_percentage: 100,
+        nominee_relationship: nomineeRelationship as NomineeRelationship,
+        nominee_order: 1,
+        nominee_pan: nomineePan.trim().toUpperCase(),
+        nominee_aadhaar_number: nomineeAadhaar.trim(),
+        nominee_email_address: nomineeEmail.trim(),
+        nominee_phone_number: {
+          isd: nomineePhoneIsd.trim() || "91",
+          number: nomineePhoneNumber.trim(),
+        },
+      };
+
+        const address = buildAddress();
+        if (address) nominee.nominee_address = address;
+
+        if (isMinor) {
+          nominee.guardian_name = guardianName.trim();
+          nominee.guardian_relationship = guardianRelationship as NomineeRelationship;
+          nominee.guardian_pan = guardianPan.trim().toUpperCase();
+          nominee.guardian_email_address = guardianEmail.trim();
+          nominee.guardian_phone_number = {
+            isd: guardianPhoneIsd.trim() || "91",
+            number: guardianPhoneNumber.trim(),
+          };
+        const guardianAddress = buildGuardianAddress();
+        if (guardianAddress) nominee.guardian_address = guardianAddress;
+      }
+
+      const payload: CreateNominationPayload = { nominees: [nominee] };
+
+      await createNominationDetails(payload);
+
+      setCookie("nomineeVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
+      setNomineeVerified(true);
+      onGoToWelcome();
+    } catch (err) {
+      if (err && typeof err === "object" && "isConflict" in err && (err as { isConflict?: boolean }).isConflict) {
+        setCookie("nomineeVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
+        setNomineeVerified(true);
+        onGoToWelcome();
+        return;
+      }
+      setNomineeError(
+        err instanceof Error ? err.message : "Failed to save nominee. Please try again."
+      );
+    } finally {
+      setIsSubmittingNominee(false);
+    }
+  };
 
   const [fullName, setFullName] = useState("");
   const [pan, setPan] = useState("");
@@ -346,7 +563,6 @@ export default function ArnOnboardForm({
           | "housewife"
           | "student"
           | "others",
-        pep_details: "not_applicable",
       });
       onIdentityVerified();
     } catch (err) {
@@ -1375,21 +1591,359 @@ export default function ArnOnboardForm({
 
       {phase === "nominee" && (
         <div className="step-panel">
-          <div className="text-center">
-            <p className="step-eyebrow">Almost there</p>
-            <h2 className="step-title">Add your nominee</h2>
-            <p className="step-helper">
-              Nominate a beneficiary for your investments. This step will be available shortly.
-            </p>
+          <div className="flex justify-center mb-5">
+            <div className="back-btn" onClick={onGoToBank} role="button" tabIndex={0}>
+              <i className="ti ti-arrow-left" aria-hidden="true" />
+            </div>
           </div>
+
+          <p className="step-eyebrow">Investment Setup</p>
+          <h2 className="step-title">Add a trusted nominee</h2>
+          <p className="step-helper">
+            Add the details of a trusted person to complete your profile.
+          </p>
+
+          <>
+            <div className="field-group">
+              <label className="field-label">
+                Nominee Name <span className="req">Required</span>
+              </label>
+              <input
+                className="field-input"
+                placeholder="Enter name as per Govt ID"
+                value={nomineeName}
+                onChange={(e) => setNomineeName(e.target.value)}
+              />
+            </div>
+
+            <div className="field-group">
+              <label className="field-label">
+                Date of Birth <span className="req">Required</span>
+              </label>
+              <input
+                className="field-input"
+                type="date"
+                value={nomineeDob}
+                onChange={(e) => setNomineeDob(e.target.value)}
+              />
+            </div>
+
+            {nomineeDob && (
+              <>
+                <div className="field-group">
+                  <label className="field-label">
+                    Nominee Relationship <span className="req">Required</span>
+                  </label>
+                <select
+                  className="field-select"
+                  value={nomineeRelationship}
+                  onChange={(e) => setNomineeRelationship(e.target.value as NomineeRelationship)}
+                >
+                  <option value="">Select relationship</option>
+                  <option value="father">Father</option>
+                  <option value="mother">Mother</option>
+                  <option value="court_appointed_legal_guardian">Court Appointed Legal Guardian</option>
+                  <option value="aunt">Aunt</option>
+                  <option value="brother_in_law">Brother in Law</option>
+                  <option value="brother">Brother</option>
+                  <option value="daughter">Daughter</option>
+                  <option value="daughter_in_law">Daughter in Law</option>
+                  <option value="father_in_law">Father in Law</option>
+                  <option value="grand_daughter">Grand Daughter</option>
+                  <option value="grand_father">Grand Father</option>
+                  <option value="grand_mother">Grand Mother</option>
+                  <option value="grand_son">Grand Son</option>
+                  <option value="mother_in_law">Mother in Law</option>
+                  <option value="nephew">Nephew</option>
+                  <option value="niece">Niece</option>
+                  <option value="sister">Sister</option>
+                  <option value="sister_in_law">Sister in Law</option>
+                  <option value="son">Son</option>
+                  <option value="son_in_law">Son in Law</option>
+                  <option value="spouse">Spouse</option>
+                  <option value="uncle">Uncle</option>
+                  <option value="others">Others</option>
+                </select>
+              </div>
+
+              {!isMinor && (
+                <>
+                  <div className="onboard-section-label">Nominee Details</div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      PAN Number <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      placeholder="ABCDE1234F"
+                      maxLength={10}
+                      value={nomineePan}
+                      onChange={(e) => setNomineePan(e.target.value.toUpperCase())}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Aadhaar Number <span className="req">Required</span>
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <span className="aadhaar-prefix">XXXX-XXXX-</span>
+                      <input
+                        className="field-input flex-1"
+                        placeholder="0000"
+                        maxLength={4}
+                        inputMode="numeric"
+                        value={nomineeAadhaar}
+                        onChange={(e) =>
+                          setNomineeAadhaar(e.target.value.replace(/\D/g, "").slice(0, 4))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Email Address <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      type="email"
+                      placeholder="Enter email-id"
+                      value={nomineeEmail}
+                      onChange={(e) => setNomineeEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Phone Number <span className="req">Required</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        className="field-prefix"
+                        style={{ maxWidth: 70 }}
+                        placeholder="91"
+                        inputMode="numeric"
+                        value={nomineePhoneIsd}
+                        onChange={(e) => setNomineePhoneIsd(e.target.value.replace(/\D/g, ""))}
+                      />
+                      <input
+                        className="field-input flex-1"
+                        placeholder="Phone number"
+                        inputMode="numeric"
+                        value={nomineePhoneNumber}
+                        onChange={(e) => setNomineePhoneNumber(e.target.value.replace(/\D/g, ""))}
+                      />
+                    </div>
+                  </div>
+                  <div className="onboard-section-label">Address</div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Line 1 <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      placeholder="House / flat / street"
+                      value={addrLine1}
+                      onChange={(e) => setAddrLine1(e.target.value)}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Line 2 <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      placeholder="Area / landmark"
+                      value={addrLine2}
+                      onChange={(e) => setAddrLine2(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="field-group">
+                      <label className="field-label">
+                        City <span className="req">Required</span>
+                      </label>
+                      <input
+                        className="field-input"
+                        placeholder="City"
+                        value={addrCity}
+                        onChange={(e) => setAddrCity(e.target.value)}
+                      />
+                    </div>
+                    <div className="field-group">
+                      <label className="field-label">
+                        State <span className="req">Required</span>
+                      </label>
+                      <select
+                        className="field-select"
+                        value={addrState}
+                        onChange={(e) => setAddrState(e.target.value)}
+                      >
+                        <option value="">Select state</option>
+                        {Object.entries(STATE_CODES).map(([name, code]) => (
+                          <option key={name} value={code}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="field-group">
+                      <label className="field-label">
+                        Postal Code <span className="req">Required</span>
+                      </label>
+                      <input
+                        className="field-input"
+                        placeholder="Postal code"
+                        value={addrPostal}
+                        onChange={(e) => setAddrPostal(e.target.value.replace(/\D/g, ""))}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {isMinor && (
+                <div className="onboard-section-label">Guardian Details</div>
+              )}
+              {isMinor && (
+                <>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Guardian Name <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      placeholder="Enter guardian name"
+                      value={guardianName}
+                      onChange={(e) => setGuardianName(e.target.value)}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Guardian Relationship <span className="req">Required</span>
+                    </label>
+                    <select
+                      className="field-select"
+                      value={guardianRelationship}
+                      onChange={(e) => setGuardianRelationship(e.target.value as NomineeRelationship)}
+                    >
+                      <option value="">Select relationship</option>
+                      <option value="father">Father</option>
+                      <option value="mother">Mother</option>
+                      <option value="court_appointed_legal_guardian">Court Appointed Legal Guardian</option>
+                      <option value="aunt">Aunt</option>
+                      <option value="brother_in_law">Brother in Law</option>
+                      <option value="brother">Brother</option>
+                      <option value="daughter">Daughter</option>
+                      <option value="daughter_in_law">Daughter in Law</option>
+                      <option value="father_in_law">Father in Law</option>
+                      <option value="grand_daughter">Grand Daughter</option>
+                      <option value="grand_father">Grand Father</option>
+                      <option value="grand_mother">Grand Mother</option>
+                      <option value="grand_son">Grand Son</option>
+                      <option value="mother_in_law">Mother in Law</option>
+                      <option value="nephew">Nephew</option>
+                      <option value="niece">Niece</option>
+                      <option value="sister">Sister</option>
+                      <option value="sister_in_law">Sister in Law</option>
+                      <option value="son">Son</option>
+                      <option value="son_in_law">Son in Law</option>
+                      <option value="spouse">Spouse</option>
+                      <option value="uncle">Uncle</option>
+                      <option value="others">Others</option>
+                    </select>
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Guardian PAN <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      placeholder="ABCDE1234F"
+                      maxLength={10}
+                      value={guardianPan}
+                      onChange={(e) => setGuardianPan(e.target.value.toUpperCase())}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Guardian Email <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      type="email"
+                      placeholder="Enter email-id"
+                      value={guardianEmail}
+                      onChange={(e) => setGuardianEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Guardian Phone <span className="req">Required</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        className="field-prefix"
+                        style={{ maxWidth: 70 }}
+                        placeholder="91"
+                        inputMode="numeric"
+                        value={guardianPhoneIsd}
+                        onChange={(e) => setGuardianPhoneIsd(e.target.value.replace(/\D/g, ""))}
+                      />
+                      <input
+                        className="field-input flex-1"
+                        placeholder="Phone number"
+                        inputMode="numeric"
+                        value={guardianPhoneNumber}
+                        onChange={(e) => setGuardianPhoneNumber(e.target.value.replace(/\D/g, ""))}
+                      />
+                    </div>
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">
+                      Guardian Address Line 1 <span className="req">Required</span>
+                    </label>
+                    <input
+                      className="field-input"
+                      placeholder="House / flat / street"
+                      value={guardianAddrLine1}
+                      onChange={(e) => setGuardianAddrLine1(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="field-group">
+                      <label className="field-label">
+                        Postal Code <span className="req">Required</span>
+                      </label>
+                      <input
+                        className="field-input"
+                        placeholder="Postal code"
+                        value={guardianAddrPostal}
+                        onChange={(e) => setGuardianAddrPostal(e.target.value.replace(/\D/g, ""))}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+          </>
+
+          {nomineeError && (
+            <div className="field-error justify-center">
+              <i className="ti ti-alert-circle" aria-hidden="true" />
+              {nomineeError}
+            </div>
+          )}
 
           <button
             type="button"
-            onClick={onGoToWelcome}
+            onClick={handleNomineeSubmit}
+            disabled={!isNomineeValid || isSubmittingNominee}
             className="btn-primary btn-wide"
             style={{ marginTop: 8 }}
           >
-            Continue <i className="ti ti-arrow-right" aria-hidden="true" />
+            {isSubmittingNominee ? "Saving..." : "Save and Continue"}
           </button>
         </div>
       )}
@@ -1442,6 +1996,13 @@ export default function ArnOnboardForm({
               <span className="summary-val">
                 <i className={emailVerified ? "ti ti-circle-check" : "ti ti-clock"} aria-hidden="true" />
                 {emailVerified ? "Verified" : "Not connected"}
+              </span>
+            </div>
+            <div className="summary-row">
+              <span className="summary-label">Nominee</span>
+              <span className="summary-val">
+                <i className={nomineeVerified ? "ti ti-circle-check" : "ti ti-clock"} aria-hidden="true" />
+                {nomineeVerified ? "Verified" : "Not connected"}
               </span>
             </div>
           </div>

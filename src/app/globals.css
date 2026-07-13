@@ -591,6 +591,23 @@ body {
   pointer-events: none;
 }
 
+.aadhaar-prefix {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--arn-bdr-2);
+  border-radius: var(--arn-radius);
+  background: var(--arn-bg-2);
+  color: var(--arn-txt-3);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  flex-shrink: 0;
+}
+
 .back-btn {
   width: 36px;
   height: 36px;
