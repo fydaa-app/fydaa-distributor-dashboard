@@ -73,20 +73,31 @@ export default function ArnSipBookKpis({ summary }: ArnSipBookKpisProps) {
     return "";
   };
 
+  const newSips = summary.newSipsThisMonth ?? 0;
+  const activeSipClients = summary.activeSipClients ?? 0;
+  const atRisk = summary.atRiskSips ?? 0;
+
   const kpis = [
     {
       ...kpiConfigs[0],
       value: getValue("totalSipBook"),
-      trendText: `+${summary.newSipsThisMonth ?? 0} SIPs this month`,
+      trendText: `+${newSips} SIPs this month`,
+      trend: newSips > 0 ? ("up" as const) : ("neutral" as const),
+      icon: newSips > 0 ? "ti ti-arrow-up" : "ti ti-equal",
     },
     {
       ...kpiConfigs[1],
       value: getValue("activeSips"),
-      trendText: `across ${summary.activeSipClients ?? 0} clients`,
+      trendText: `across ${activeSipClients} clients`,
+      trend: activeSipClients > 0 ? ("up" as const) : ("neutral" as const),
+      icon: activeSipClients > 0 ? "ti ti-arrow-up" : "ti ti-equal",
     },
     {
       ...kpiConfigs[2],
       value: getValue("atRiskSips"),
+      trendText: "NACH failure",
+      trend: atRisk > 0 ? ("down" as const) : ("neutral" as const),
+      icon: atRisk > 0 ? "ti ti-arrow-down" : "ti ti-equal",
     },
     {
       ...kpiConfigs[3],

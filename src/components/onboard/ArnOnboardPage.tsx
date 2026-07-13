@@ -5,7 +5,7 @@ import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
 import type { RiskProfileQuestion } from "@/services/arnOnboardService";
 
-type Phase = "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "bank" | "welcome";
+type Phase = "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
 
 export default function ArnOnboardPage() {
   const [phase, setPhase] = useState<Phase>("mobile");
@@ -54,6 +54,11 @@ export default function ArnOnboardPage() {
   const goToIdentity = () => setPhase("identity");
   const goToKycCompliant = () => setPhase("kycCompliant");
 
+  const goToEmail = () => setPhase("email");
+  const goToEmailOtp = () => setPhase("emailOtp");
+  const goToNominee = () => setPhase("nominee");
+  const goToWelcome = () => setPhase("welcome");
+
   const loadRiskScore = async (token: string) => {
     setIsLoadingScore(true);
     setScoreError(null);
@@ -83,8 +88,21 @@ export default function ArnOnboardPage() {
     import("@/services/arnOnboardService")
       .then(({ getUserStage }) => getUserStage(token))
       .then((stage) => {
-        if (stage.isRiskProfileComplete && stage.isKycCompliant) {
+        if (
+          stage.isRiskProfileComplete &&
+          stage.isEmail &&
+          stage.isKycCompliant &&
+          stage.isBank
+        ) {
+          setPhase("nominee");
+          return;
+        }
+        if (stage.isRiskProfileComplete && stage.isEmail && stage.isKycCompliant) {
           setPhase("kycCompliant");
+          return;
+        }
+        if (stage.isRiskProfileComplete && stage.isEmail) {
+          setPhase("kyc");
           return;
         }
         if (stage.isRiskProfileComplete) {
@@ -155,12 +173,15 @@ export default function ArnOnboardPage() {
           onGoToOtp={goToOtp}
           onGoToMobile={goToMobile}
           onReset={resetOnboard}
-          onGoToKyc={goToKyc}
           onKycVerified={() => setPhase("kycCompliant")}
           onGoToIdentity={goToIdentity}
           onGoToKycCompliant={goToKycCompliant}
+          onGoToEmail={goToEmail}
+          onGoToEmailOtp={goToEmailOtp}
+          onEmailVerified={goToKyc}
           onIdentityVerified={() => setPhase("bank")}
-          onBankVerified={() => setPhase("welcome")}
+          onBankVerified={goToNominee}
+          onGoToWelcome={goToWelcome}
           onGoToRiskScore={goToRiskScore}
           kycError={kycError}
           referredBy={referredBy}

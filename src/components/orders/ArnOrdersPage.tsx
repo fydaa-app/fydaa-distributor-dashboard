@@ -38,6 +38,7 @@ export default function ArnOrdersPage() {
     successfulToday: number;
     processedJune: number;
     transactedJuneInPaise: number;
+    transactedAmountThisMonth: number;
     failedOrders: number;
     pendingOrders: number;
   } | null>(null);

@@ -7,6 +7,8 @@ import {
   verifyArnOtp,
   fetchKycData,
   submitKycExtra,
+  requestLinkEmail,
+  verifyLinkEmail,
   type RiskProfileQuestion,
 } from "@/services/arnOnboardService";
 import {
@@ -17,7 +19,7 @@ import {
 } from "@/services/arnInvestmentSetupService";
 
 interface ArnOnboardFormProps {
-  phase: "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "bank" | "welcome";
+  phase: "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
   mobile: string;
   onMobileChange: (value: string) => void;
   otpValues: string[];
@@ -25,12 +27,15 @@ interface ArnOnboardFormProps {
   onGoToOtp: () => void;
   onGoToMobile: () => void;
   onReset: () => void;
-  onGoToKyc: () => void;
   onKycVerified: () => void;
   onGoToIdentity: () => void;
   onGoToKycCompliant: () => void;
+  onGoToEmail: () => void;
+  onGoToEmailOtp: () => void;
+  onEmailVerified: () => void;
   onIdentityVerified: () => void;
   onBankVerified: () => void;
+  onGoToWelcome: () => void;
   onGoToRiskScore: () => void;
   kycError: string | null;
   referredBy: string;
@@ -152,12 +157,15 @@ export default function ArnOnboardForm({
   onGoToOtp,
   onGoToMobile,
   onReset,
-  onGoToKyc,
   onKycVerified,
   onGoToIdentity,
   onGoToKycCompliant,
+  onGoToEmail,
+  onGoToEmailOtp,
+  onEmailVerified,
   onIdentityVerified,
   onBankVerified,
+  onGoToWelcome,
   onGoToRiskScore,
   kycError,
   referredBy,
@@ -183,6 +191,17 @@ export default function ArnOnboardForm({
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [email, setEmail] = useState("");
+  const [emailOtpValues, setEmailOtpValues] = useState(["", "", "", "", "", ""]);
+  const [isRequestingEmail, setIsRequestingEmail] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(false);
+
+  useEffect(() => {
+    setEmailVerified(getCookie("emailVerified") === "1");
+  }, []);
 
   const [fullName, setFullName] = useState("");
   const [pan, setPan] = useState("");
@@ -491,6 +510,71 @@ export default function ArnOnboardForm({
     }
   };
 
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const handleEmailSubmit = async () => {
+    if (!emailValid) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+
+    setIsRequestingEmail(true);
+    setEmailError(null);
+
+    try {
+      await requestLinkEmail({ email: email.trim() });
+      onGoToEmailOtp();
+    } catch (err) {
+      setEmailError(
+        err instanceof Error ? err.message : "Failed to send email verification. Please try again."
+      );
+    } finally {
+      setIsRequestingEmail(false);
+    }
+  };
+
+  const handleEmailOtpDigitChange = (index: number, raw: string) => {
+    const digit = raw.replace(/\D/g, "").slice(0, 1);
+    const next = [...emailOtpValues];
+    next[index] = digit;
+    setEmailOtpValues(next);
+    if (digit && index < emailOtpValues.length - 1) {
+      const el = document.getElementById(`email-otp-${index + 1}`);
+      el?.focus();
+    }
+  };
+
+  const handleEmailOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !emailOtpValues[index] && index > 0) {
+      const el = document.getElementById(`email-otp-${index - 1}`);
+      el?.focus();
+    }
+  };
+
+  const handleEmailVerify = async () => {
+    if (!emailOtpValues.every((v) => v.length === 1)) {
+      setEmailError("Please enter the complete 6-digit code.");
+      return;
+    }
+
+    setIsVerifyingEmail(true);
+    setEmailError(null);
+
+    try {
+      const digits = emailOtpValues.join("");
+      await verifyLinkEmail({ email: email.trim(), otp: digits });
+      setCookie("emailVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
+      setEmailVerified(true);
+      onEmailVerified();
+    } catch (err) {
+      setEmailError(
+        err instanceof Error ? err.message : "Email verification failed. Please try again."
+      );
+    } finally {
+      setIsVerifyingEmail(false);
+    }
+  };
+
   const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode) || COUNTRY_CODES[1];
 
   const riskProfileBlock =
@@ -528,9 +612,7 @@ export default function ArnOnboardForm({
     onRiskAnswerChange(questionId, optionIndex);
 
     const isLast = riskIndex >= riskQuestions.length - 1;
-    if (isLast) {
-      window.setTimeout(() => onSubmitRisk(), 260);
-    } else {
+    if (!isLast) {
       window.setTimeout(() => onRiskIndexChange(riskIndex + 1), 260);
     }
   };
@@ -825,7 +907,7 @@ export default function ArnOnboardForm({
 
               <button
                 type="button"
-                onClick={onGoToKyc}
+                onClick={onGoToEmail}
                 className="btn-primary btn-wide"
                 style={{ marginTop: 24 }}
               >
@@ -835,6 +917,101 @@ export default function ArnOnboardForm({
           )}
         </div>
       )}
+      {phase === "email" && (
+        <div className="step-panel">
+          <div className="flex justify-center mb-5">
+            <div className="back-btn" onClick={onGoToRiskScore} role="button" tabIndex={0}>
+              <i className="ti ti-arrow-left" aria-hidden="true" />
+            </div>
+          </div>
+
+          <p className="step-eyebrow">Identity Verification</p>
+          <h2 className="step-title">Verify your email address</h2>
+          <p className="step-helper">
+            Verify your email to receive your personalised risk profile report.
+          </p>
+
+          <div className="field-group">
+            <label className="field-label">
+              Email Address <span className="req">Required</span>
+            </label>
+            <input
+              className="field-input"
+              type="email"
+              placeholder="Enter your email-id"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          {emailError && (
+            <div className="field-error justify-center">
+              <i className="ti ti-alert-circle" aria-hidden="true" />
+              {emailError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleEmailSubmit}
+            disabled={!emailValid || isRequestingEmail}
+            className="btn-primary btn-wide"
+            style={{ marginTop: 8 }}
+          >
+            {isRequestingEmail ? "Sending..." : "Verify Email"}{" "}
+            {!isRequestingEmail && <i className="ti ti-arrow-right" aria-hidden="true" />}
+          </button>
+        </div>
+      )}
+
+      {phase === "emailOtp" && (
+        <div className="step-panel">
+          <div className="flex justify-center mb-5">
+            <div className="back-btn" onClick={onGoToEmail} role="button" tabIndex={0}>
+              <i className="ti ti-arrow-left" aria-hidden="true" />
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="step-eyebrow">Identity Verification</p>
+            <h2 className="step-title">Enter the code sent to</h2>
+            <p className="step-helper">{email.trim()}</p>
+          </div>
+
+          <div className="otp-row justify-center">
+            {emailOtpValues.map((value, index) => (
+              <input
+                key={index}
+                id={`email-otp-${index}`}
+                className="otp-box pin-box"
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={value}
+                onChange={(e) => handleEmailOtpDigitChange(index, e.target.value)}
+                onKeyDown={(e) => handleEmailOtpKeyDown(index, e)}
+              />
+            ))}
+          </div>
+
+          {emailError && (
+            <div className="field-error justify-center">
+              <i className="ti ti-alert-circle" aria-hidden="true" />
+              {emailError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleEmailVerify}
+            disabled={!emailOtpValues.every((v) => v.length === 1) || isVerifyingEmail}
+            className="btn-primary btn-wide"
+          >
+            {isVerifyingEmail ? "Verifying..." : "Verify"}
+          </button>
+        </div>
+      )}
+
       {phase === "kyc" && (
         <div className="step-panel">
           <div className="flex justify-center mb-5">
@@ -939,26 +1116,6 @@ export default function ArnOnboardForm({
           >
             Continue <i className="ti ti-arrow-right" aria-hidden="true" />
           </button>
-
-          <div className="field-group" style={{ marginTop: 18 }}>
-            <label className="field-label">Bank account</label>
-            <div
-              className="field-input"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                color: bankVerified ? "var(--arn-green, #1a7f37)" : "var(--arn-txt-3)",
-                fontWeight: 600,
-              }}
-            >
-              <i
-                className={bankVerified ? "ti ti-circle-check" : "ti ti-clock"}
-                aria-hidden="true"
-              />
-              {bankVerified ? "Verified" : "Not connected"}
-            </div>
-          </div>
         </div>
       )}
 
@@ -1216,6 +1373,27 @@ export default function ArnOnboardForm({
         </div>
       )}
 
+      {phase === "nominee" && (
+        <div className="step-panel">
+          <div className="text-center">
+            <p className="step-eyebrow">Almost there</p>
+            <h2 className="step-title">Add your nominee</h2>
+            <p className="step-helper">
+              Nominate a beneficiary for your investments. This step will be available shortly.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onGoToWelcome}
+            className="btn-primary btn-wide"
+            style={{ marginTop: 8 }}
+          >
+            Continue <i className="ti ti-arrow-right" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       {phase === "welcome" && (
         <div className="step-panel welcome-panel">
           <div className="success-ring">
@@ -1236,13 +1414,6 @@ export default function ArnOnboardForm({
                 {masked ? mobile.replace(/\D/g, "") : "—"}
               </span>
             </div>
-            <div className="summary-row">
-              <span className="summary-label">Account</span>
-              <span className="summary-val">
-                <i className="ti ti-circle-check" aria-hidden="true" />
-                Ready
-              </span>
-            </div>
             {riskScoreData && (
               <div className="summary-row">
                 <span className="summary-label">Risk Profile</span>
@@ -1252,15 +1423,27 @@ export default function ArnOnboardForm({
                 </span>
               </div>
             )}
-      {phase === "welcome" && (
-              <div className="summary-row">
-                <span className="summary-label">KYC Status</span>
-                <span className="summary-val">
-                  <i className="ti ti-circle-check" aria-hidden="true" />
-                  Verified
-                </span>
-              </div>
-            )}
+            <div className="summary-row">
+              <span className="summary-label">KYC Status</span>
+              <span className="summary-val">
+                <i className="ti ti-circle-check" aria-hidden="true" />
+                Verified
+              </span>
+            </div>
+            <div className="summary-row">
+              <span className="summary-label">Bank</span>
+              <span className="summary-val">
+                <i className={bankVerified ? "ti ti-circle-check" : "ti ti-clock"} aria-hidden="true" />
+                {bankVerified ? "Verified" : "Not connected"}
+              </span>
+            </div>
+            <div className="summary-row">
+              <span className="summary-label">Email</span>
+              <span className="summary-val">
+                <i className={emailVerified ? "ti ti-circle-check" : "ti ti-clock"} aria-hidden="true" />
+                {emailVerified ? "Verified" : "Not connected"}
+              </span>
+            </div>
           </div>
 
           <button

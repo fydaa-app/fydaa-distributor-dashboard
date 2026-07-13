@@ -130,6 +130,78 @@ export async function verifyArnOtp(params: {
   return { message, data: responseData };
 }
 
+export async function requestLinkEmail(
+  params: { email: string },
+  token?: string
+): Promise<Record<string, unknown>> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/user/requestLinkEmail`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Failed to send email verification link. Please try again.";
+    throw new Error(message);
+  }
+
+  return (data && typeof data === "object" && isRecord(data)
+    ? data
+    : {}) as Record<string, unknown>;
+}
+
+export async function verifyLinkEmail(
+  params: { email: string; otp: string },
+  token?: string
+): Promise<Record<string, unknown>> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/user/verifyLinkEmail`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Email verification failed. Please try again.";
+    throw new Error(message);
+  }
+
+  return (data && typeof data === "object" && isRecord(data)
+    ? data
+    : {}) as Record<string, unknown>;
+}
+
 export interface RiskProfileOption {
   answer: string;
   points: string;
@@ -236,6 +308,8 @@ export async function createUserRiskProfile(
 export interface UserStage {
   isRiskProfileComplete: boolean;
   isKycCompliant?: boolean;
+  isEmail?: boolean;
+  isBank?: boolean;
   [key: string]: unknown;
 }
 
