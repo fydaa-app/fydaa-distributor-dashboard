@@ -5,7 +5,7 @@ import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
 import type { RiskProfileQuestion } from "@/services/arnOnboardService";
 
-type Phase = "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "welcome";
+type Phase = "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "bank" | "welcome";
 
 export default function ArnOnboardPage() {
   const [phase, setPhase] = useState<Phase>("mobile");
@@ -159,7 +159,8 @@ export default function ArnOnboardPage() {
           onKycVerified={() => setPhase("kycCompliant")}
           onGoToIdentity={goToIdentity}
           onGoToKycCompliant={goToKycCompliant}
-          onIdentityVerified={() => setPhase("welcome")}
+          onIdentityVerified={() => setPhase("bank")}
+          onBankVerified={() => setPhase("welcome")}
           onGoToRiskScore={goToRiskScore}
           kycError={kycError}
           referredBy={referredBy}

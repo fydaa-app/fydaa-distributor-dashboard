@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { setCookie } from "cookies-next";
+import { getCookie, setCookie } from "cookies-next";
 import {
   requestArnOtp,
   verifyArnOtp,
@@ -9,9 +9,15 @@ import {
   submitKycExtra,
   type RiskProfileQuestion,
 } from "@/services/arnOnboardService";
+import {
+  getClientIp,
+  createInvestorProfileAndMfAccount,
+  createAndVerifyBankAccount,
+  type AccountType,
+} from "@/services/arnInvestmentSetupService";
 
 interface ArnOnboardFormProps {
-  phase: "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "welcome";
+  phase: "mobile" | "otp" | "risk" | "riskScore" | "kyc" | "kycCompliant" | "identity" | "bank" | "welcome";
   mobile: string;
   onMobileChange: (value: string) => void;
   otpValues: string[];
@@ -24,6 +30,7 @@ interface ArnOnboardFormProps {
   onGoToIdentity: () => void;
   onGoToKycCompliant: () => void;
   onIdentityVerified: () => void;
+  onBankVerified: () => void;
   onGoToRiskScore: () => void;
   kycError: string | null;
   referredBy: string;
@@ -150,6 +157,7 @@ export default function ArnOnboardForm({
   onGoToIdentity,
   onGoToKycCompliant,
   onIdentityVerified,
+  onBankVerified,
   onGoToRiskScore,
   kycError,
   referredBy,
@@ -190,6 +198,62 @@ export default function ArnOnboardForm({
   const [pepChecked, setPepChecked] = useState(false);
   const [isSubmittingIdentity, setIsSubmittingIdentity] = useState(false);
   const [identityError, setIdentityError] = useState<string | null>(null);
+  const [bankVerified, setBankVerified] = useState(false);
+
+  useEffect(() => {
+    setBankVerified(getCookie("bankVerified") === "1");
+  }, []);
+
+  const [bankIfsc, setBankIfsc] = useState("");
+  const [bankAccountType, setBankAccountType] = useState<AccountType | "">("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [bankConfirmNumber, setBankConfirmNumber] = useState("");
+  const [bankStatus, setBankStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [bankError, setBankError] = useState<string | null>(null);
+
+  const handleBankVerify = async () => {
+    if (!bankIfsc.trim()) {
+      setBankError("Please enter your IFSC code.");
+      return;
+    }
+    if (!bankAccountType) {
+      setBankError("Please select an account type.");
+      return;
+    }
+    if (!/^\d{9,18}$/.test(bankAccountNumber)) {
+      setBankError("Account number must be 9 to 18 digits.");
+      return;
+    }
+    if (bankAccountNumber !== bankConfirmNumber) {
+      setBankError("Account number and confirm account number do not match.");
+      return;
+    }
+
+    setBankStatus("loading");
+    setBankError(null);
+
+    try {
+      const ipAddress = await getClientIp();
+
+      await createInvestorProfileAndMfAccount({ ipAddress });
+
+      await createAndVerifyBankAccount({
+        account_number: bankAccountNumber,
+        type: bankAccountType as AccountType,
+        ifsc_code: bankIfsc.trim(),
+      });
+
+      setCookie("bankVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
+      setBankStatus("success");
+    } catch (err) {
+      setBankError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
+      setBankStatus("error");
+    }
+  };
 
   const genderOptions = [
     { value: "male", label: "Male" },
@@ -875,6 +939,26 @@ export default function ArnOnboardForm({
           >
             Continue <i className="ti ti-arrow-right" aria-hidden="true" />
           </button>
+
+          <div className="field-group" style={{ marginTop: 18 }}>
+            <label className="field-label">Bank account</label>
+            <div
+              className="field-input"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                color: bankVerified ? "var(--arn-green, #1a7f37)" : "var(--arn-txt-3)",
+                fontWeight: 600,
+              }}
+            >
+              <i
+                className={bankVerified ? "ti ti-circle-check" : "ti ti-clock"}
+                aria-hidden="true"
+              />
+              {bankVerified ? "Verified" : "Not connected"}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1007,6 +1091,131 @@ export default function ArnOnboardForm({
         </div>
       )}
 
+      {phase === "bank" && (
+        <div className="step-panel">
+          <div className="flex justify-center mb-5">
+            <div className="back-btn" onClick={onGoToIdentity} role="button" tabIndex={0}>
+              <i className="ti ti-arrow-left" aria-hidden="true" />
+            </div>
+          </div>
+
+          {bankStatus === "success" ? (
+            <>
+              <p className="step-eyebrow" style={{ textAlign: "center" }}>
+                Investment Setup
+              </p>
+              <h2 className="step-title" style={{ textAlign: "center" }}>
+                Bank account connected
+              </h2>
+              <p className="step-helper" style={{ textAlign: "center" }}>
+                Your bank account has been connected and verification is in
+                progress.
+              </p>
+
+              <div
+                className="glass-card gold"
+                style={{ textAlign: "center", padding: "34px 26px" }}
+              >
+                <div className="success-ring">
+                  <i className="ti ti-circle-check" aria-hidden="true" />
+                </div>
+                <div className="card-title" style={{ textAlign: "center" }}>
+                  You&apos;re all set!
+                </div>
+                <div className="card-sub" style={{ textAlign: "center" }}>
+                  You can continue with the rest of the onboarding.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={onBankVerified}
+                className="btn-primary btn-wide"
+                style={{ marginTop: 20 }}
+              >
+                Continue <i className="ti ti-arrow-right" aria-hidden="true" />
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="step-eyebrow">Investment Setup</p>
+              <h2 className="step-title">Connect your bank account</h2>
+              <p className="step-helper">
+                Please provide your bank details to complete your profile.
+              </p>
+
+              <div className="field-group">
+                <label className="field-label">IFSC Code</label>
+                <input
+                  className="field-input"
+                  placeholder="Enter your IFSC code"
+                  value={bankIfsc}
+                  onChange={(e) => setBankIfsc(e.target.value)}
+                />
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Account Type</label>
+                <select
+                  className="field-select"
+                  value={bankAccountType}
+                  onChange={(e) => setBankAccountType(e.target.value as AccountType)}
+                >
+                  <option value="">Select account type</option>
+                  <option value="savings">Savings</option>
+                  <option value="current">Current</option>
+                  <option value="nre">NRE</option>
+                  <option value="nro">NRO</option>
+                </select>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Account Number</label>
+                <input
+                  className="field-input"
+                  placeholder="XXXX XXXX XX XXXX"
+                  inputMode="numeric"
+                  value={bankAccountNumber}
+                  onChange={(e) =>
+                    setBankAccountNumber(e.target.value.replace(/\D/g, ""))
+                  }
+                />
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">Confirm Account Number</label>
+                <input
+                  className="field-input"
+                  placeholder="XXXX XXXX XX XXXX"
+                  inputMode="numeric"
+                  value={bankConfirmNumber}
+                  onChange={(e) =>
+                    setBankConfirmNumber(e.target.value.replace(/\D/g, ""))
+                  }
+                />
+              </div>
+
+              {bankError && (
+                <div className="field-error justify-center">
+                  <i className="ti ti-alert-circle" aria-hidden="true" />
+                  {bankError}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleBankVerify}
+                disabled={bankStatus === "loading"}
+                className="btn-primary btn-wide"
+                style={{ marginTop: 8 }}
+              >
+                {bankStatus === "loading" ? "Verifying..." : "Verify"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {phase === "welcome" && (
         <div className="step-panel welcome-panel">
           <div className="success-ring">
@@ -1043,7 +1252,7 @@ export default function ArnOnboardForm({
                 </span>
               </div>
             )}
-            {phase === "welcome" && (
+      {phase === "welcome" && (
               <div className="summary-row">
                 <span className="summary-label">KYC Status</span>
                 <span className="summary-val">
