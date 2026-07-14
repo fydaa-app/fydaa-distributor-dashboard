@@ -14,9 +14,10 @@ interface ArnTaskItemProps {
   tag: ArnTaskTag;
   done?: boolean;
   onToggle?: () => void;
+  onRemove?: () => void;
 }
 
-export default function ArnTaskItem({ text, tag, done = false, onToggle }: ArnTaskItemProps) {
+export default function ArnTaskItem({ text, tag, done = false, onToggle, onRemove }: ArnTaskItemProps) {
   return (
     <button
       type="button"
@@ -36,6 +37,19 @@ export default function ArnTaskItem({ text, tag, done = false, onToggle }: ArnTa
         {text}
       </span>
       <ArnStatusTag label={tag} variant={tagVariant[tag]} size="task" />
+      {onRemove && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          aria-label="Remove task"
+          className="ml-2 text-[#8a8a85] hover:text-[#BA7517]"
+        >
+          ✕
+        </button>
+      )}
     </button>
   );
 }

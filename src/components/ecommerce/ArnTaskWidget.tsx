@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnTaskItem from "@/components/common/ArnTaskItem";
-import { useState } from "react";
 
 type TaskTag = "Review" | "KYC" | "SIP" | "Call";
 
@@ -13,40 +13,128 @@ interface DashboardTask {
   done: boolean;
 }
 
-const tasks: DashboardTask[] = [
-  { id: "t1", text: "Send Q1 review to Rahul", tag: "Review", done: true },
-  { id: "t2", text: "KYC docs follow-up — Priya", tag: "KYC", done: false },
-  { id: "t3", text: "Reactivate Sunita's SIP", tag: "SIP", done: false },
-  { id: "t4", text: "Onboarding call — Mohit, 5 PM", tag: "Call", done: false },
-  { id: "t5", text: "Share SIP link with Nidhi", tag: "SIP", done: false },
-];
+const STORAGE_KEY = "fydaa_dashboard_tasks";
+
+const defaultTasks: DashboardTask[] = [];
+
+const TAG_OPTIONS: TaskTag[] = ["Review", "KYC", "SIP", "Call"];
 
 export default function ArnTaskWidget() {
-  const [taskState, setTaskState] = useState(tasks);
+  const [taskState, setTaskState] = useState<DashboardTask[]>(defaultTasks);
+  const [adding, setAdding] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [newTag, setNewTag] = useState<TaskTag>("SIP");
 
-  const toggleTask = (id: string) => {
-    setTaskState((current) =>
-      current.map((task) => (task.id === id ? { ...task, done: !task.done } : task))
+  const skipFirstPersist = useRef(true);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setTaskState(JSON.parse(raw) as DashboardTask[]);
+    } catch {
+      /* ignore corrupt cache */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipFirstPersist.current) {
+      skipFirstPersist.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(taskState));
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [taskState]);
+
+  const toggleTask = (id: string) =>
+    setTaskState((cur) =>
+      cur.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
     );
+
+  const removeTask = (id: string) =>
+    setTaskState((cur) => cur.filter((t) => t.id !== id));
+
+  const addTask = () => {
+    const text = newText.trim();
+    if (!text) return;
+    setTaskState((cur) => [
+      ...cur,
+      { id: `t${Date.now()}`, text, tag: newTag, done: false },
+    ]);
+    setNewText("");
+    setNewTag("SIP");
+    setAdding(false);
   };
+
+  const remaining = taskState.filter((t) => !t.done).length;
 
   return (
     <div className="rounded-[16px] border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1c1a] sm:p-6">
       <ArnCardHeader
         title="Today's tasks"
-        action={<button className="text-xs font-bold text-[#BA7517] sm:text-sm">+ Add</button>}
+        action={
+          <button
+            type="button"
+            onClick={() => setAdding((v) => !v)}
+            className="text-xs font-bold text-[#BA7517] sm:text-sm"
+          >
+            + Add
+          </button>
+        }
       />
-      <div className="flex flex-col">
-        {taskState.map((task) => (
-          <ArnTaskItem
-            key={task.id}
-            text={task.text}
-            tag={task.tag}
-            done={task.done}
-            onToggle={() => toggleTask(task.id)}
+
+      {adding && (
+        <div className="mb-3 flex flex-col gap-2">
+          <input
+            className="field-input"
+            placeholder="Task description"
+            value={newText}
+            onChange={(e) => setNewText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addTask()}
           />
-        ))}
+          <div className="flex gap-2">
+            <select
+              className="field-select"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value as TaskTag)}
+            >
+              {TAG_OPTIONS.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={addTask} className="btn-primary">
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col">
+        {taskState.length === 0 ? (
+          <p className="py-4 text-center text-sm text-[#8a8a85]">
+            No tasks for today.
+          </p>
+        ) : (
+          taskState.map((task) => (
+            <ArnTaskItem
+              key={task.id}
+              text={task.text}
+              tag={task.tag}
+              done={task.done}
+              onToggle={() => toggleTask(task.id)}
+              onRemove={() => removeTask(task.id)}
+            />
+          ))
+        )}
       </div>
+
+      {taskState.length > 0 && (
+        <p className="mt-3 text-xs text-[#8a8a85]">{remaining} remaining</p>
+      )}
     </div>
   );
 }

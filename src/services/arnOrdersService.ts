@@ -99,6 +99,7 @@ function normalizeKpis(summary: ArnOrdersSummary): ArnOrdersKpis {
     successfulToday: getNumber(summary.successfulToday, 0),
     processedJune: getNumber(summary.processedThisMonth, 0),
     transactedJuneInPaise: getNumber(summary.transactedAmountThisMonth, 0) * 100,
+    transactedAmountThisMonth: getNumber(summary.transactedAmountThisMonth, 0) * 100,
     failedOrders: getNumber(summary.failedOrders, 0),
     pendingOrders: getNumber(summary.pendingOrders, 0),
   };

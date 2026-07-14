@@ -262,7 +262,10 @@ export async function fetchSipBook(params: ArnSipBookListParams & {
   searchParams.set("page", String(params.page));
   searchParams.set("limit", String(params.pageSize || PAGE_SIZE));
   if (params.search) searchParams.set("search", params.search);
-  if (params.status && params.status !== "all") searchParams.set("filter", params.status);
+  if (params.status && params.status !== "all") {
+    const apiStatus = params.status === "at-risk" ? "at_risk" : params.status;
+    searchParams.set("filter", apiStatus);
+  }
   if (params.type) searchParams.set("type", params.type);
   if (params.trendPeriod) searchParams.set("trendPeriod", params.trendPeriod);
 

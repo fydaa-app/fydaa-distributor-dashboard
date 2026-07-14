@@ -17,28 +17,42 @@ interface ArnOrdersKpisProps {
   retry?: () => void;
 }
 
+const MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 export default function ArnOrdersKpis({ kpis, isLoading, error, retry }: ArnOrdersKpisProps) {
+  const currentMonth = MONTH_LABELS[new Date().getMonth()];
+
+  const successfulToday = kpis?.successfulToday ?? 0;
+  const transactedThisMonth = kpis?.transactedAmountThisMonth ?? 0;
+  const failedOrders = kpis?.failedOrders ?? 0;
+
   const cards = [
     {
       label: "Orders today",
       value: String(kpis?.ordersToday ?? 0),
-      trendText: `${kpis?.successfulToday ?? 0} successful`,
+      trendText: `${successfulToday} successful`,
       tone: "amber" as const,
-      trend: "up" as const,
+      trend: successfulToday > 0 ? ("up" as const) : ("neutral" as const),
+      icon: successfulToday > 0 ? "ti ti-arrow-up" : "ti ti-equal",
     },
     {
-      label: "Processed (Jun)",
+      label: `Processed (${currentMonth})`,
       value: String(kpis?.processedJune ?? 0),
-      trendText: formatPaise(kpis?.transactedJuneInPaise ?? 0),
+      trendText: `${formatPaise(transactedThisMonth)} transacted`,
       tone: "green" as const,
-      trend: "up" as const,
+      trend: transactedThisMonth > 0 ? ("up" as const) : ("neutral" as const),
+      icon: transactedThisMonth > 0 ? "ti ti-arrow-up" : "ti ti-equal",
     },
     {
       label: "Failed orders",
-      value: String(kpis?.failedOrders ?? 0),
+      value: String(failedOrders),
       trendText: "action needed",
       tone: "red" as const,
-      trend: "down" as const,
+      trend: failedOrders > 0 ? ("down" as const) : ("neutral" as const),
+      icon: failedOrders > 0 ? "ti ti-arrow-down" : "ti ti-equal",
     },
     {
       label: "Pending",

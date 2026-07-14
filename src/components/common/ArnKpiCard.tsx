@@ -1,4 +1,4 @@
-type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
+type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal" | "gray";
 
 const toneClasses: Record<ArnTone, string> = {
   amber: "from-[#BA7517] to-[#BA7517]",
@@ -7,6 +7,7 @@ const toneClasses: Record<ArnTone, string> = {
   red: "from-[#A32D2D] to-[#A32D2D]",
   purple: "from-[#534AB7] to-[#534AB7]",
   teal: "from-[#0F6E56] to-[#0F6E56]",
+  gray: "from-[#a8a8a3] to-[#a8a8a3]",
 };
 
 interface ArnKpiCardProps {

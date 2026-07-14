@@ -65,34 +65,53 @@ export default function ArnClientsKpis({
     );
   }
 
+  const newClients = summary.newClientsThisMonth ?? 0;
+  const activeMonthly = summary.activeSipsMonthlyAmount ?? 0;
+  const kycPending = summary.kycPending ?? 0;
+  const avgAumChange = summary.avgAumYoYChangePercent ?? 0;
+
   const cards = [
     {
       label: "Total clients",
       value: String(summary.totalClients),
-      trendText: `+${summary.newClientsThisMonth ?? 0} this month`,
+      trendText: `+${newClients} this month`,
       tone: "amber" as const,
-      trend: "up" as const,
+      trend: newClients > 0 ? ("up" as const) : ("neutral" as const),
+      icon: newClients > 0 ? "ti ti-arrow-up" : "ti ti-equal",
     },
     {
       label: "Active SIPs",
       value: String(summary.activeSips),
-      trendText: `${formatCurrency(summary.activeSipsMonthlyAmount ?? 0)} / month`,
+      trendText: `${formatCurrency(activeMonthly)} / month`,
       tone: "green" as const,
-      trend: "up" as const,
+      trend: activeMonthly > 0 ? ("up" as const) : ("neutral" as const),
+      icon: activeMonthly > 0 ? "ti ti-arrow-up" : "ti ti-equal",
     },
     {
       label: "KYC pending",
       value: String(summary.kycPending),
       trendText: "Action needed",
       tone: "red" as const,
-      trend: "down" as const,
+      trend: kycPending > 0 ? ("down" as const) : ("neutral" as const),
+      icon: kycPending > 0 ? "ti ti-arrow-down" : "ti ti-equal",
     },
     {
       label: "Avg AUM / client",
       value: summary.avgAumPerClient,
-      trendText: `${formatSignedPercent(summary.avgAumYoYChangePercent ?? 0)} YoY`,
+      trendText: `${formatSignedPercent(avgAumChange)} YoY`,
       tone: "purple" as const,
-      trend: "up" as const,
+      trend:
+        avgAumChange > 0
+          ? ("up" as const)
+          : avgAumChange < 0
+          ? ("down" as const)
+          : ("neutral" as const),
+      icon:
+        avgAumChange > 0
+          ? "ti ti-arrow-up"
+          : avgAumChange < 0
+          ? "ti ti-arrow-down"
+          : "ti ti-equal",
     },
   ];
 
