@@ -31,6 +31,7 @@ export default function ArnSipBookPage() {
   const [sips, setSips] = useState<ArnSipBookItem[]>([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<ArnSipBookKpisType | null>(null);
+  const [filterCounts, setFilterCounts] = useState<Record<string, number> | null>(null);
   const [health, setHealth] = useState<ArnSipBookHealthData | null>(null);
   const [inflowTrend, setInflowTrend] = useState<ArnSipBookTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +63,7 @@ export default function ArnSipBookPage() {
       setSummary(result.summary);
       setHealth(result.health);
       setInflowTrend(result.inflowTrend);
+      setFilterCounts(result.filterCounts);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load SIP book.");
     } finally {
@@ -88,7 +90,7 @@ export default function ArnSipBookPage() {
 
       <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
         <ArnCardHeader title="All SIPs">
-          <ArnSipBookFilters active={status} onChange={setStatus} sips={sips} />
+          <ArnSipBookFilters active={status} onChange={setStatus} filterCounts={filterCounts} />
         </ArnCardHeader>
 
         <div className="mb-5">

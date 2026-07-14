@@ -60,8 +60,8 @@ function formatCurrencyInLakhs(paise: number): string {
   return `₹${Math.round(lakhs * 10) / 10} L/mo`;
 }
 
-function formatAmount(paise: number): string {
-  return `₹${Math.round(paise / 100).toLocaleString("en-IN")}`;
+function formatAmount(amount: number): string {
+  return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
 function getOrdinalSuffix(value: number): string {
@@ -106,7 +106,7 @@ function normalizeSummary(summary: ArnSipBookSummary | undefined): ArnSipBookKpi
     totalSipBook: formatCurrencyInLakhs(summary.totalSipBookMonthly),
     totalSipBookInPaise: summary.totalSipBookMonthly,
     activeSips: summary.activeSips,
-    atRiskSips: summary.atRiskSips,
+    atRiskSips: summary.sipsAtRisk ?? summary.atRiskSips ?? 0,
     pausedSips: summary.pausedSips,
     clientsWithSips: summary.activeSipClients,
   };
@@ -251,19 +251,20 @@ async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> 
 export async function fetchSipBook(params: ArnSipBookListParams & {
   type?: string;
   trendPeriod?: string;
-}): Promise<{
-  sips: ArnSipBookItem[];
-  total: number;
-  summary: ArnSipBookKpis;
-  inflowTrend: ArnSipBookTrendPoint[];
-  health: ArnSipBookHealthData | null;
-}> {
+  }): Promise<{
+    sips: ArnSipBookItem[];
+    total: number;
+    summary: ArnSipBookKpis;
+    inflowTrend: ArnSipBookTrendPoint[];
+    health: ArnSipBookHealthData | null;
+    filterCounts: Record<string, number> | null;
+  }> {
   const searchParams = new URLSearchParams();
   searchParams.set("page", String(params.page));
   searchParams.set("limit", String(params.pageSize || PAGE_SIZE));
   if (params.search) searchParams.set("search", params.search);
   if (params.status && params.status !== "all") {
-    const apiStatus = params.status === "at-risk" ? "at_risk" : params.status;
+    const apiStatus = params.status === "at-risk" ? "sips_at_risk" : params.status;
     searchParams.set("filter", apiStatus);
   }
   if (params.type) searchParams.set("type", params.type);
@@ -277,7 +278,7 @@ export async function fetchSipBook(params: ArnSipBookListParams & {
   let sips = backendSips.map((row, index) => normalizeSipRow(row, index));
   sips = applyClientSideFilter(sips, backendSips, params.status || "all");
 
-  const total = sips.length;
+  const total = payload.pagination?.totalItems ?? sips.length;
 
   return {
     sips,
@@ -285,5 +286,6 @@ export async function fetchSipBook(params: ArnSipBookListParams & {
     summary: normalizeSummary(payload.summary || undefined),
     inflowTrend: normalizeInflowTrend(payload.inflowTrend),
     health: payload.health || null,
+    filterCounts: payload.filterCounts || null,
   };
 }
