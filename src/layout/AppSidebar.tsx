@@ -140,7 +140,9 @@ export default function AppSidebar() {
               <p className="truncate text-sm font-bold text-[var(--arn-txt)]">
                 {employeeName}
               </p>
-              <p className="text-xs text-[var(--arn-txt-3)]">ARN-XXXXXX</p>
+              {user?.euin && (
+                <p className="text-xs text-[var(--arn-txt-3)]">{user.euin}</p>
+              )}
             </div>
           </div>
         </div>
