@@ -2,11 +2,11 @@ import type { ArnTone } from "@/types/arnClient";
 
 export type ArnReportType =
   | "valuation"
-  | "capital-gains"
-  | "sip-performance"
-  | "transaction-history"
-  | "xirr-summary"
-  | "aum-statement";
+  | "capital_gains"
+  | "sip_performance"
+  | "transaction_history"
+  | "xirr_summary"
+  | "aum_statement";
 
 export type ArnReportDateOption = "as-on-date" | "custom";
 

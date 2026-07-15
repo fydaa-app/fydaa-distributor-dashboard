@@ -15,11 +15,11 @@ import type {
 
 const fallbackQuickReports: QuickReportItem[] = [
   { id: "valuation", title: "Valuation report", description: "Current value + P&L" },
-  { id: "capital-gains", title: "Capital gains", description: "STCG / LTCG for tax" },
-  { id: "sip-performance", title: "SIP performance", description: "XIRR per SIP" },
-  { id: "transaction-history", title: "Transaction history", description: "Full ledger by date" },
-  { id: "xirr-summary", title: "XIRR summary", description: "Returns all clients" },
-  { id: "aum-statement", title: "AUM statement", description: "Scheme-wise snapshot" },
+  { id: "capital_gains", title: "Capital gains", description: "STCG / LTCG for tax" },
+  { id: "sip_performance", title: "SIP performance", description: "XIRR per SIP" },
+  { id: "transaction_history", title: "Transaction history", description: "Full ledger by date" },
+  { id: "xirr_summary", title: "XIRR summary", description: "Returns all clients" },
+  { id: "aum_statement", title: "AUM statement", description: "Scheme-wise snapshot" },
 ];
 
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);

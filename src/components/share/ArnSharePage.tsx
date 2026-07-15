@@ -35,11 +35,11 @@ const skeletonRows = Array.from({ length: 3 }, (_, index) => index);
 function isReportType(value: string | null): value is ArnReportType {
   return (
     value === "valuation" ||
-    value === "capital-gains" ||
-    value === "sip-performance" ||
-    value === "transaction-history" ||
-    value === "xirr-summary" ||
-    value === "aum-statement"
+    value === "capital_gains" ||
+    value === "sip_performance" ||
+    value === "transaction_history" ||
+    value === "xirr_summary" ||
+    value === "aum_statement"
   );
 }
 

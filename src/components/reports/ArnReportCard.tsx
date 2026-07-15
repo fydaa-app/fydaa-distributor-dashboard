@@ -5,20 +5,20 @@ import type { ArnReportType } from "@/types/arnReports";
 
 const iconToneClasses: Record<ArnReportType, string> = {
   valuation: "bg-[var(--arn-amber-bg)] text-[var(--arn-amber-txt)]",
-  "capital-gains": "bg-[var(--arn-green-bg)] text-[var(--arn-green)]",
-  "sip-performance": "bg-[var(--arn-blue-bg)] text-[var(--arn-blue)]",
-  "transaction-history": "bg-[var(--arn-pur-bg)] text-[var(--arn-pur-txt)]",
-  "xirr-summary": "bg-[var(--arn-amber-bg)] text-[var(--arn-amber-txt)]",
-  "aum-statement": "bg-[var(--arn-tel-bg)] text-[var(--arn-tel-txt)]",
+  capital_gains: "bg-[var(--arn-green-bg)] text-[var(--arn-green)]",
+  sip_performance: "bg-[var(--arn-blue-bg)] text-[var(--arn-blue)]",
+  transaction_history: "bg-[var(--arn-pur-bg)] text-[var(--arn-pur-txt)]",
+  xirr_summary: "bg-[var(--arn-amber-bg)] text-[var(--arn-amber-txt)]",
+  aum_statement: "bg-[var(--arn-tel-bg)] text-[var(--arn-tel-txt)]",
 };
 
 const iconClasses: Record<ArnReportType, string> = {
   valuation: "ti ti-chart-line",
-  "capital-gains": "ti ti-receipt-tax",
-  "sip-performance": "ti ti-repeat",
-  "transaction-history": "ti ti-list",
-  "xirr-summary": "ti ti-percentage",
-  "aum-statement": "ti ti-building-bank",
+  capital_gains: "ti ti-receipt-tax",
+  sip_performance: "ti ti-repeat",
+  transaction_history: "ti ti-list",
+  xirr_summary: "ti ti-percentage",
+  aum_statement: "ti ti-building-bank",
 };
 
 interface ArnReportCardProps {

@@ -17,25 +17,25 @@ const TONES: ArnTone[] = ["amber", "blue", "green", "teal", "purple", "red"];
 
 const CANONICAL_REPORT_TYPES: ArnReportType[] = [
   "valuation",
-  "capital-gains",
-  "sip-performance",
-  "transaction-history",
-  "xirr-summary",
-  "aum-statement",
+  "capital_gains",
+  "sip_performance",
+  "transaction_history",
+  "xirr_summary",
+  "aum_statement",
 ];
 
 const REPORT_DESCRIPTIONS: Record<ArnReportType, string> = {
   valuation: "Current value + P&L",
-  "capital-gains": "STCG / LTCG for tax",
-  "sip-performance": "XIRR per SIP",
-  "transaction-history": "Full ledger by date",
-  "xirr-summary": "Returns all clients",
-  "aum-statement": "Scheme-wise snapshot",
+  capital_gains: "STCG / LTCG for tax",
+  sip_performance: "XIRR per SIP",
+  transaction_history: "Full ledger by date",
+  xirr_summary: "Returns all clients",
+  aum_statement: "Scheme-wise snapshot",
 };
 
 function normalizeReportType(raw: unknown): ArnReportType {
   if (typeof raw === "string") {
-    const candidate = raw.trim().replace(/_/g, "-").toLowerCase();
+    const candidate = raw.trim().replace(/-/g, "_").toLowerCase();
     if ((CANONICAL_REPORT_TYPES as string[]).includes(candidate)) {
       return candidate as ArnReportType;
     }
