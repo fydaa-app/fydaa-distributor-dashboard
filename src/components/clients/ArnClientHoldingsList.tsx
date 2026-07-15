@@ -4,6 +4,16 @@ interface ArnClientHoldingsListProps {
   holdings: ArnHolding[];
 }
 
+const FALLBACK_COLORS = ["#BA7517", "#185FA5", "#3B6D11", "#0F6E56", "#534AB7", "#A32D2D"];
+
+function getCategoryColor(category: string, index: number): string {
+  const normalized = category.replace(/\s+/g, "").toLowerCase();
+  if (normalized === "fixedincomebonds") return "#185FA5";
+  if (normalized === "gold") return "#BA7517";
+  if (normalized === "indianstock") return "#3B6D11";
+  return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+}
+
 export default function ArnClientHoldingsList({ holdings }: ArnClientHoldingsListProps) {
   if (holdings.length === 0) {
     return (
@@ -22,7 +32,7 @@ export default function ArnClientHoldingsList({ holdings }: ArnClientHoldingsLis
         >
           <div
             className="h-2 w-2 shrink-0 rounded-[2px]"
-            style={{ backgroundColor: ["#BA7517", "#185FA5", "#3B6D11", "#0F6E56", "#534AB7", "#A32D2D"][index % 6] }}
+            style={{ backgroundColor: getCategoryColor(holding.category, index) }}
           />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-bold text-[var(--arn-txt)]">{holding.schemeName}</div>

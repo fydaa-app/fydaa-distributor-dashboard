@@ -23,6 +23,7 @@ export default function ArnClientGoalsList({ goals }: ArnClientGoalsListProps) {
             <span>{goal.saved} saved</span>
             <span>
               {goal.target} target{goal.termName ? ` · ${goal.termName}` : ""}
+              {goal.nextInstallmentDate ? ` · Due: ${goal.nextInstallmentDate}` : ""}
             </span>
           </div>
           <ArnProgressBar value={goal.progressPercent} color={["#BA7517", "#185FA5", "#3B6D11", "#0F6E56", "#534AB7", "#A32D2D"][index % 6]} />

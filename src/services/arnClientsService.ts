@@ -298,6 +298,13 @@ function normalizeClientTransaction(source: JsonObject): ArnClientTransaction {
   };
 }
 
+function formatGoalDate(value: string): string {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 function normalizeGoal(source: JsonObject): ArnGoal {
   const savedRaw = getNumber(source.saved, 0);
   const targetRaw = getNumber(source.targetAmount ?? source.target, 0);
@@ -308,7 +315,7 @@ function normalizeGoal(source: JsonObject): ArnGoal {
     target: getString(source.targetFormatted, formatCurrency(targetRaw)),
     termName: getString(source.termName, ""),
     progressPercent: getNumber(source.progressPercent ?? source.progress, 0),
-    nextInstallmentDate: getString(source.nextInstallmentDate, ""),
+    nextInstallmentDate: formatGoalDate(getString(source.nextInstallmentDate, "")),
   };
 }
 

@@ -25,7 +25,7 @@ export default function ArnClientDetailKpis({ detail }: ArnClientDetailKpisProps
       <ArnKpiCard
         label="Monthly SIP"
         value={detail.monthlySip}
-        trendText={`Next: ${detail.nextSipDate}`}
+        trendText={`${detail.goals.length} ${detail.goals.length === 1 ? "Goal" : "Goals"}`}
         tone="blue"
         trend="neutral"
       />
