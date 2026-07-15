@@ -16,16 +16,16 @@ export default function ArnClientGoalsList({ goals }: ArnClientGoalsListProps) {
 
   return (
     <div className="space-y-4">
-      {goals.map((goal) => (
+      {goals.map((goal, index) => (
         <div key={goal.name}>
           <div className="mb-2 text-sm font-bold text-[var(--arn-txt)]">{goal.name}</div>
           <div className="mb-2 flex justify-between text-sm text-[var(--arn-txt-2)]">
             <span>{goal.saved} saved</span>
             <span>
-              {goal.target} target · {goal.targetYear}
+              {goal.target} target{goal.termName ? ` · ${goal.termName}` : ""}
             </span>
           </div>
-          <ArnProgressBar value={goal.progress} color={["#BA7517", "#185FA5", "#3B6D11", "#0F6E56", "#534AB7", "#A32D2D"][goals.indexOf(goal) % 6]} />
+          <ArnProgressBar value={goal.progressPercent} color={["#BA7517", "#185FA5", "#3B6D11", "#0F6E56", "#534AB7", "#A32D2D"][index % 6]} />
         </div>
       ))}
     </div>

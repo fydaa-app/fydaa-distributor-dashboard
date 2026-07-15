@@ -4,10 +4,6 @@ export type ArnKycStatus = "done" | "pending" | "not-started" | "expired";
 
 export type ArnSipStatus = "active" | "paused" | "at-risk" | "due-today" | "none";
 
-export type ArnTransactionType = "sip" | "lumpsum" | "redemption" | "switch";
-
-export type ArnTransactionStatus = "done" | "pending" | "failed" | "processing";
-
 export interface ArnClient {
   id: string;
   name: string;
@@ -55,50 +51,80 @@ export interface ArnPaginatedResponse<T> {
 }
 
 export interface ArnHolding {
-  fundName: string;
+  schemeName: string;
   category: string;
-  assetClass: string;
   value: string;
-  valueInPaise: number;
+  valueRaw: number;
   xirr: number;
-  tone: ArnTone;
+  allocationPercent: number;
 }
 
-export interface ArnTransaction {
-  date: string;
-  fundName: string;
-  type: ArnTransactionType;
-  amount: string;
-  amountInPaise: number;
-  units: string;
-  status: ArnTransactionStatus;
-  tone: ArnTone;
+export type ArnAssetAllocationKey = "equity" | "debt" | "gold";
+
+export interface ArnAssetAllocationSlice {
+  key: ArnAssetAllocationKey;
+  label: string;
+  percentage: number;
+  currentValue: number;
+}
+
+export type ArnMfTransactionStatus =
+  | "FULLY_SUCCESSFUL"
+  | "PARTIALLY_SUCCESSFUL"
+  | "FAILED"
+  | "IN_PROCESS";
+
+export type ArnMfOrderState = "submitted" | "failed" | "successful";
+
+export interface ArnClientOrder {
+  id: number;
+  scheme: string;
+  schemeName: string;
+  state: ArnMfOrderState;
+  amount: number;
+  processedAmount: number;
+  failureCode: string | null;
+  lastError: string | null;
+}
+
+export interface ArnClientTransaction {
+  transactionId: string;
+  sipId: number | null;
+  type: string;
+  totalOrders: number;
+  successfulOrders: number;
+  failedOrders: number;
+  submittedOrders: number;
+  totalAmount: number;
+  processedAmount: number;
+  status: ArnMfTransactionStatus;
+  createdAt: string;
+  orders: ArnClientOrder[];
 }
 
 export interface ArnGoal {
   name: string;
   saved: string;
-  savedInPaise: number;
   target: string;
-  targetInPaise: number;
-  targetYear: number;
-  progress: number;
-  tone: ArnTone;
+  termName: string;
+  progressPercent: number;
+  nextInstallmentDate: string;
 }
 
 export interface ArnClientDetail {
   client: ArnClient;
   portfolioValue: string;
-  portfolioValueInPaise: number;
+  gainLoss: string;
+  gainLossPositive: boolean;
   xirr: number;
   monthlySip: string;
-  monthlySipInPaise: number;
   nextSipDate: string;
   clientSince: string;
   sipActive: boolean;
   kycComplete: boolean;
   holdings: ArnHolding[];
-  transactions: ArnTransaction[];
+  assetAllocation: ArnAssetAllocationSlice[];
+  transactions: ArnClientTransaction[];
   goals: ArnGoal[];
 }
 

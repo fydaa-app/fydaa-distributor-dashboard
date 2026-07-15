@@ -17,7 +17,7 @@ export default function ArnClientHoldingsList({ holdings }: ArnClientHoldingsLis
     <div>
       {holdings.map((holding, index) => (
         <div
-          key={holding.fundName}
+          key={`${holding.schemeName}-${index}`}
           className="flex items-center gap-3 border-b border-[var(--arn-bdr)] py-3 last:border-b-0"
         >
           <div
@@ -25,9 +25,9 @@ export default function ArnClientHoldingsList({ holdings }: ArnClientHoldingsLis
             style={{ backgroundColor: ["#BA7517", "#185FA5", "#3B6D11", "#0F6E56", "#534AB7", "#A32D2D"][index % 6] }}
           />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold text-[var(--arn-txt)]">{holding.fundName}</div>
+            <div className="text-sm font-bold text-[var(--arn-txt)]">{holding.schemeName}</div>
             <div className="text-xs text-[var(--arn-txt-3)]">
-              {holding.category} · {holding.assetClass}
+              {holding.category} · {holding.allocationPercent}%
             </div>
           </div>
           <div className="text-right">

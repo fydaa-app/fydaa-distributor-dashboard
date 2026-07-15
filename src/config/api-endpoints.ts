@@ -4,7 +4,7 @@ export const AuthEndpoints = {
 
 export const ArnClientEndpoints = {
   CLIENTS: "/arn/clients",
-  CLIENT_DETAIL: "/arn/clients/{clientId}",
+  CLIENT_DETAIL: "/arn/client/{clientId}",
   SHARE_REPORT: "/arn/clients/{clientId}/share-report",
   NEW_SIP: "/arn/clients/{clientId}/sips",
 } as const;
