@@ -22,8 +22,6 @@ const fallbackQuickReports: QuickReportItem[] = [
   { id: "aum_statement", title: "AUM statement", description: "Scheme-wise snapshot" },
 ];
 
-const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
-
 function todayIso(): string {
   return new Date().toISOString().split("T")[0];
 }
@@ -33,6 +31,7 @@ export default function ArnReportsPage() {
   const [dateOption, setDateOption] = useState<ArnReportDateOption>("as-on-date");
   const [customDate, setCustomDate] = useState<string>(todayIso());
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [preview, setPreview] = useState<ArnReportPreview | null>(null);
   const [clients, setClients] = useState<ArnPortfolioSummaryRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -49,7 +48,7 @@ export default function ArnReportsPage() {
       const result = await getArnReports({
         reportType: selectedReport,
         asOfDate: dateOption === "custom" ? customDate : todayIso(),
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         page,
         limit: 5,
       });
@@ -62,11 +61,20 @@ export default function ArnReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedReport, dateOption, customDate, search, page]);
+  }, [selectedReport, dateOption, customDate, debouncedSearch, page]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
 
   useEffect(() => {
     loadReports();
   }, [loadReports]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedReport, dateOption, customDate]);
 
   useEffect(() => {
     let active = true;
@@ -112,32 +120,16 @@ export default function ArnReportsPage() {
         )}
       </div>
 
-      {loading ? (
-        <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
-          <div className="overflow-hidden rounded-[16px] border border-[var(--arn-bdr)]">
-            {skeletonRows.map((row) => (
-              <div key={row} className="flex items-center gap-4 border-b border-[var(--arn-bdr)] p-4">
-                <div className="h-6 w-6 animate-pulse rounded-full bg-[var(--arn-bg-2)]" />
-                <div className="h-4 flex-1 animate-pulse rounded bg-[var(--arn-bg-2)]" />
-                <div className="h-4 w-24 animate-pulse rounded bg-[var(--arn-bg-2)]" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <ArnPortfolioSummaryTable
-          clients={clients}
-          total={total}
-          page={page}
-          pageSize={5}
-          onPageChange={setPage}
-          search={search}
-          onSearchChange={(value) => {
-            setPage(1);
-            setSearch(value);
-          }}
-        />
-      )}
+      <ArnPortfolioSummaryTable
+        clients={clients}
+        total={total}
+        page={page}
+        pageSize={5}
+        onPageChange={setPage}
+        search={search}
+        onSearchChange={setSearch}
+        isLoading={loading}
+      />
     </div>
   );
 }

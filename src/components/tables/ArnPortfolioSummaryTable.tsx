@@ -14,7 +14,10 @@ interface ArnPortfolioSummaryTableProps {
   onPageChange: (page: number) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
+  isLoading?: boolean;
 }
+
+const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
 export default function ArnPortfolioSummaryTable({
   clients,
@@ -24,6 +27,7 @@ export default function ArnPortfolioSummaryTable({
   onPageChange,
   search = "",
   onSearchChange,
+  isLoading = false,
 }: ArnPortfolioSummaryTableProps) {
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
@@ -40,7 +44,17 @@ export default function ArnPortfolioSummaryTable({
         }
       />
 
-      {total === 0 ? (
+      {isLoading ? (
+        <div className="overflow-hidden rounded-[16px] border border-[var(--arn-bdr)]">
+          {skeletonRows.map((row) => (
+            <div key={row} className="flex items-center gap-4 border-b border-[var(--arn-bdr)] p-4">
+              <div className="h-6 w-6 animate-pulse rounded-full bg-[var(--arn-bg-2)]" />
+              <div className="h-4 flex-1 animate-pulse rounded bg-[var(--arn-bg-2)]" />
+              <div className="h-4 w-24 animate-pulse rounded bg-[var(--arn-bg-2)]" />
+            </div>
+          ))}
+        </div>
+      ) : total === 0 ? (
         <ArnEmptyState
           title="No portfolio data"
           description="Portfolio summary will appear once clients have holdings."
