@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnErrorState from "@/components/common/ArnErrorState";
@@ -22,11 +23,30 @@ import type {
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
 export default function ArnSipBookPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<ArnSipBookFilter>("all");
-  const [page, setPage] = useState(1);
   const [trendPeriod, setTrendPeriod] = useState<"6M" | "1Y">("6M");
+  const page = Number(searchParams.get("page")) || 1;
+  const lastResetKey = useRef(`${debouncedSearch}|${status}|${trendPeriod}`);
+
+  const setPage = useCallback(
+    (next: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(next));
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
+
+  useEffect(() => {
+    if (!searchParams.get("page")) {
+      setPage(1);
+    }
+  }, [searchParams, setPage]);
 
   const [sips, setSips] = useState<ArnSipBookItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -76,8 +96,12 @@ export default function ArnSipBookPage() {
   }, [loadData]);
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, status, trendPeriod]);
+    const key = `${debouncedSearch}|${status}|${trendPeriod}`;
+    if (lastResetKey.current !== key) {
+      lastResetKey.current = key;
+      setPage(1);
+    }
+  }, [debouncedSearch, status, trendPeriod, setPage]);
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">

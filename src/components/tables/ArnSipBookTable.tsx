@@ -1,4 +1,4 @@
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnPagination from "@/components/common/ArnPagination";
@@ -34,6 +34,12 @@ export default function ArnSipBookTable({
   onPageChange,
 }: ArnSipBookTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  const goToClient = (clientId: string) => {
+    const from = encodeURIComponent(`${pathname}?page=${page}`);
+    router.push(`/arn-clients/${encodeURIComponent(clientId)}?from=${from}`);
+  };
 
   if (total === 0) {
     return (
@@ -67,11 +73,11 @@ export default function ArnSipBookTable({
                 key={sip.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => router.push(`/arn-clients/${encodeURIComponent(sip.clientId)}`)}
+                onClick={() => goToClient(sip.clientId)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    router.push(`/arn-clients/${encodeURIComponent(sip.clientId)}`);
+                    goToClient(sip.clientId);
                   }
                 }}
                 className="cursor-pointer transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]"

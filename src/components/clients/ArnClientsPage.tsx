@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnErrorState from "@/components/common/ArnErrorState";
@@ -17,9 +18,28 @@ import type {
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
 export default function ArnClientsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const page = Number(searchParams.get("page")) || 1;
+  const lastSearch = useRef(debouncedSearch);
+
+  const setPage = useCallback(
+    (next: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(next));
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
+
+  useEffect(() => {
+    if (!searchParams.get("page")) {
+      setPage(1);
+    }
+  }, [searchParams, setPage]);
   const [clients, setClients] = useState<ArnClient[]>([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<ArnClientsKpisType | null>(null);
@@ -58,8 +78,11 @@ export default function ArnClientsPage() {
   }, [loadClients]);
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch]);
+    if (lastSearch.current !== debouncedSearch) {
+      lastSearch.current = debouncedSearch;
+      setPage(1);
+    }
+  }, [debouncedSearch, setPage]);
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">

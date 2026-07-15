@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
@@ -32,6 +32,12 @@ export default function ArnClientTable({
   onPageChange,
 }: ArnClientTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  const goToClient = (id: string) => {
+    const from = encodeURIComponent(`${pathname}?page=${page}`);
+    router.push(`/arn-clients/${id}?from=${from}`);
+  };
 
   if (total === 0) {
     return (
@@ -69,11 +75,11 @@ export default function ArnClientTable({
                 key={client.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => router.push(`/arn-clients/${client.id}`)}
+                onClick={() => goToClient(client.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    router.push(`/arn-clients/${client.id}`);
+                    goToClient(client.id);
                   }
                 }}
                 className="cursor-pointer transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]"
