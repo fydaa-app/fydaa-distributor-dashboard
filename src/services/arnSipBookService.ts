@@ -143,7 +143,7 @@ function getStatusLabel(status: ArnSipBookStatus): string {
     case "paused":
       return "Paused";
     case "at-risk":
-      return "At risk";
+      return "Off Track";
     case "due-today":
       return "Due today";
     case "active":

@@ -3,13 +3,14 @@ import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnPagination from "@/components/common/ArnPagination";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
-import type { ArnSipBookItem, ArnSipBookStatus } from "@/types/arnSipBook";
+import type { ArnSipBookFilter, ArnSipBookItem, ArnSipBookStatus } from "@/types/arnSipBook";
 
 interface ArnSipBookTableProps {
   sips: ArnSipBookItem[];
   total: number;
   page: number;
   pageSize: number;
+  status: ArnSipBookFilter;
   onPageChange: (page: number) => void;
 }
 
@@ -31,13 +32,15 @@ export default function ArnSipBookTable({
   total,
   page,
   pageSize,
+  status,
   onPageChange,
 }: ArnSipBookTableProps) {
   const router = useRouter();
   const pathname = usePathname();
 
   const goToClient = (clientId: string) => {
-    const from = encodeURIComponent(`${pathname}?page=${page}`);
+    const query = status === "all" ? `page=${page}` : `page=${page}&status=${status}`;
+    const from = encodeURIComponent(`${pathname}?${query}`);
     router.push(`/arn-clients/${encodeURIComponent(clientId)}?from=${from}`);
   };
 
