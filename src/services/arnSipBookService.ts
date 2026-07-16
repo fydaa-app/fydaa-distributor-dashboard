@@ -53,11 +53,15 @@ function getTone(index: number): ArnSipBookItem["tone"] {
 }
 
 function formatCurrencyInLakhs(paise: number): string {
-  const lakhs = paise / 100000;
-  if (lakhs >= 10) {
-    return `₹${Math.round(lakhs)} L/mo`;
+  if (paise < 100000) {
+    return `₹${Math.round(paise / 100).toLocaleString("en-IN")}/mo`;
   }
-  return `₹${Math.round(lakhs * 10) / 10} L/mo`;
+  if (paise < 10000000) {
+    const lakhs = paise / 100000;
+    return `₹${Math.round(lakhs * 10) / 10} L/mo`;
+  }
+  const crores = paise / 10000000;
+  return `₹${Math.round(crores * 10) / 10} Cr/mo`;
 }
 
 function formatAmount(amount: number): string {

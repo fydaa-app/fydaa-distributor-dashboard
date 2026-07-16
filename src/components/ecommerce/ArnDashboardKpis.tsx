@@ -14,14 +14,14 @@ interface DashboardKpi {
   icon?: string;
 }
 
-function formatCr(value: number): string {
-  const cr = value / 10000000;
-  return `₹${cr.toFixed(2).replace(/\.00$/, "")} Cr`;
-}
-
-function formatL(value: number): string {
-  const l = value / 100000;
-  return `₹${l.toFixed(2).replace(/\.00$/, "")} L`;
+function formatIndianCurrency(value: number): string {
+  if (value < 100000) return `₹${Math.round(value).toLocaleString("en-IN")}`;
+  if (value < 10000000) {
+    const lakhs = value / 100000;
+    return `₹${Math.round(lakhs * 10) / 10} L`;
+  }
+  const crores = value / 10000000;
+  return `₹${Math.round(crores * 10) / 10} Cr`;
 }
 
 function formatRupee(value: number): string {
@@ -42,7 +42,7 @@ function buildSummaryKpis(summary: ArnDashboardSummary): DashboardKpi[] {
   return [
     {
       label: "Total AUM",
-      value: formatCr(summary.totalAum),
+      value: formatIndianCurrency(summary.totalAum),
       trendText: `${aumChange >= 0 ? "+" : ""}${aumChange.toFixed(1)}%`,
       tone: "amber",
       trend: aumUp ? "up" : aumDown ? "down" : "neutral",
@@ -50,7 +50,7 @@ function buildSummaryKpis(summary: ArnDashboardSummary): DashboardKpi[] {
     },
     {
       label: "SIP book / mo",
-      value: formatL(summary.sipBookMonthly),
+      value: formatIndianCurrency(summary.sipBookMonthly),
       trendText: `+${summary.newSips} new SIPs`,
       tone: "green",
       trend: sipUp ? "up" : "neutral",
