@@ -144,7 +144,10 @@ function normalizeOrder(value: unknown, index: number): ArnOrderItem {
     dateLabel: formatOrderDate(rawDate),
     clientName,
     clientShortName,
-    clientId: getString(source.clientId || source.client_id, `client-${index + 1}`),
+    clientId:
+      source.userId !== undefined && source.userId !== null
+        ? String(source.userId)
+        : getString(source.clientId ?? source.client_id, `client-${index + 1}`),
     initials: getString(source.initials, getInitials(clientName)),
     tone: toneOrder[index % toneOrder.length],
     fundName: getString(source.fundName || source.scheme || source.fund, "Fund"),

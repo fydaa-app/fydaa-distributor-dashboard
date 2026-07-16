@@ -1,9 +1,9 @@
-import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnPagination from "@/components/common/ArnPagination";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
-import type { ArnOrderItem, ArnOrderStatus, ArnOrderType } from "@/types/arnOrders";
+import type { ArnOrderFilter, ArnOrderItem, ArnOrderStatus, ArnOrderType } from "@/types/arnOrders";
 
 interface ArnOrdersTableProps {
   orders: ArnOrderItem[];
@@ -11,8 +11,9 @@ interface ArnOrdersTableProps {
   page: number;
   pageSize: number;
   view: "table" | "list";
+  filter: ArnOrderFilter;
+  status: ArnOrderStatus | "all";
   onPageChange: (page: number) => void;
-  onAction: (order: ArnOrderItem) => void;
 }
 
 function getStatusVariant(status: ArnOrderStatus) {
@@ -35,9 +36,22 @@ export default function ArnOrdersTable({
   page,
   pageSize,
   view,
+  filter,
+  status,
   onPageChange,
-  
 }: ArnOrdersTableProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const goToClient = (clientId: string) => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    if (filter !== "all") params.set("filter", filter);
+    if (status !== "all") params.set("status", status);
+    const from = encodeURIComponent(`${pathname}?${params.toString()}`);
+    router.push(`/arn-clients/${encodeURIComponent(clientId)}?from=${from}`);
+  };
+
   if (total === 0) {
     return (
       <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
@@ -70,10 +84,14 @@ export default function ArnOrdersTable({
                 <tr key={order.id} className="group hover:[&_td]:bg-[var(--arn-bg-2)]">
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[10px] font-semibold text-[var(--arn-txt-3)] sm:text-xs">{order.dateLabel}</td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
-                    <Link href={`/arn-clients/${encodeURIComponent(order.clientId)}`} className="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => goToClient(order.clientId)}
+                      className="flex min-w-0 items-center gap-3 text-left"
+                    >
                       <ArnClientAvatar initials={order.initials} tone={order.tone} size="sm" />
                       <span className="truncate font-bold">{order.clientShortName}</span>
-                    </Link>
+                    </button>
                   </td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-xs text-[var(--arn-txt-3)] sm:text-sm">{order.fundName}</td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
@@ -97,9 +115,13 @@ export default function ArnOrdersTable({
                 <div className="flex min-w-0 items-center gap-3">
                   <ArnClientAvatar initials={order.initials} tone={order.tone} size="md" />
                   <div className="min-w-0">
-                    <Link href={`/arn-clients/${encodeURIComponent(order.clientId)}`} className="truncate text-sm font-bold text-[var(--arn-txt)]">
+                    <button
+                      type="button"
+                      onClick={() => goToClient(order.clientId)}
+                      className="truncate text-sm font-bold text-[var(--arn-txt)]"
+                    >
                       {order.clientName}
-                    </Link>
+                    </button>
                     <div className="mt-1 text-xs text-[var(--arn-txt-3)]">{order.dateLabel}</div>
                   </div>
                 </div>

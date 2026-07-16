@@ -25,6 +25,9 @@ function getBackTarget(from: string | null): { href: string; label: string } {
   if (from && from.startsWith("/arn-sipbook")) {
     return { href: from, label: "Back to SIP book" };
   }
+  if (from && from.startsWith("/arn-orders")) {
+    return { href: from, label: "Back to orders" };
+  }
   if (from && from.startsWith("/arn-clients")) {
     return { href: from, label: "Back to clients" };
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnErrorState from "@/components/common/ArnErrorState";
@@ -22,12 +23,47 @@ import type {
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
 export default function ArnOrdersPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [filter, setFilter] = useState<ArnOrderFilter>("all");
-  const [status, setStatus] = useState<ArnOrderStatus | "all">("all");
+  const filter = (searchParams.get("filter") as ArnOrderFilter) || "all";
+  const status = (searchParams.get("status") as ArnOrderStatus | "all") || "all";
   const [view, setView] = useState<"table" | "list">("table");
-  const [page, setPage] = useState(1);
+  const page = Number(searchParams.get("page")) || 1;
+  const [lastResetKey, setLastResetKey] = useState(`${debouncedSearch}|${status}`);
+
+  const setPage = useCallback(
+    (next: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(next));
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
+
+  const setFilterAndSync = useCallback(
+    (next: ArnOrderFilter) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "all") params.delete("filter");
+      else params.set("filter", next);
+      params.set("page", "1");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
+
+  const setStatusAndSync = useCallback(
+    (next: ArnOrderStatus | "all") => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "all") params.delete("status");
+      else params.set("status", next);
+      params.set("page", "1");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
   const [orders, setOrders] = useState<ArnOrderItem[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,18 +117,24 @@ export default function ArnOrdersPage() {
   }, [loadOrders]);
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, filter, status]);
+    const key = `${debouncedSearch}|${status}`;
+    if (lastResetKey !== key) {
+      setLastResetKey(key);
+      setPage(1);
+    }
+  }, [debouncedSearch, status, lastResetKey, setPage]);
+
+  useEffect(() => {
+    if (!searchParams.get("page")) {
+      setPage(1);
+    }
+  }, [searchParams, setPage]);
 
   useEffect(() => {
     if (!actionMessage) return undefined;
     const timeout = window.setTimeout(() => setActionMessage(null), 2600);
     return () => window.clearTimeout(timeout);
   }, [actionMessage]);
-
-  const handleAction = (order: ArnOrderItem) => {
-    setActionMessage(`${order.actionLabel} requested for ${order.clientShortName}.`);
-  };
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
@@ -105,7 +147,7 @@ export default function ArnOrdersPage() {
 
       <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
         <ArnCardHeader title="All orders">
-          <ArnOrdersFilters activeFilter={filter} activeStatus={status} onFilterChange={setFilter} onStatusChange={setStatus} />
+          <ArnOrdersFilters activeFilter={filter} activeStatus={status} onFilterChange={setFilterAndSync} onStatusChange={setStatusAndSync} />
         </ArnCardHeader>
 
         <div className="mb-5">
@@ -149,8 +191,9 @@ export default function ArnOrdersPage() {
             page={page}
             pageSize={5}
             view={view}
+            filter={filter}
+            status={status}
             onPageChange={setPage}
-            onAction={handleAction}
           />
         )}
 
