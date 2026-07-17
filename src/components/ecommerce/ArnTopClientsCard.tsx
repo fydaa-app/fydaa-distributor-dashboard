@@ -16,9 +16,14 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function formatLakhs(value: number): string {
-  const l = value / 100000;
-  return `₹${l.toFixed(2).replace(/\.00$/, "")} L`;
+function formatIndianCurrency(value: number): string {
+  if (value < 100000) return `₹${Math.round(value).toLocaleString("en-IN")}`;
+  if (value < 10000000) {
+    const lakhs = value / 100000;
+    return `₹${Math.round(lakhs * 10) / 10} L`;
+  }
+  const crores = value / 10000000;
+  return `₹${Math.round(crores * 10) / 10} Cr`;
 }
 
 interface ArnTopClientsCardProps {
@@ -29,7 +34,7 @@ export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps
   const clients = topClients.map((client, index) => ({
     initials: getInitials(client.clientName),
     name: client.clientName,
-    aum: formatLakhs(client.aum),
+    aum: formatIndianCurrency(client.aum),
     tone: toneOrder[index % toneOrder.length],
   }));
 
