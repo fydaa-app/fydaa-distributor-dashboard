@@ -144,7 +144,7 @@ export default function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const { openSidebar } = useSidebar();
+  const { toggleSidebar } = useSidebar();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -169,9 +169,9 @@ export default function AppHeader() {
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
-            aria-label="Open sidebar"
+            aria-label="Toggle sidebar"
             className="grid size-10 place-items-center rounded-[10px] text-[var(--arn-txt-2)] hover:bg-[var(--arn-bg-2)] lg:hidden"
-            onClick={openSidebar}
+            onClick={toggleSidebar}
           >
             <HeaderMenuIcon />
           </button>
