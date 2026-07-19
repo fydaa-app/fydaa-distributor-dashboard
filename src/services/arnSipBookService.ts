@@ -53,15 +53,19 @@ function getTone(index: number): ArnSipBookItem["tone"] {
 }
 
 function formatCurrencyInLakhs(paise: number): string {
-  const lakhs = paise / 100000;
-  if (lakhs >= 10) {
-    return `₹${Math.round(lakhs)} L/mo`;
+  if (paise < 100000) {
+    return `₹${Math.round(paise / 100).toLocaleString("en-IN")}/mo`;
   }
-  return `₹${Math.round(lakhs * 10) / 10} L/mo`;
+  if (paise < 10000000) {
+    const lakhs = paise / 100000;
+    return `₹${Math.round(lakhs * 10) / 10} L/mo`;
+  }
+  const crores = paise / 10000000;
+  return `₹${Math.round(crores * 10) / 10} Cr/mo`;
 }
 
-function formatAmount(paise: number): string {
-  return `₹${Math.round(paise / 100).toLocaleString("en-IN")}`;
+function formatAmount(amount: number): string {
+  return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
 function getOrdinalSuffix(value: number): string {
@@ -106,7 +110,7 @@ function normalizeSummary(summary: ArnSipBookSummary | undefined): ArnSipBookKpi
     totalSipBook: formatCurrencyInLakhs(summary.totalSipBookMonthly),
     totalSipBookInPaise: summary.totalSipBookMonthly,
     activeSips: summary.activeSips,
-    atRiskSips: summary.atRiskSips,
+    atRiskSips: summary.sipsAtRisk ?? summary.atRiskSips ?? 0,
     pausedSips: summary.pausedSips,
     clientsWithSips: summary.activeSipClients,
   };
@@ -143,7 +147,7 @@ function getStatusLabel(status: ArnSipBookStatus): string {
     case "paused":
       return "Paused";
     case "at-risk":
-      return "At risk";
+      return "Off Track";
     case "due-today":
       return "Due today";
     case "active":
@@ -251,19 +255,20 @@ async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> 
 export async function fetchSipBook(params: ArnSipBookListParams & {
   type?: string;
   trendPeriod?: string;
-}): Promise<{
-  sips: ArnSipBookItem[];
-  total: number;
-  summary: ArnSipBookKpis;
-  inflowTrend: ArnSipBookTrendPoint[];
-  health: ArnSipBookHealthData | null;
-}> {
+  }): Promise<{
+    sips: ArnSipBookItem[];
+    total: number;
+    summary: ArnSipBookKpis;
+    inflowTrend: ArnSipBookTrendPoint[];
+    health: ArnSipBookHealthData | null;
+    filterCounts: Record<string, number> | null;
+  }> {
   const searchParams = new URLSearchParams();
   searchParams.set("page", String(params.page));
   searchParams.set("limit", String(params.pageSize || PAGE_SIZE));
   if (params.search) searchParams.set("search", params.search);
   if (params.status && params.status !== "all") {
-    const apiStatus = params.status === "at-risk" ? "at_risk" : params.status;
+    const apiStatus = params.status === "at-risk" ? "sips_at_risk" : params.status;
     searchParams.set("filter", apiStatus);
   }
   if (params.type) searchParams.set("type", params.type);
@@ -277,7 +282,7 @@ export async function fetchSipBook(params: ArnSipBookListParams & {
   let sips = backendSips.map((row, index) => normalizeSipRow(row, index));
   sips = applyClientSideFilter(sips, backendSips, params.status || "all");
 
-  const total = sips.length;
+  const total = payload.pagination?.totalItems ?? sips.length;
 
   return {
     sips,
@@ -285,5 +290,6 @@ export async function fetchSipBook(params: ArnSipBookListParams & {
     summary: normalizeSummary(payload.summary || undefined),
     inflowTrend: normalizeInflowTrend(payload.inflowTrend),
     health: payload.health || null,
+    filterCounts: payload.filterCounts || null,
   };
 }

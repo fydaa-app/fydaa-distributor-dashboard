@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -69,9 +70,14 @@ function getInitials(name: string) {
 export default function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { closeSidebar } = useSidebar();
+  const { isSidebarOpen, closeSidebar } = useSidebar();
   const { user, logout } = useAuth();
   const { theme } = useTheme();
+
+  useEffect(() => {
+    closeSidebar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const logoSrc = theme === "dark" ? "/images/logo/logo.png" : "/images/logo/logo2.png";
 
@@ -84,7 +90,12 @@ export default function AppSidebar() {
   const initials = getInitials(employeeName);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-[60] flex w-[220px] -translate-x-full flex-col border-r border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] transition-transform duration-300 lg:translate-x-0">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-[60] flex w-[220px] flex-col border-r border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] transition-transform duration-300 lg:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
       <div className="flex h-[72px] items-center gap-3 border-b border-[var(--arn-bdr)] px-4">
         <Image
           className="h-8 w-auto"
@@ -140,7 +151,9 @@ export default function AppSidebar() {
               <p className="truncate text-sm font-bold text-[var(--arn-txt)]">
                 {employeeName}
               </p>
-              <p className="text-xs text-[var(--arn-txt-3)]">ARN-XXXXXX</p>
+              {user?.euin && (
+                <p className="text-xs text-[var(--arn-txt-3)]">{user.euin}</p>
+              )}
             </div>
           </div>
         </div>

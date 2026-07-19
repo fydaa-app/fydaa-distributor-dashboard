@@ -121,7 +121,7 @@ const RelationshipTeam = () => {
             </div>
             <p>Monday to Saturday 10:00 AM - 7:00 PM</p>
             <p>
-              Call: <a href="tel:+91XXXXXX">+91 XXXXX XXXXX</a>
+              Call: <a href="tel:+91XXXXXX">+91 90045 01770</a>
             </p>
           </div>
           <div className="support-card">
@@ -138,7 +138,7 @@ const RelationshipTeam = () => {
                 </div>
                 <p>WhatsApp your queries:</p>
                 <p>
-                  <a href="https://wa.me/91XXXXXX">+91 XXXXX XXXXX</a>
+                  <a href="https://wa.me/91XXXXXX">+91 90045 01770</a>
                 </p>
               </div>
             </div>

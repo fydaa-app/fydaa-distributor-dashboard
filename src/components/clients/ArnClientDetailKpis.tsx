@@ -11,9 +11,9 @@ export default function ArnClientDetailKpis({ detail }: ArnClientDetailKpisProps
       <ArnKpiCard
         label="Portfolio value"
         value={detail.portfolioValue}
-        trendText="+₹5.2 L YTD"
+        trendText={`${detail.gainLoss} gain/loss`}
         tone="amber"
-        trend="up"
+        trend={detail.gainLossPositive ? "up" : "down"}
       />
       <ArnKpiCard
         label="XIRR"
@@ -25,7 +25,7 @@ export default function ArnClientDetailKpis({ detail }: ArnClientDetailKpisProps
       <ArnKpiCard
         label="Monthly SIP"
         value={detail.monthlySip}
-        trendText={`Next: ${detail.nextSipDate}`}
+        trendText={`${detail.goals.length} ${detail.goals.length === 1 ? "Goal" : "Goals"}`}
         tone="blue"
         trend="neutral"
       />

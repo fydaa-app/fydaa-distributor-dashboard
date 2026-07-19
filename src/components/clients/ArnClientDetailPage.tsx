@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import ArnTabs from "@/components/common/ArnTabs";
@@ -21,9 +21,24 @@ const tabs = [
   { id: "goals", label: "Goals" },
 ];
 
+function getBackTarget(from: string | null): { href: string; label: string } {
+  if (from && from.startsWith("/arn-sipbook")) {
+    return { href: from, label: "Back to SIP book" };
+  }
+  if (from && from.startsWith("/arn-orders")) {
+    return { href: from, label: "Back to orders" };
+  }
+  if (from && from.startsWith("/arn-clients")) {
+    return { href: from, label: "Back to clients" };
+  }
+  return { href: "/arn-clients", label: "Back to clients" };
+}
+
 export default function ArnClientDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const clientId = typeof params.clientId === "string" ? params.clientId : "";
+  const back = getBackTarget(searchParams.get("from"));
   const [detail, setDetail] = useState<ArnClientDetail | null>(null);
   const [activeTab, setActiveTab] = useState("holdings");
   const [isLoading, setIsLoading] = useState(false);
@@ -66,12 +81,12 @@ export default function ArnClientDetailPage() {
   if (error || !detail) {
     return (
       <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
-        <LinkBackToClients />
+        <LinkBack href={back.href} label={back.label} />
         <ArnErrorState
           title="Client not found"
           message={error || "The client you are looking for does not exist."}
           retry={loadDetail}
-          action={<LinkBackToClients />}
+          action={<LinkBack href={back.href} label={back.label} />}
         />
       </div>
     );
@@ -79,7 +94,7 @@ export default function ArnClientDetailPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
-      <LinkBackToClients />
+      <LinkBack href={back.href} label={back.label} />
 
       <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
         <ArnClientDetailHeader
@@ -98,8 +113,8 @@ export default function ArnClientDetailPage() {
 
         {activeTab === "holdings" && (
           <div>
-            <ArnClientHoldingsChart holdings={detail.holdings} />
-            <ArnHoldingsLegend holdings={detail.holdings} />
+            <ArnClientHoldingsChart assetAllocation={detail.assetAllocation} />
+            <ArnHoldingsLegend assetAllocation={detail.assetAllocation} />
             <ArnClientHoldingsList holdings={detail.holdings} />
           </div>
         )}
@@ -116,14 +131,14 @@ export default function ArnClientDetailPage() {
   );
 }
 
-function LinkBackToClients() {
+function LinkBack({ href, label }: { href: string; label: string }) {
   return (
     <Link
-      href="/arn-clients"
+      href={href}
       className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--arn-amber)]"
     >
       <i aria-hidden="true" className="ti ti-arrow-left" />
-      Back to clients
+      {label}
     </Link>
   );
 }

@@ -98,8 +98,7 @@ function normalizeKpis(summary: ArnOrdersSummary): ArnOrdersKpis {
     ordersToday: getNumber(summary.ordersToday, 0),
     successfulToday: getNumber(summary.successfulToday, 0),
     processedJune: getNumber(summary.processedThisMonth, 0),
-    transactedJuneInPaise: getNumber(summary.transactedAmountThisMonth, 0) * 100,
-    transactedAmountThisMonth: getNumber(summary.transactedAmountThisMonth, 0) * 100,
+    transactedAmountThisMonth: getNumber(summary.transactedAmountThisMonth, 0),
     failedOrders: getNumber(summary.failedOrders, 0),
     pendingOrders: getNumber(summary.pendingOrders, 0),
   };
@@ -144,7 +143,10 @@ function normalizeOrder(value: unknown, index: number): ArnOrderItem {
     dateLabel: formatOrderDate(rawDate),
     clientName,
     clientShortName,
-    clientId: getString(source.clientId || source.client_id, `client-${index + 1}`),
+    clientId:
+      source.userId !== undefined && source.userId !== null
+        ? String(source.userId)
+        : getString(source.clientId ?? source.client_id, `client-${index + 1}`),
     initials: getString(source.initials, getInitials(clientName)),
     tone: toneOrder[index % toneOrder.length],
     fundName: getString(source.fundName || source.scheme || source.fund, "Fund"),

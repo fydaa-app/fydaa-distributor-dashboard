@@ -9,7 +9,6 @@ export interface ArnOrdersKpis {
   ordersToday: number;
   successfulToday: number;
   processedJune: number;
-  transactedJuneInPaise: number;
   transactedAmountThisMonth: number;
   failedOrders: number;
   pendingOrders: number;

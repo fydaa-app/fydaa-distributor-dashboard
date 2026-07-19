@@ -9,11 +9,11 @@ import type {
 
 const reportTitles: Record<ArnReportType, string> = {
   valuation: "Valuation report",
-  "capital-gains": "Capital gains",
-  "sip-performance": "SIP performance",
-  "transaction-history": "Transaction history",
-  "xirr-summary": "XIRR summary",
-  "aum-statement": "AUM statement",
+  capital_gains: "Capital gains",
+  sip_performance: "SIP performance",
+  transaction_history: "Transaction history",
+  xirr_summary: "XIRR summary",
+  aum_statement: "AUM statement",
 };
 
 const dateOptions: { value: ArnReportDateOption; label: string }[] = [
@@ -92,13 +92,13 @@ export default function ArnReportPreviewCard({
             <PreviewRow label="Total invested" value={preview.totalInvested} />
             <PreviewRow label="Current value" value={preview.currentValue} />
             <PreviewRow
-              label={reportType === "capital-gains" ? "STCG" : "Unrealised P&L"}
+              label={reportType === "capital_gains" ? "STCG" : "Unrealised P&L"}
               value={preview.unrealisedPnl}
               valueClass="font-bold text-[var(--arn-green)]"
             />
             <PreviewRow
-              label={reportType === "capital-gains" ? "LTCG" : reportType === "transaction-history" ? "Period" : "Overall XIRR"}
-              value={reportType === "capital-gains" ? preview.unrealisedPnlPercent : preview.overallXirr}
+              label={reportType === "capital_gains" ? "LTCG" : reportType === "transaction_history" ? "Period" : "Overall XIRR"}
+              value={reportType === "capital_gains" ? preview.unrealisedPnlPercent : preview.overallXirr}
               valueClass="font-bold text-[var(--arn-green)]"
             />
             <PreviewRow label="Pages" value={preview.estimatedPages} />

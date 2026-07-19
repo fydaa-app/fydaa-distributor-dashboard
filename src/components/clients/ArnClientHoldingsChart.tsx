@@ -2,28 +2,24 @@
 
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
-import ArnClientAvatar from "@/components/common/ArnClientAvatar";
-import type { ArnHolding, ArnTone } from "@/types/arnClient";
+import type { ArnAssetAllocationKey, ArnAssetAllocationSlice } from "@/types/arnClient";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 interface ArnClientHoldingsChartProps {
-  holdings: ArnHolding[];
+  assetAllocation: ArnAssetAllocationSlice[];
 }
 
-const toneColors: Record<ArnTone, string> = {
-  amber: "#BA7517",
-  green: "#3B6D11",
-  blue: "#185FA5",
-  red: "#A32D2D",
-  purple: "#534AB7",
-  teal: "#0F6E56",
+const allocationColors: Record<ArnAssetAllocationKey, string> = {
+  equity: "#3B6D11",
+  debt: "#185FA5",
+  gold: "#BA7517",
 };
 
-export default function ArnClientHoldingsChart({ holdings }: ArnClientHoldingsChartProps) {
-  const total = holdings.reduce((sum, holding) => sum + holding.valueInPaise, 0);
-  const series = holdings.map((holding) => (total > 0 ? Math.round((holding.valueInPaise / total) * 100) : 0));
-  const labels = holdings.map((holding) => holding.assetClass);
+export default function ArnClientHoldingsChart({ assetAllocation }: ArnClientHoldingsChartProps) {
+  const slices = assetAllocation.filter((slice) => slice.percentage > 0 || slice.currentValue > 0);
+  const series = slices.map((slice) => slice.percentage);
+  const labels = slices.map((slice) => slice.label);
   const options: ApexOptions = {
     chart: {
       type: "donut",
@@ -31,7 +27,7 @@ export default function ArnClientHoldingsChart({ holdings }: ArnClientHoldingsCh
       toolbar: { show: false },
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     },
-    colors: holdings.map((holding) => toneColors[holding.tone]),
+    colors: slices.map((slice) => allocationColors[slice.key]),
     labels,
     plotOptions: {
       pie: {
@@ -73,8 +69,8 @@ export default function ArnClientHoldingsChart({ holdings }: ArnClientHoldingsCh
       theme: "dark",
       y: {
         formatter: (value, context) => {
-          const holding = holdings[context.seriesIndex];
-          return holding ? `${holding.fundName}: ${value}%` : String(value);
+          const slice = slices[context.seriesIndex];
+          return slice ? `${slice.label}: ${value}%` : String(value);
         },
       },
     },
@@ -87,21 +83,20 @@ export default function ArnClientHoldingsChart({ holdings }: ArnClientHoldingsCh
   );
 }
 
-export function ArnHoldingsLegend({ holdings }: { holdings: ArnHolding[] }) {
-  const total = holdings.reduce((sum, holding) => sum + holding.valueInPaise, 0);
+export function ArnHoldingsLegend({ assetAllocation }: { assetAllocation: ArnAssetAllocationSlice[] }) {
+  const slices = assetAllocation.filter((slice) => slice.percentage > 0 || slice.currentValue > 0);
 
   return (
     <div className="mb-4 flex flex-wrap justify-center gap-[14px] text-sm text-[var(--arn-txt-2)]">
-      {holdings.map((holding) => {
-        const percentage = total > 0 ? Math.round((holding.valueInPaise / total) * 100) : 0;
-
-        return (
-          <span key={holding.fundName} className="inline-flex items-center gap-1">
-            <ArnClientAvatar initials={holding.assetClass.slice(0, 1)} tone={holding.tone} size="xs" />
-            {holding.assetClass} {percentage}%
-          </span>
-        );
-      })}
+      {slices.map((slice) => (
+        <span key={slice.key} className="inline-flex items-center gap-1">
+          <span
+            className="inline-block h-[9px] w-[9px] rounded-[2px]"
+            style={{ backgroundColor: allocationColors[slice.key] }}
+          />
+          {slice.label} {slice.percentage}%
+        </span>
+      ))}
     </div>
   );
 }

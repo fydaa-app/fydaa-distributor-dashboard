@@ -2,8 +2,11 @@ import { ArnClientEndpoints } from "@/config/api-endpoints";
 import { getCookie } from "cookies-next";
 import type {
   ArnActionResponse,
+  ArnAssetAllocationKey,
+  ArnAssetAllocationSlice,
   ArnClient,
   ArnClientDetail,
+  ArnClientOrder,
   ArnClientSortKey,
   ArnClientsBackendClient,
   ArnClientsBackendResponse,
@@ -12,15 +15,15 @@ import type {
   ArnClientsKpis,
   ArnClientsListParams,
   ArnClientsSummary,
+  ArnClientTransaction,
   ArnGoal,
   ArnHolding,
   ArnKycStatus,
+  ArnMfOrderState,
+  ArnMfTransactionStatus,
   ArnPaginatedResponse,
   ArnSipStatus,
   ArnTone,
-  ArnTransaction,
-  ArnTransactionStatus,
-  ArnTransactionType,
 } from "@/types/arnClient";
 
 type JsonObject = Record<string, unknown>;
@@ -162,125 +165,157 @@ function normalizeSipStatus(value: unknown): ArnSipStatus {
   return "active";
 }
 
-function normalizeTransactionType(value: unknown): "sip" | "lumpsum" | "redemption" | "switch" {
-  const type = getString(value).toLowerCase();
-  if (type === "lumpsum") return "lumpsum";
-  if (type === "redemption") return "redemption";
-  if (type === "switch") return "switch";
-  return "sip";
+function normalizeMfTransactionStatus(value: unknown): ArnMfTransactionStatus {
+  const status = getString(value).toUpperCase();
+  if (status === "FULLY_SUCCESSFUL") return "FULLY_SUCCESSFUL";
+  if (status === "PARTIALLY_SUCCESSFUL") return "PARTIALLY_SUCCESSFUL";
+  if (status === "FAILED") return "FAILED";
+  return "IN_PROCESS";
 }
 
-function normalizeTransactionStatus(value: unknown): ArnTransactionStatus {
-  const status = getString(value).toLowerCase();
-  if (status === "pending") return "pending";
-  if (status === "failed") return "failed";
-  if (status === "processing") return "processing";
-  return "done";
+function normalizeMfOrderState(value: unknown): ArnMfOrderState {
+  const state = getString(value).toLowerCase();
+  if (state === "successful") return "successful";
+  if (state === "failed") return "failed";
+  return "submitted";
 }
 
 function normalizeClientDetailPayload(payload: unknown): ArnClientDetail {
   const data = isRecord(payload) ? (getNestedRecord(payload, "data") || payload) : {};
-  const clientSource = getNestedRecord(data, "client") || data;
-  const name = getString(clientSource.clientName || clientSource.name || clientSource.fullName, "Client");
-  const kycStatus = normalizeKycStatus(getString(clientSource.kycStatus || clientSource.kyc, "pending"));
-  const sipStatus = normalizeSipStatus(clientSource.sipStatus || clientSource.sip);
-  const aumInPaise = getNumber(clientSource.aumInPaise || clientSource.aumValue || clientSource.aum, 0);
-  const sipMonthlyInPaise = getNumber(clientSource.sipMonthlyInPaise || clientSource.sipMonthlyValue || clientSource.sipMonthly, 0);
+  const clientSource = getNestedRecord(data, "client") || {};
+  const summary = getNestedRecord(data, "summary") || {};
 
-  const rawLastTx = getString(clientSource.lastTransactionDate || clientSource.lastTransaction, "");
+  const name = getString(clientSource.name || clientSource.clientName || clientSource.fullName, "Client");
+  const kycStatusRaw = getString(clientSource.kycStatus || clientSource.kyc, "pending");
+  const kycStatus = normalizeKycStatus(kycStatusRaw === "complete" ? "done" : kycStatusRaw);
+  const sipStatus = normalizeSipStatus(clientSource.sipStatus || clientSource.sip);
+  const userId = clientSource.userId !== undefined ? String(clientSource.userId) : "";
+
+  const portfolioValueRaw = getNumber(summary.portfolioValue, 0);
+  const monthlySipRaw = getNumber(summary.monthlySip, 0);
+  const gainLossRaw = getNumber(summary.gainLoss, 0);
+
   const client: ArnClient = {
-    id: getString(clientSource.userId !== undefined ? String(clientSource.userId) : clientSource.id || clientSource.clientId || clientSource._id, "client-1"),
+    id: getString(userId || clientSource.id || clientSource.clientId, "client-1"),
     name,
     initials: getString(clientSource.initials, getInitials(name)),
     tone: normalizeTone(clientSource.tone || clientSource.color, toneOrder[0]),
-    aum: formatCurrency(aumInPaise / 100),
-    aumInPaise,
-    sipMonthly: formatCurrency(sipMonthlyInPaise / 100),
-    sipMonthlyInPaise,
-    xirr: getNumber(clientSource.xirr, 0),
+    aum: getString(summary.portfolioValueFormatted, formatCurrency(portfolioValueRaw)),
+    aumInPaise: Math.round(portfolioValueRaw * 100),
+    sipMonthly: getString(summary.monthlySipFormatted, formatCurrency(monthlySipRaw)),
+    sipMonthlyInPaise: Math.round(monthlySipRaw * 100),
+    xirr: getNumber(summary.xirr, 0),
     kycStatus,
-    kycLabel: getString(clientSource.kycStatus || clientSource.kyc, "Pending"),
+    kycLabel: kycStatusRaw,
     sipStatus,
-    lastTransactionAt: rawLastTx || "—",
-    lastTransactionLabel: formatDateLabel(rawLastTx || null),
+    lastTransactionAt: "—",
+    lastTransactionLabel: "—",
   };
-
-  const portfolioValueInPaise = getNumber(
-    data.portfolioValueInPaise || data.portfolio_value_in_paise || data.portfolioValue || client.aumInPaise,
-    client.aumInPaise
-  );
-  const monthlySipInPaise = getNumber(
-    data.monthlySipInPaise || data.monthly_sip_in_paise || data.monthlySip || client.sipMonthlyInPaise,
-    client.sipMonthlyInPaise
-  );
 
   return {
     client,
-    portfolioValue: getString(data.portfolioValueText || data.portfolio_value || data.portfolioValue, client.aum),
-    portfolioValueInPaise,
-    xirr: getNumber(data.xirr, client.xirr),
-    monthlySip: getString(data.monthlySipText || data.monthly_sip || data.monthlySip, client.sipMonthly),
-    monthlySipInPaise,
-    nextSipDate: getString(data.nextSipDate || data.next_sip_date, "—"),
-    clientSince: getString(data.clientSince || data.client_since, "—"),
-    sipActive: getBoolean(data.sipActive || data.sip_active, client.sipStatus === "active"),
-    kycComplete: getBoolean(data.kycComplete || data.kyc_complete, client.kycStatus === "done"),
+    portfolioValue: getString(summary.portfolioValueFormatted, formatCurrency(portfolioValueRaw)),
+    gainLoss: getString(summary.gainLossFormatted, formatCurrency(gainLossRaw)),
+    gainLossPositive: gainLossRaw >= 0,
+    xirr: getNumber(summary.xirr, 0),
+    monthlySip: getString(summary.monthlySipFormatted, formatCurrency(monthlySipRaw)),
+    nextSipDate: getString(summary.nextSipDate, "—"),
+    clientSince: getString(clientSource.clientSince, "—"),
+    sipActive: sipStatus === "active",
+    kycComplete: kycStatus === "done",
     holdings: getArray(data.holdings, (item) => normalizeHolding(isRecord(item) ? item : {})),
-    transactions: getArray(data.transactions, (item) => normalizeTransaction(isRecord(item) ? item : {})),
+    assetAllocation: normalizeAssetAllocation(getNestedRecord(data, "assetAllocation")),
+    transactions: getArray(data.transactions, (item) => normalizeClientTransaction(isRecord(item) ? item : {})),
     goals: getArray(data.goals, (item) => normalizeGoal(isRecord(item) ? item : {})),
   };
 }
 
+function normalizeAssetAllocation(source: JsonObject | undefined): ArnAssetAllocationSlice[] {
+  const src = source || {};
+  const mapping: Array<{ key: ArnAssetAllocationKey; label: string; field: string }> = [
+    { key: "equity", label: "Equity", field: "IndianStock" },
+    { key: "debt", label: "Debt", field: "FixedIncomeBonds" },
+    { key: "gold", label: "Gold", field: "Gold" },
+  ];
+
+  const raw = mapping.map((item) => {
+    const bucket = getNestedRecord(src, item.field) || {};
+    return {
+      key: item.key,
+      label: item.label,
+      currentValue: getNumber(bucket.currentValue, 0),
+    };
+  });
+
+  const total = raw.reduce((sum, item) => sum + item.currentValue, 0);
+
+  return raw.map((item) => ({
+    ...item,
+    percentage: total > 0 ? Math.round((item.currentValue / total) * 100) : 0,
+  }));
+}
+
 function normalizeHolding(source: JsonObject): ArnHolding {
-  const valueInPaise = getNumber(source.valueInPaise || source.value, 0);
+  const valueRaw = getNumber(source.value, 0);
 
   return {
-    fundName: getString(source.fundName || source.fund, "Fund"),
+    schemeName: getString(source.schemeName || source.fundName || source.fund, "Fund"),
     category: getString(source.category, "—"),
-    assetClass: getString(source.assetClass || source.asset_class, "—"),
-    value: getString(source.valueText || source.value, `₹${Math.round(valueInPaise / 100000)} L`),
-    valueInPaise,
+    value: getString(source.valueFormatted, formatCurrency(valueRaw)),
+    valueRaw,
     xirr: getNumber(source.xirr, 0),
-    tone: normalizeTone(source.tone || source.color, "amber"),
+    allocationPercent: getNumber(source.allocationPercent, 0),
   };
 }
 
-function normalizeTransaction(source: JsonObject): ArnTransaction {
-  const amountInPaise = getNumber(source.amountInPaise || source.amount, 0);
-  const type = normalizeTransactionType(source.type);
-  const status = normalizeTransactionStatus(source.status);
-  const toneMap: Record<ArnTransactionType, ArnTone> = {
-    sip: "blue",
-    lumpsum: "purple",
-    redemption: "red",
-    switch: "teal",
-  };
-
+function normalizeClientOrder(source: JsonObject): ArnClientOrder {
   return {
-    date: getString(source.date, "—"),
-    fundName: getString(source.fundName || source.fund, "Fund"),
-    type,
-    amount: getString(source.amountText || source.amount, `₹${amountInPaise.toLocaleString("en-IN")}`),
-    amountInPaise,
-    units: getString(source.units, "—"),
-    status,
-    tone: normalizeTone(source.tone || source.color, toneMap[type]),
+    id: getNumber(source.id, 0),
+    scheme: getString(source.scheme, "—"),
+    schemeName: getString(source.schemeName, "—"),
+    state: normalizeMfOrderState(source.state),
+    amount: getNumber(source.amount, 0),
+    processedAmount: getNumber(source.processed_amount ?? source.processedAmount, 0),
+    failureCode: getString(source.failure_code ?? source.failureCode, "") || null,
+    lastError: getString(source.last_error ?? source.lastError, "") || null,
   };
+}
+
+function normalizeClientTransaction(source: JsonObject): ArnClientTransaction {
+  return {
+    transactionId: getString(source.transactionId, "—"),
+    sipId: source.sipId !== undefined && source.sipId !== null ? getNumber(source.sipId, 0) : null,
+    type: getString(source.type, ""),
+    totalOrders: getNumber(source.totalOrders, 0),
+    successfulOrders: getNumber(source.successfulOrders, 0),
+    failedOrders: getNumber(source.failedOrders, 0),
+    submittedOrders: getNumber(source.submittedOrders, 0),
+    totalAmount: getNumber(source.totalAmount, 0),
+    processedAmount: getNumber(source.processedAmount, 0),
+    status: normalizeMfTransactionStatus(source.status),
+    createdAt: getString(source.createdAt, ""),
+    orders: getArray(source.orders, (item) => normalizeClientOrder(isRecord(item) ? item : {})),
+  };
+}
+
+function formatGoalDate(value: string): string {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function normalizeGoal(source: JsonObject): ArnGoal {
-  const savedInPaise = getNumber(source.savedInPaise || source.saved, 0);
-  const targetInPaise = getNumber(source.targetInPaise || source.target, 0);
+  const savedRaw = getNumber(source.saved, 0);
+  const targetRaw = getNumber(source.targetAmount ?? source.target, 0);
 
   return {
     name: getString(source.name, "Goal"),
-    saved: getString(source.savedText || source.saved, `₹${Math.round(savedInPaise / 100000)} L`),
-    savedInPaise,
-    target: getString(source.targetText || source.target, `₹${Math.round(targetInPaise / 100000)} L`),
-    targetInPaise,
-    targetYear: getNumber(source.targetYear || source.year, 0),
-    progress: getNumber(source.progress, 0),
-    tone: normalizeTone(source.tone || source.color, "amber"),
+    saved: getString(source.savedFormatted, formatCurrency(savedRaw)),
+    target: getString(source.targetFormatted, formatCurrency(targetRaw)),
+    termName: getString(source.termName, ""),
+    progressPercent: getNumber(source.progressPercent ?? source.progress, 0),
+    nextInstallmentDate: formatGoalDate(getString(source.nextInstallmentDate, "")),
   };
 }
 

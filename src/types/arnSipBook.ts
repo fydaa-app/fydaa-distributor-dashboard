@@ -69,6 +69,7 @@ export interface ArnSipBookSummary {
   activeSips: number;
   activeSipClients: number;
   atRiskSips: number;
+  sipsAtRisk?: number;
   pausedSips: number;
 }
 

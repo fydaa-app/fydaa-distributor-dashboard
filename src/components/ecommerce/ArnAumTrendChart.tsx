@@ -4,9 +4,7 @@ import dynamic from "next/dynamic";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 import type { ApexOptions } from "apexcharts";
-import ArnChartPeriodTabs from "@/components/common/ArnChartPeriodTabs";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
-import { useState } from "react";
 import type { ArnDashboardAumTrend } from "@/types/arnDashboard";
 
 interface ArnAumTrendChartProps {
@@ -18,7 +16,6 @@ function toCr(value: number): number {
 }
 
 export default function ArnAumTrendChart({ aumTrend }: ArnAumTrendChartProps) {
-  const [activeRange, setActiveRange] = useState("6M");
   const xCategories = aumTrend.map((point) => point.month);
   const seriesData = aumTrend.map((point) => toCr(point.aum));
 
@@ -107,11 +104,11 @@ export default function ArnAumTrendChart({ aumTrend }: ArnAumTrendChartProps) {
   return (
     <div className="rounded-[16px] border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1c1a] sm:p-6">
       <ArnCardHeader title="AUM trend">
-        <ArnChartPeriodTabs
+        {/* <ArnChartPeriodTabs
           options={["6M", "1Y", "All"]}
           active={activeRange}
           onChange={setActiveRange}
-        />
+        /> */}
       </ArnCardHeader>
       <div className="relative h-[220px] sm:h-[260px] lg:h-[300px]">
         <ReactApexChart

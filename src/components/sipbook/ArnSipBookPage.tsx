@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnErrorState from "@/components/common/ArnErrorState";
@@ -22,15 +23,49 @@ import type {
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
 export default function ArnSipBookPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [status, setStatus] = useState<ArnSipBookFilter>("all");
-  const [page, setPage] = useState(1);
   const [trendPeriod, setTrendPeriod] = useState<"6M" | "1Y">("6M");
+  const status = (searchParams.get("status") as ArnSipBookFilter) || "all";
+  const page = Number(searchParams.get("page")) || 1;
+  const lastResetKey = useRef(`${debouncedSearch}|${trendPeriod}`);
+
+  const setPage = useCallback(
+    (next: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", String(next));
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
+
+  const setStatus = useCallback(
+    (next: ArnSipBookFilter) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "all") {
+        params.delete("status");
+      } else {
+        params.set("status", next);
+      }
+      params.set("page", "1");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
+
+  useEffect(() => {
+    if (!searchParams.get("page")) {
+      setPage(1);
+    }
+  }, [searchParams, setPage]);
 
   const [sips, setSips] = useState<ArnSipBookItem[]>([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<ArnSipBookKpisType | null>(null);
+  const [filterCounts, setFilterCounts] = useState<Record<string, number> | null>(null);
   const [health, setHealth] = useState<ArnSipBookHealthData | null>(null);
   const [inflowTrend, setInflowTrend] = useState<ArnSipBookTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +97,7 @@ export default function ArnSipBookPage() {
       setSummary(result.summary);
       setHealth(result.health);
       setInflowTrend(result.inflowTrend);
+      setFilterCounts(result.filterCounts);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load SIP book.");
     } finally {
@@ -74,8 +110,12 @@ export default function ArnSipBookPage() {
   }, [loadData]);
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, status, trendPeriod]);
+    const key = `${debouncedSearch}|${trendPeriod}`;
+    if (lastResetKey.current !== key) {
+      lastResetKey.current = key;
+      setPage(1);
+    }
+  }, [debouncedSearch, trendPeriod, setPage]);
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
@@ -88,7 +128,7 @@ export default function ArnSipBookPage() {
 
       <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
         <ArnCardHeader title="All SIPs">
-          <ArnSipBookFilters active={status} onChange={setStatus} sips={sips} />
+          <ArnSipBookFilters active={status} onChange={setStatus} filterCounts={filterCounts} />
         </ArnCardHeader>
 
         <div className="mb-5">
@@ -125,6 +165,7 @@ export default function ArnSipBookPage() {
             total={total}
             page={page}
             pageSize={5}
+            status={status}
             onPageChange={setPage}
           />
         )}
