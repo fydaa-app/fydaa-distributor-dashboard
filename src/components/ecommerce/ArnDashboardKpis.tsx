@@ -67,7 +67,7 @@ function buildSummaryKpis(summary: ArnDashboardSummary): DashboardKpi[] {
     {
       label: "SIPs at risk",
       value: String(summary.sipsAtRisk),
-      trendText: "NACH pending",
+      trendText: "No Activity",
       tone: "red",
       trend: "down",
     },

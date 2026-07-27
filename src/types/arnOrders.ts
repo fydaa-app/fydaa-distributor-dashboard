@@ -3,7 +3,7 @@ import type { ArnTone } from "@/types/arnClient";
 export type ArnOrderType = "sip" | "lumpsum" | "redemption" | "switch";
 export type ArnOrderStatus = "done" | "pending" | "failed" | "processing";
 export type ArnOrderFilter = ArnOrderType | "all" | "failed";
-export type ArnOrderSortKey = "date" | "clientName" | "fundName" | "type" | "amount" | "units" | "status";
+export type ArnOrderSortKey = "date" | "clientName" | "fundName" | "type" | "amount" | "orderAmount" | "processedAmount" | "units" | "status";
 
 export interface ArnOrdersKpis {
   ordersToday: number;
@@ -46,6 +46,10 @@ export interface ArnOrderItem {
   typeLabel: string;
   amount: string;
   amountInPaise: number;
+  orderAmount: string;
+  orderAmountInPaise: number;
+  processedAmount: string;
+  processedAmountInPaise: number;
   units: string;
   unitsValue?: number;
   status: ArnOrderStatus;

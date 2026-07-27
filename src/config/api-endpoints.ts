@@ -39,3 +39,7 @@ export const ArnShareEndpoints = {
 export const ArnDashboardEndpoints = {
   DASHBOARD: "/arn/dashboard",
 } as const;
+
+export const ArnLeadEndpoints = {
+  LEAD_USER_LIST: "/arn/lead-user-list",
+} as const;

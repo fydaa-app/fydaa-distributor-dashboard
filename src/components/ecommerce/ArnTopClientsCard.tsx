@@ -32,6 +32,7 @@ interface ArnTopClientsCardProps {
 
 export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps) {
   const clients = topClients.map((client, index) => ({
+    userId: client.userId,
     initials: getInitials(client.clientName),
     name: client.clientName,
     aum: formatIndianCurrency(client.aum),
@@ -51,7 +52,7 @@ export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps
       <div className="flex flex-col">
         {clients.map((client, index) => (
           <div
-            key={client.initials}
+            key={`${client.userId}-${client.initials}-${index}`}
             className={`flex items-center gap-3 py-3 sm:py-4 ${
               index !== clients.length - 1 ? "border-b border-black/10 dark:border-white/10" : ""
             }`}

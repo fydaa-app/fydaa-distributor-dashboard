@@ -109,6 +109,7 @@ function normalizeTopClients(source: JsonObject): ArnDashboardTopClient[] {
         investmentModel: getString(
           record.investmentModel || record.model || record.type
         ),
+        userId: getNumber(record.userId || record.user_id || record.id),
       };
     }
   );

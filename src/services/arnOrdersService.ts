@@ -131,7 +131,9 @@ function normalizeOrder(value: unknown, index: number): ArnOrderItem {
   const source = isRecord(value) ? value : {};
   const type = normalizeOrderType(source.type || source.orderType || source.transactionType);
   const status = normalizeOrderStatus(source.status || source.orderStatus);
-  const amountInPaise = getNumber(source.amountInPaise || source.amount, 0);
+  const orderAmountInPaise = getNumber(source.amount, 0);
+  const processedAmountInPaise = getNumber(source.processedAmount, 0);
+  const rawUnits = getNumber(source.units, NaN);
   const clientName = getString(source.clientName || source.name || source.fullName, `Client ${index + 1}`);
   const clientShortName = getString(source.clientShortName || source.shortName, `${clientName.split(" ")[0]} ${clientName.split(" ")[1]?.[0] || ""}.`);
 
@@ -152,10 +154,14 @@ function normalizeOrder(value: unknown, index: number): ArnOrderItem {
     fundName: getString(source.fundName || source.scheme || source.fund, "Fund"),
     type,
     typeLabel: getString(source.typeLabel || source.type_label || typeLabels[type]),
-    amount: getString(source.amountText || source.amount, `₹${amountInPaise.toLocaleString("en-IN")}`),
-    amountInPaise,
-    units: getString(source.unitsText || source.units || source.unitLabel, "—"),
-    unitsValue: source.unitsValue || source.units ? getNumber(source.unitsValue || source.units, 0) : undefined,
+    amount: getString(source.amountText || source.amount, orderAmountInPaise > 0 ? `₹${orderAmountInPaise.toLocaleString("en-IN")}` : "—"),
+    amountInPaise: orderAmountInPaise,
+    orderAmount: getString(source.amountText || source.amount, orderAmountInPaise > 0 ? `₹${orderAmountInPaise.toLocaleString("en-IN")}` : "—"),
+    orderAmountInPaise,
+    processedAmount: getString(source.processedAmountText || source.processedAmount, processedAmountInPaise > 0 ? `₹${processedAmountInPaise.toLocaleString("en-IN")}` : "—"),
+    processedAmountInPaise,
+    units: !isNaN(rawUnits) ? String(rawUnits) : getString(source.unitLabel, "—"),
+    unitsValue: !isNaN(rawUnits) ? rawUnits : undefined,
     status,
     statusLabel: getString(source.statusLabel || source.status_label || source.statusText, statusLabels[status]),
     actionLabel: getString(source.actionLabel || source.action_label || ({ done: "Details", pending: "Track", processing: "View", failed: "Retry" }[status])),

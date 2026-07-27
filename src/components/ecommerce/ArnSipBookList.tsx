@@ -37,7 +37,7 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
     name: item.clientName,
     sipDate: item.sipDay,
     amount: item.amount,
-    status: (item.statusLabel || item.status || "Active") as "Active" | "Due today" | "Paused",
+    status: item.statusLabel || item.status || "Active",
     tone: toneOrder[index % toneOrder.length],
     userId: item.userId,
   }));
@@ -45,7 +45,7 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
   const statusVariant: Record<string, "active" | "due" | "paused"> = {
     Active: "active",
     "Due today": "due",
-    Paused: "paused",
+    Cancelled: "paused",
   };
 
   const visibleItems = expanded ? items : items.slice(0, 4);

@@ -41,8 +41,8 @@ const kpiConfigs: KpiConfig[] = [
     trend: "down",
   },
   {
-    label: "Paused SIPs",
-    value: "pausedSips",
+    label: "Cancelled SIPs",
+    value: "cancelledSips",
     trendText: "needs reactivation",
     tone: "blue",
     trend: "neutral",
@@ -69,7 +69,7 @@ export default function ArnSipBookKpis({ summary }: ArnSipBookKpisProps) {
     if (key === "totalSipBook") return summary.totalSipBook;
     if (key === "activeSips") return String(summary.activeSips);
     if (key === "atRiskSips") return String(summary.atRiskSips);
-    if (key === "pausedSips") return String(summary.pausedSips);
+    if (key === "cancelledSips") return String(summary.cancelledSips);
     return "";
   };
 
@@ -95,13 +95,13 @@ export default function ArnSipBookKpis({ summary }: ArnSipBookKpisProps) {
     {
       ...kpiConfigs[2],
       value: getValue("atRiskSips"),
-      trendText: "NACH failure",
+      trendText: "No Activity",
       trend: atRisk > 0 ? ("down" as const) : ("neutral" as const),
       icon: atRisk > 0 ? "ti ti-arrow-down" : "ti ti-equal",
     },
     {
       ...kpiConfigs[3],
-      value: getValue("pausedSips"),
+      value: getValue("cancelledSips"),
     },
   ];
 
