@@ -316,6 +316,7 @@ function normalizeGoal(source: JsonObject): ArnGoal {
     termName: getString(source.termName, ""),
     progressPercent: getNumber(source.progressPercent ?? source.progress, 0),
     nextInstallmentDate: formatGoalDate(getString(source.nextInstallmentDate, "")),
+    status: getString(source.status, "inactive").toLowerCase() as ArnGoal["status"],
   };
 }
 

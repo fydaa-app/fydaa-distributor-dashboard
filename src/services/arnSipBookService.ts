@@ -54,7 +54,7 @@ function getTone(index: number): ArnSipBookItem["tone"] {
 
 function formatCurrencyInLakhs(paise: number): string {
   if (paise < 100000) {
-    return `₹${Math.round(paise / 100).toLocaleString("en-IN")}/mo`;
+    return `₹${Math.round(paise).toLocaleString("en-IN")}/mo`;
   }
   if (paise < 10000000) {
     const lakhs = paise / 100000;
@@ -101,8 +101,8 @@ function normalizeSummary(summary: ArnSipBookSummary | undefined): ArnSipBookKpi
       totalSipBookInPaise: 0,
       activeSips: 0,
       atRiskSips: 0,
-      pausedSips: 0,
-      clientsWithSips: 0,
+      cancelledSips: 0,
+      activeSipClients: 0,
     };
   }
 
@@ -111,8 +111,8 @@ function normalizeSummary(summary: ArnSipBookSummary | undefined): ArnSipBookKpi
     totalSipBookInPaise: summary.totalSipBookMonthly,
     activeSips: summary.activeSips,
     atRiskSips: summary.sipsAtRisk ?? summary.atRiskSips ?? 0,
-    pausedSips: summary.pausedSips,
-    clientsWithSips: summary.activeSipClients,
+    cancelledSips: summary.cancelledSips,
+    activeSipClients: summary.activeSipClients,
   };
 }
 
@@ -135,39 +135,38 @@ function normalizeInflowTrend(
 
 function normalizeStatus(source: string | undefined): ArnSipBookStatus {
   const status = getString(source).toLowerCase();
-  if (status === "paused") return "paused";
-  if (status === "at-risk" || status === "risk" || status === "at risk") return "at-risk";
-  if (status === "due-today" || status === "due today") return "due-today";
   if (status === "active") return "active";
-  return "active";
+  if (status === "inactive") return "inactive";
+  if (status === "cancelled") return "cancelled";
+  if (status === "paused") return "cancelled";
+  return "inactive";
 }
 
 function getStatusLabel(status: ArnSipBookStatus): string {
   switch (status) {
-    case "paused":
-      return "Paused";
-    case "at-risk":
-      return "Off Track";
-    case "due-today":
-      return "Due today";
     case "active":
       return "Active";
+    case "inactive":
+      return "Inactive";
+    case "cancelled":
+      return "Cancelled";
     default:
-      return "Active";
+      return "Inactive";
   }
 }
 
 function normalizeSipRow(row: ArnSipBookBackendSip, index: number): ArnSipBookItem {
-  const bookStatus = row.bookStatus;
   const backendStatus = getString(row.status);
-  const status = normalizeStatus(backendStatus || bookStatus);
+  const status = normalizeStatus(backendStatus);
   const amountInPaise = getNumber(row.amount, 0);
+  const goalAmountInPaise = getNumber(row.goalAmount, 0);
   const clientName = getString(row.clientName, `Client ${index + 1}`);
   const sipDay = formatDeductionDay(row.deductionDay);
   const nextSipLabel = formatNextSipDate(row.nextSipDate);
 
   return {
     id: String(row.sipId),
+    planId: String(row.planId ?? `${row.sipId}-${index}`),
     clientId: String(row.userId),
     clientName,
     initials: getInitials(clientName),
@@ -175,6 +174,9 @@ function normalizeSipRow(row: ArnSipBookBackendSip, index: number): ArnSipBookIt
     fundName: getString(row.fund, "Fund"),
     amount: formatAmount(amountInPaise),
     amountInPaise,
+    goalAmount: formatAmount(goalAmountInPaise),
+    goalAmountInPaise,
+    rawStatus: getString(row.rawStatus),
     sipDay,
     sipDayLabel: sipDay,
     nextSipDate: nextSipLabel,
@@ -194,28 +196,20 @@ function applyClientSideFilter(
     return sips;
   }
 
-  if (frontendFilter === "due-today") {
-    const dueIds = new Set(
-      backendSips
-        .filter((row) => {
-          const status = getString(row.status).toLowerCase();
-          return status === "due today" || status === "due-today";
-        })
-        .map((row) => String(row.sipId))
-    );
-    return sips.filter((sip) => dueIds.has(sip.id));
+  if (frontendFilter === "sips_at_risk") {
+    return sips;
   }
 
   if (frontendFilter === "active") {
-    const atRiskOrPausedIds = new Set(
-      backendSips
-        .filter((row) => {
-          const bookStatus = getString(row.bookStatus).toLowerCase();
-          return bookStatus === "at_risk" || bookStatus === "paused";
-        })
-        .map((row) => String(row.sipId))
-    );
-    return sips.filter((sip) => !atRiskOrPausedIds.has(sip.id));
+    return sips.filter((sip) => sip.rawStatus === 'ACTIVE');
+  }
+
+  if (frontendFilter === "inactive") {
+    return sips.filter((sip) => sip.rawStatus === 'INACTIVE');
+  }
+
+  if (frontendFilter === "cancelled") {
+    return sips.filter((sip) => sip.rawStatus === 'CANCELLED');
   }
 
   return sips;
@@ -268,8 +262,7 @@ export async function fetchSipBook(params: ArnSipBookListParams & {
   searchParams.set("limit", String(params.pageSize || PAGE_SIZE));
   if (params.search) searchParams.set("search", params.search);
   if (params.status && params.status !== "all") {
-    const apiStatus = params.status === "at-risk" ? "sips_at_risk" : params.status;
-    searchParams.set("filter", apiStatus);
+    searchParams.set("filter", params.status);
   }
   if (params.type) searchParams.set("type", params.type);
   if (params.trendPeriod) searchParams.set("trendPeriod", params.trendPeriod);

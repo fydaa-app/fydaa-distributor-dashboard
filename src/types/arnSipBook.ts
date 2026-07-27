@@ -1,8 +1,8 @@
 import type { ArnTone } from "@/types/arnClient";
 
-export type ArnSipBookStatus = "active" | "paused" | "at-risk" | "due-today";
+export type ArnSipBookStatus = "active" | "inactive" | "cancelled";
 
-export type ArnSipBookFilter = ArnSipBookStatus | "all";
+export type ArnSipBookFilter = "all" | "active" | "inactive" | "cancelled" | "sips_at_risk";
 
 export type ArnSipBookSortKey = "clientName" | "fundName" | "amount" | "sipDay" | "nextSipDate" | "xirr";
 
@@ -11,10 +11,9 @@ export interface ArnSipBookKpis {
   totalSipBookInPaise: number;
   activeSips: number;
   atRiskSips: number;
-  pausedSips: number;
-  clientsWithSips: number;
-  newSipsThisMonth?: number;
+  cancelledSips: number;
   activeSipClients?: number;
+  newSipsThisMonth?: number;
 }
 
 export interface ArnSipBookTrendPoint {
@@ -41,6 +40,10 @@ export interface ArnSipBookItem {
   fundName: string;
   amount: string;
   amountInPaise: number;
+  goalAmount: string;
+  goalAmountInPaise: number;
+  rawStatus: string;
+  planId: string;
   sipDay: string;
   sipDayLabel: string;
   nextSipDate: string;
@@ -70,7 +73,7 @@ export interface ArnSipBookSummary {
   activeSipClients: number;
   atRiskSips: number;
   sipsAtRisk?: number;
-  pausedSips: number;
+  cancelledSips: number;
 }
 
 export interface ArnSipBookInflowTrendPoint {
@@ -97,6 +100,9 @@ export interface ArnSipBookBackendSip {
   clientName: string;
   fund: string;
   amount: number;
+  goalAmount: number;
+  rawStatus: string;
+  planId: number | null;
   deductionDay: string | number;
   nextSipDate: string | Date | null;
   xirr: number;

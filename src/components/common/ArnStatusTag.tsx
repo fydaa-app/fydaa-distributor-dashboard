@@ -12,7 +12,9 @@ type ArnStatusVariant =
   | "review"
   | "kyc"
   | "sip"
-  | "call";
+  | "call"
+  | "inactive"
+  | "cancelled";
 
 const variantClasses: Record<ArnStatusVariant, string> = {
   active: "bg-[var(--arn-green-bg)] text-[var(--arn-green)] dark:text-[#C0DD97]",
@@ -27,6 +29,8 @@ const variantClasses: Record<ArnStatusVariant, string> = {
   kyc: "bg-[var(--arn-blue-bg)] text-[var(--arn-blue)] dark:text-[#B5D4F4]",
   sip: "bg-[var(--arn-amber-bg)] text-[var(--arn-amber-txt)]",
   call: "bg-[var(--arn-tel-bg)] text-[var(--arn-tel-txt)]",
+  inactive: "bg-[var(--arn-bg-2)] text-[var(--arn-txt-3)] border border-[var(--arn-bdr)] dark:bg-[#252522] dark:border-white/10",
+  cancelled: "bg-[var(--arn-red-bg)] text-[var(--arn-red)] dark:text-[#F09595]",
 };
 
 export interface ArnStatusTagProps {

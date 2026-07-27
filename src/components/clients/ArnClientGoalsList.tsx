@@ -1,8 +1,15 @@
 import ArnProgressBar from "@/components/common/ArnProgressBar";
+import ArnStatusTag from "@/components/common/ArnStatusTag";
 import type { ArnGoal } from "@/types/arnClient";
 
 interface ArnClientGoalsListProps {
   goals: ArnGoal[];
+}
+
+function getGoalStatusVariant(status: string): "active" | "processing" | "cancelled" {
+  if (status === "active") return "active";
+  if (status === "cancelled") return "cancelled";
+  return "processing";
 }
 
 export default function ArnClientGoalsList({ goals }: ArnClientGoalsListProps) {
@@ -18,7 +25,10 @@ export default function ArnClientGoalsList({ goals }: ArnClientGoalsListProps) {
     <div className="space-y-4">
       {goals.map((goal, index) => (
         <div key={goal.name}>
-          <div className="mb-2 text-sm font-bold text-[var(--arn-txt)]">{goal.name}</div>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-sm font-bold text-[var(--arn-txt)]">{goal.name}</span>
+            <ArnStatusTag label={goal.status.charAt(0).toUpperCase() + goal.status.slice(1)} variant={getGoalStatusVariant(goal.status)} />
+          </div>
           <div className="mb-2 flex justify-between text-sm text-[var(--arn-txt-2)]">
             <span>{goal.saved} saved</span>
             <span>

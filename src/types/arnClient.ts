@@ -109,6 +109,7 @@ export interface ArnGoal {
   termName: string;
   progressPercent: number;
   nextInstallmentDate: string;
+  status: "active" | "inactive" | "cancelled";
 }
 
 export interface ArnClientDetail {
