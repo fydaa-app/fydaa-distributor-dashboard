@@ -72,10 +72,11 @@ export default function ArnOrdersTable({
               <tr>
                 <th className="w-[15%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Date</th>
                 <th className="w-[18%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Client</th>
-                <th className="w-[26%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Fund</th>
+                <th className="w-[24%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Fund</th>
                 <th className="w-[12%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Type</th>
-                <th className="w-[12%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Amount</th>
-                <th className="w-[9%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Units</th>
+                <th className="w-[10%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Order Amount</th>
+                <th className="w-[10%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Processed Amount</th>
+                <th className="w-[11%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Units</th>
                 <th className="w-[12%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Status</th>
               </tr>
             </thead>
@@ -97,7 +98,8 @@ export default function ArnOrdersTable({
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
                     <ArnStatusTag label={order.typeLabel} variant={getTypeVariant(order.type)} size="task" />
                   </td>
-                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-xs font-bold text-[var(--arn-txt)] sm:text-sm">{order.amount}</td>
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-xs font-bold text-[var(--arn-txt)] sm:text-sm">{order.orderAmount}</td>
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-xs font-bold text-[var(--arn-txt)] sm:text-sm">{order.processedAmount}</td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-xs text-[var(--arn-txt-3)] sm:text-sm">{order.units}</td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
                     <ArnStatusTag label={order.statusLabel} variant={getStatusVariant(order.status)} size="task" />
@@ -130,14 +132,14 @@ export default function ArnOrdersTable({
                   <ArnStatusTag label={order.statusLabel} variant={getStatusVariant(order.status)} size="task" />
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--arn-txt-3)] sm:grid-cols-4 sm:text-sm">
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--arn-txt-3)] sm:grid-cols-3 sm:text-sm">
                 <div>
                     <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Fund</div>
                   <div className="mt-1 font-bold text-[var(--arn-txt)]">{order.fundName}</div>
                 </div>
                 <div>
-                    <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Amount</div>
-                  <div className="mt-1 font-bold text-[var(--arn-txt)]">{order.amount}</div>
+                    <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Order Amount</div>
+                  <div className="mt-1 font-bold text-[var(--arn-txt)]">{order.orderAmount}</div>
                 </div>
                 <div>
                     <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Units</div>
