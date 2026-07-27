@@ -18,11 +18,20 @@ interface ArnTaskItemProps {
 }
 
 export default function ArnTaskItem({ text, tag, done = false, onToggle, onRemove }: ArnTaskItemProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle?.();
+    }
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onToggle}
-      className="flex w-full items-center gap-3 border-b border-black/10 py-3 text-left last:border-b-0 dark:border-white/10 sm:py-4"
+      onKeyDown={handleKeyDown}
+      className="flex w-full cursor-pointer items-center gap-3 border-b border-black/10 py-3 text-left last:border-b-0 dark:border-white/10 sm:py-4"
     >
       <span
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border ${
@@ -50,6 +59,6 @@ export default function ArnTaskItem({ text, tag, done = false, onToggle, onRemov
           ✕
         </button>
       )}
-    </button>
+    </div>
   );
 }

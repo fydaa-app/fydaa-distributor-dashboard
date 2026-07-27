@@ -36,6 +36,7 @@ export interface ArnDashboardTopClient {
   clientName: string;
   aum: number;
   investmentModel: string;
+  userId: number | string;
 }
 
 export interface ArnDashboardResponse {
