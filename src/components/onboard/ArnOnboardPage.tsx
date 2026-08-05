@@ -29,7 +29,9 @@ export default function ArnOnboardPage() {
 
   const rawUserData = getCookie("userData");
   const userData = rawUserData ? JSON.parse(rawUserData as string) : {};
-  const referredBy = userData?.code || "";
+  const rawEmployeeData = getCookie("employeeData");
+  const employeeData = rawEmployeeData ? JSON.parse(rawEmployeeData as string) : {};
+  const referredBy = employeeData?.referralCode || userData?.code || "";
 
   const goToOtp = () => setPhase("otp");
   const goToMobile = () => setPhase("mobile");

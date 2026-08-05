@@ -8,6 +8,7 @@ export interface Employee {
   role: string;
   arnCode?: string;
   euin?: string;
+  referralCode?: string;
 }
 
 export interface LoginResponse {
@@ -87,6 +88,7 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
 
   const arnCode = getString(source?.arnCode) || getString(source?.arn);
   const euin = getString(source?.euin);
+  const referralCode = getString(source?.referralCode);
 
   return {
     id,
@@ -95,6 +97,7 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
     role,
     ...(arnCode ? { arnCode } : {}),
     ...(euin ? { euin } : {}),
+    ...(referralCode ? { referralCode } : {}),
   };
 }
 
