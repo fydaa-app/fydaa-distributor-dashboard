@@ -184,6 +184,7 @@ function normalizeSipRow(row: ArnSipBookBackendSip, index: number): ArnSipBookIt
     xirr: getNumber(row.xirr, 0),
     status,
     statusLabel: getStatusLabel(status),
+    bookStatus: getString(row.bookStatus),
   };
 }
 
@@ -197,19 +198,19 @@ function applyClientSideFilter(
   }
 
   if (frontendFilter === "sips_at_risk") {
-    return sips;
+    return sips.filter((sip) => sip.bookStatus === "at_risk");
   }
 
   if (frontendFilter === "active") {
-    return sips.filter((sip) => sip.rawStatus === 'ACTIVE');
+    return sips.filter((sip) => sip.status === "active");
   }
 
   if (frontendFilter === "inactive") {
-    return sips.filter((sip) => sip.rawStatus === 'INACTIVE');
+    return sips.filter((sip) => sip.status === "inactive");
   }
 
   if (frontendFilter === "cancelled") {
-    return sips.filter((sip) => sip.rawStatus === 'CANCELLED');
+    return sips.filter((sip) => sip.status === "cancelled");
   }
 
   return sips;
