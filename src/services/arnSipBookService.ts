@@ -147,11 +147,11 @@ function getStatusLabel(status: ArnSipBookStatus): string {
     case "active":
       return "Active";
     case "inactive":
-      return "Inactive";
+      return "Pending";
     case "cancelled":
       return "Cancelled";
     default:
-      return "Inactive";
+      return "Pending";
   }
 }
 
