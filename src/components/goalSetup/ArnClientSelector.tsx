@@ -27,9 +27,9 @@ function getInitials(name: string): string {
 
 function formatMandateStatus(status: string): string {
   const normalized = status.toUpperCase();
-  if (normalized === "APPROVED") return "Approved";
-  if (normalized === "CANCELLED") return "Cancelled";
-  if (normalized === "PENDING") return "Pending";
+  if (normalized === "APPROVED") return "Mandate Approved";
+  if (normalized === "CANCELLED") return "Mandate Cancelled";
+  if (normalized === "PENDING") return "Mandate Pending";
   return status;
 }
 
