@@ -43,3 +43,7 @@ export const ArnDashboardEndpoints = {
 export const ArnLeadEndpoints = {
   LEAD_USER_LIST: "/arn/lead-user-list",
 } as const;
+
+export const ArnGoalSetupEndpoints = {
+  CLIENTS: "/arn/goal-sip-setup-client-list",
+} as const;
