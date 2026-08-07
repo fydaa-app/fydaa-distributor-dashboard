@@ -6,7 +6,9 @@ import ArnClientSelector from "@/components/goalSetup/ArnClientSelector";
 import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
 import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar";
 import ArnGoalPathSelector from "@/components/goalSetup/ArnGoalPathSelector";
+import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
+import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 
 const STEP_NAMES: Record<number, string> = {
   1: "Select a client",
@@ -19,35 +21,38 @@ const STEP_NAMES: Record<number, string> = {
 export default function ArnGoalSetupPage() {
   const [step, setStep] = useState(1);
   const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(null);
- // const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
 
   const handleClientSelect = useCallback((client: GoalSetupClient) => {
     setSelectedClient(client);
-    //setSelectedClientId(client.userId);
   }, []);
 
   const handleSearchChange = useCallback(() => {
     setSelectedClient(null);
-   // setSelectedClientId(null);
   }, []);
 
   const handlePageChange = useCallback(() => {
     setSelectedClient(null);
-    //setSelectedClientId(null);
   }, []);
 
   const handlePathSelect = useCallback((path: "goal" | "direct") => {
     setSelectedPath(path);
   }, []);
 
+  const handleProductSelect = useCallback((product: DirectProduct) => {
+    setSelectedProduct(product);
+  }, []);
+
   const handleContinue = useCallback(() => {
     if (selectedClient && step === 1) {
       setStep(2);
-    } else if (selectedPath && step === 2) {
+    } else if (selectedPath === "direct" && selectedProduct && step === 2) {
+      setStep(3);
+    } else if (selectedPath === "goal" && step === 2) {
       setStep(3);
     }
-  }, [selectedClient, selectedPath, step]);
+  }, [selectedClient, selectedPath, selectedProduct, step]);
 
   const handleBack = useCallback(() => {
     if (step > 1) {
@@ -88,11 +93,20 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 2 && selectedClient && (
-        <div>
-          <ArnGoalPathSelector
-            selectedClient={selectedClient}
-            onSelect={handlePathSelect}
-          />
+        <div className={selectedPath === "direct" ? "pb-40" : ""}>
+          {selectedPath === "direct" ? (
+            <ArnDirectProductSelector
+              selectedClient={selectedClient}
+              selectedProductKey={selectedProduct?.key ?? null}
+              onSelect={handleProductSelect}
+              onBack={() => setSelectedPath(null)}
+            />
+          ) : (
+            <ArnGoalPathSelector
+              selectedClient={selectedClient}
+              onSelect={handlePathSelect}
+            />
+          )}
         </div>
       )}
 
@@ -101,7 +115,15 @@ export default function ArnGoalSetupPage() {
         stepName={STEP_NAMES[step]}
         onBack={handleBack}
         onContinue={handleContinue}
-        canContinue={step === 1 ? !!selectedClient : !!selectedPath}
+        canContinue={
+          step === 1
+            ? !!selectedClient
+            : step === 2
+              ? selectedPath === "direct"
+                ? !!selectedProduct
+                : !!selectedPath
+              : false
+        }
         continueLabel="Continue →"
       />
     </div>
