@@ -44,6 +44,7 @@ export interface GoalSetupClient {
   mobileNumber: string;
   email: string;
   mandateStatus: "APPROVED" | "CANCELLED" | "PENDING";
+  panStatus?: string;
   createdAt: string;
 }
 

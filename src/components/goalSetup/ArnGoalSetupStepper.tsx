@@ -16,7 +16,7 @@ interface ArnGoalSetupStepperProps {
 export default function ArnGoalSetupStepper({ currentStep }: ArnGoalSetupStepperProps) {
   return (
     <div className="w-full rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-4 sm:p-5">
-      <div className="flex w-full items-start">
+      <div className="flex w-full items-center">
         {STEPS.map((step, index) => {
           const isActive = step.number === currentStep;
           const isDone = step.number < currentStep;
@@ -25,7 +25,7 @@ export default function ArnGoalSetupStepper({ currentStep }: ArnGoalSetupStepper
 
           return (
             <Fragment key={step.number}>
-              <div className="flex shrink-0 flex-col items-center gap-1 sm:gap-2">
+              <div className="flex min-w-0 flex-col items-center gap-1 sm:gap-2">
                 <div
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors sm:h-8 sm:w-8 sm:text-sm",
@@ -44,7 +44,7 @@ export default function ArnGoalSetupStepper({ currentStep }: ArnGoalSetupStepper
                 </div>
                 <span
                   className={cn(
-                    "max-w-[4.25rem] text-center text-[10px] font-semibold leading-tight transition-colors sm:max-w-none sm:text-xs",
+                    "truncate text-center text-[10px] font-semibold leading-tight transition-colors sm:text-xs",
                     isActive && "text-[var(--arn-amber)]",
                     isDone && "text-[var(--arn-green)]",
                     isFuture && "text-[var(--arn-txt-3)]"
@@ -57,7 +57,7 @@ export default function ArnGoalSetupStepper({ currentStep }: ArnGoalSetupStepper
               {!isLast && (
                 <div
                   className={cn(
-                    "mx-2 mt-[13px] h-[2px] min-w-0 flex-1 self-start sm:mx-4 sm:mt-[15px]",
+                    "mx-1 mt-[13px] h-[2px] min-w-3 flex-1 self-start sm:mx-3 sm:mt-[15px] sm:min-w-6",
                     index < currentStep - 1 ? "bg-[var(--arn-green)]" : "bg-[var(--arn-bdr)]"
                   )}
                   aria-hidden

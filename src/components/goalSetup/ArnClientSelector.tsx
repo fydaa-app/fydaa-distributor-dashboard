@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
-import ArnStatusTag from "@/components/common/ArnStatusTag";
 import { getGoalSetupClients, type GoalSetupClient } from "@/services/arnGoalSetupService";
 
 interface ArnClientSelectorProps {
@@ -25,7 +24,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-function formatMandateStatus(status: string): string {
+function getMandateText(status: string): string {
   const normalized = status.toUpperCase();
   if (normalized === "APPROVED") return "Mandate Approved";
   if (normalized === "CANCELLED") return "Mandate Cancelled";
@@ -33,11 +32,18 @@ function formatMandateStatus(status: string): string {
   return status;
 }
 
-function getMandateVariant(status: string): "active" | "cancelled" | "pending" {
+function getMandateTextColor(status: string): string {
   const normalized = status.toUpperCase();
-  if (normalized === "APPROVED") return "active";
-  if (normalized === "CANCELLED") return "cancelled";
-  return "pending";
+  if (normalized === "APPROVED") return "text-[var(--arn-green)]";
+  if (normalized === "CANCELLED") return "text-[var(--arn-red)]";
+  return "text-[var(--arn-amber-txt)]";
+}
+
+function getPanStatusLabel(panStatus?: string): { label: string; className: string } {
+  if (panStatus === "KYC_SUCCESS") {
+    return { label: "KYC Done", className: "bg-[var(--arn-green-bg)] text-[var(--arn-green)]" };
+  }
+  return { label: "KYC Pending", className: "bg-[var(--arn-red-bg)] text-[var(--arn-red)]" };
 }
 
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
@@ -205,13 +211,12 @@ export default function ArnClientSelector({ onSelect, selectedClientId, onSearch
                 />
                 <div className="flex-1 min-w-0">
                   <div className="truncate text-sm font-bold text-[var(--arn-txt)]">{client.name}</div>
-                  <div className="mt-0.5 text-xs text-[var(--arn-txt-3)]">{client.mobileNumber}</div>
+                  <div className="mt-0.5 text-xs text-[var(--arn-txt-3)]">
+                    {client.mobileNumber} · <span className={getMandateTextColor(client.mandateStatus)}>{getMandateText(client.mandateStatus)}</span>
+                  </div>
                 </div>
-                <div className="hidden sm:block">
-                  <ArnStatusTag
-                    label={formatMandateStatus(client.mandateStatus)}
-                    variant={getMandateVariant(client.mandateStatus)}
-                  />
+                <div className={cn("text-[10px] font-semibold px-2 py-[3px] rounded", getPanStatusLabel(client.panStatus).className)}>
+                  {getPanStatusLabel(client.panStatus).label}
                 </div>
                 <div
                   className={cn(
