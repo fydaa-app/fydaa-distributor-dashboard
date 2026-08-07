@@ -51,6 +51,7 @@ export interface ArnSipBookItem {
   xirr: number;
   status: ArnSipBookStatus;
   statusLabel: string;
+  bookStatus: string;
 }
 
 export interface ArnSipBookListParams {
@@ -107,7 +108,7 @@ export interface ArnSipBookBackendSip {
   nextSipDate: string | Date | null;
   xirr: number;
   status: string;
-  bookStatus: "active" | "at_risk" | "paused";
+  bookStatus: "active" | "at_risk" | "paused" | "cancelled" | "inactive";
 }
 
 export interface ArnSipBookBackendResponse {

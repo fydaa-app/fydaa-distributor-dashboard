@@ -21,7 +21,7 @@ export default function ArnSipBookFilters({ active, onChange, filterCounts }: Ar
   const filters: Array<{ label: string; value: ArnSipBookFilter }> = [
     { label: `All (${counts.all})`, value: "all" },
     { label: `Active (${counts.active})`, value: "active" },
-    { label: `Inactive (${counts.inactive})`, value: "inactive" },
+    { label: `Pending (${counts.inactive})`, value: "inactive" },
     { label: `Cancelled (${counts.cancelled})`, value: "cancelled" },
     { label: `SIPs at risk (${counts.sipsAtRisk})`, value: "sips_at_risk" },
   ];

@@ -16,9 +16,9 @@ interface ArnSipBookTableProps {
 
 function getStatusVariant(status: ArnSipBookStatus) {
   if (status === "active") return "active";
-  if (status === "inactive") return "inactive";
+  if (status === "inactive") return "pending";
   if (status === "cancelled") return "cancelled";
-  return "inactive";
+  return "pending";
 }
 
 function getNextSipClass(status: ArnSipBookStatus) {
