@@ -19,6 +19,10 @@ export interface DirectProduct {
   goalId: number;
   stockType: string;
   assumedCagr: string;
+  defAmt: number;
+  defTenure: number;
+  tenures: number[];
+  defFund: string;
 }
 
 const DIRECT_PRODUCTS: DirectProduct[] = [
@@ -32,6 +36,10 @@ const DIRECT_PRODUCTS: DirectProduct[] = [
     goalId: 39,
     stockType: "Gold",
     assumedCagr: "9%",
+    defAmt: 5000,
+    defTenure: 5,
+    tenures: [3, 5, 10, 20],
+    defFund: "HDFC Gold ETF FoF — Direct Plan — Growth",
   },
   {
     key: "equity",
@@ -43,6 +51,10 @@ const DIRECT_PRODUCTS: DirectProduct[] = [
     goalId: 36,
     stockType: "IndianStock",
     assumedCagr: "12%",
+    defAmt: 10000,
+    defTenure: 10,
+    tenures: [3, 5, 10, 20, 30],
+    defFund: "HDFC Flexi Cap Fund — Direct Plan — Growth",
   },
   {
     key: "multi-asset",
@@ -54,6 +66,10 @@ const DIRECT_PRODUCTS: DirectProduct[] = [
     goalId: 38,
     stockType: "MultiAsset",
     assumedCagr: "10%",
+    defAmt: 10000,
+    defTenure: 10,
+    tenures: [5, 10, 20, 30],
+    defFund: "ICICI Pru Multi-Asset Fund — Direct Plan — Growth",
   },
   {
     key: "debt",
@@ -65,6 +81,10 @@ const DIRECT_PRODUCTS: DirectProduct[] = [
     goalId: 37,
     stockType: "FixedIncomeBonds",
     assumedCagr: "7%",
+    defAmt: 10000,
+    defTenure: 5,
+    tenures: [1, 3, 5, 10],
+    defFund: "Aditya Birla Sun Life Liquid Fund — Direct Plan — Growth",
   },
   {
     key: "hybrid",
@@ -76,6 +96,10 @@ const DIRECT_PRODUCTS: DirectProduct[] = [
     goalId: 40,
     stockType: "Hybrid",
     assumedCagr: "10%",
+    defAmt: 10000,
+    defTenure: 10,
+    tenures: [3, 5, 10, 20],
+    defFund: "Kotak Equity Hybrid Fund — Direct Plan — Growth",
   },
   {
     key: "global",
@@ -87,6 +111,10 @@ const DIRECT_PRODUCTS: DirectProduct[] = [
     goalId: 41,
     stockType: "Global",
     assumedCagr: "11%",
+    defAmt: 10000,
+    defTenure: 10,
+    tenures: [3, 5, 10, 20, 30],
+    defFund: "Motilal Oswal Midcap Fund — Direct Plan — Growth",
   },
 ];
 
@@ -248,9 +276,8 @@ export default function ArnDirectProductSelector({
           {DIRECT_PRODUCTS.map((product) => {
             const isSelected = product.key === selectedProductKey;
 
-            return (
-              
-              <button
+             return (
+               <button
                 key={product.key}
                 type="button"
                 onClick={() => onSelect(product)}

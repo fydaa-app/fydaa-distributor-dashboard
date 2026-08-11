@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import ArnGoalSetupStepper from "@/components/goalSetup/ArnGoalSetupStepper";
 import ArnClientSelector from "@/components/goalSetup/ArnClientSelector";
 import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
 import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar";
 import ArnGoalPathSelector from "@/components/goalSetup/ArnGoalPathSelector";
 import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
+import ArnSetSipPage, { type ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 
@@ -23,6 +24,7 @@ export default function ArnGoalSetupPage() {
   const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(null);
   const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
+  const sipPageRef = useRef<ArnSetSipPageRef>(null);
 
   const handleClientSelect = useCallback((client: GoalSetupClient) => {
     setSelectedClient(client);
@@ -51,6 +53,9 @@ export default function ArnGoalSetupPage() {
       setStep(3);
     } else if (selectedPath === "goal" && step === 2) {
       setStep(3);
+    } else if (step === 3 && sipPageRef.current) {
+      sipPageRef.current.getConfig();
+      setStep(4);
     }
   }, [selectedClient, selectedPath, selectedProduct, step]);
 
@@ -110,6 +115,17 @@ export default function ArnGoalSetupPage() {
         </div>
       )}
 
+      {step === 3 && (
+        <div className="pb-40">
+          <ArnSetSipPage
+            ref={sipPageRef}
+            selectedClient={selectedClient}
+            selectedProduct={selectedPath === "direct" ? selectedProduct : null}
+            onBack={handleBack}
+          />
+        </div>
+      )}
+
       <ArnGoalSetupBottomBar
         step={step}
         stepName={STEP_NAMES[step]}
@@ -122,7 +138,9 @@ export default function ArnGoalSetupPage() {
               ? selectedPath === "direct"
                 ? !!selectedProduct
                 : !!selectedPath
-              : false
+              : step === 3
+                ? true
+                : false
         }
         continueLabel="Continue →"
       />
