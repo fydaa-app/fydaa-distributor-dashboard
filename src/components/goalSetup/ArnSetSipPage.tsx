@@ -2,6 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { calculateProjectedCorpus } from "@/lib/sipMath";
 import { type DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 import { type GoalSetupClient } from "@/services/arnGoalSetupService";
 import { searchFunds, getRecommendedPortfolio } from "@/services/arnStockApi";
@@ -99,11 +100,14 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     }, [recommendedPortfolio, product.assumedCagr]);
 
     const projection = useMemo(() => {
+      const corpus = calculateProjectedCorpus({
+        sipAmount,
+        frequency,
+        tenure,
+        expectedCagr,
+      });
       const periodsPerYear = frequency === "daily" ? 264 : 12;
       const n = periodsPerYear * tenure;
-      const r = Math.pow(1 + expectedCagr, 1 / periodsPerYear) - 1;
-      const corpus =
-        r === 0 ? sipAmount * n : sipAmount * ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
       const invested = sipAmount * n;
       const gains = corpus - invested;
       const growth = invested > 0 ? (gains / invested) * 100 : 0;
@@ -161,7 +165,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       return () => {
         cancelled = true;
       };
-    }, [selectedClient?.userId, product.goalId, product.defFund]);
+    }, [selectedClient, selectedClient?.userId, product.goalId, product.defFund]);
 
     useEffect(() => {
       if (fundMode !== "own") {
@@ -257,10 +261,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         setSelectedScheme(fund.ticker || fund.scheme || fund.isin || fund.schemeCode || null);
         setSelectedMfId(fund.selectedMfId ?? fund.id ?? null);
         setFundSearchQuery("");
-        setFundResults([]);
-        setFundMode("rec");
       },
-      [setSelectedFund, setSelectedScheme, setSelectedMfId, setFundSearchQuery, setFundResults, setFundMode]
+      [setSelectedFund, setSelectedScheme, setSelectedMfId, setFundSearchQuery]
     );
 
     const handleSliderChange = useCallback(
@@ -496,16 +498,30 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                     ref={searchRef}
                     className="mt-1 max-h-[200px] overflow-y-auto rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)]"
                   >
-                    {fundResults.map((fund) => (
-                      <button
-                        key={fund.id ?? fund.schemeCode}
-                        type="button"
-                        onClick={() => handleFundSelect(fund)}
-                        className="w-full px-3 py-2.5 text-left text-sm font-medium text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-amber-bg)] border-t border-[var(--arn-bdr)] first:border-t-0"
-                      >
-                        {fund.schemeName || fund.fundName || fund.stockName}
-                      </button>
-                    ))}
+                    {fundResults.map((fund) => {
+                      const isSelected =
+                        (selectedMfId != null && (fund.id === selectedMfId || fund.selectedMfId === selectedMfId)) ||
+                        (selectedScheme != null && (fund.ticker === selectedScheme || fund.scheme === selectedScheme || fund.isin === selectedScheme || fund.schemeCode === selectedScheme)) ||
+                        (fund.schemeName === selectedFund || fund.fundName === selectedFund || fund.stockName === selectedFund);
+
+                      return (
+                        <button
+                          key={fund.id ?? fund.schemeCode}
+                          type="button"
+                          onClick={() => handleFundSelect(fund)}
+                          className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-amber-bg)] border-t border-[var(--arn-bdr)] first:border-t-0"
+                        >
+                          <span className="flex-1 truncate">{fund.schemeName || fund.fundName || fund.stockName}</span>
+                          {isSelected && (
+                            <span className="ml-2 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[var(--arn-amber)] text-white">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

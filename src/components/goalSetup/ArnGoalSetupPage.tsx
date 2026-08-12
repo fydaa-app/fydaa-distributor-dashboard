@@ -8,6 +8,8 @@ import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar"
 import ArnGoalPathSelector from "@/components/goalSetup/ArnGoalPathSelector";
 import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
 import ArnSetSipPage, { type ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
+import ArnSetSipDatePage, { type ArnSetSipDatePageRef } from "@/components/goalSetup/ArnSetSipDatePage";
+import ArnReviewConfirmPage, { type ArnReviewConfirmPageRef } from "@/components/goalSetup/ArnReviewConfirmPage";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 
@@ -25,6 +27,9 @@ export default function ArnGoalSetupPage() {
   const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
+  const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
+  const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
+  const [reviewCta, setReviewCta] = useState({ label: "Activate SIP", disabled: false });
 
   const handleClientSelect = useCallback((client: GoalSetupClient) => {
     setSelectedClient(client);
@@ -53,9 +58,15 @@ export default function ArnGoalSetupPage() {
       setStep(3);
     } else if (selectedPath === "goal" && step === 2) {
       setStep(3);
-    } else if (step === 3 && sipPageRef.current) {
-      sipPageRef.current.getConfig();
+    } else if (step === 3) {
+      if (sipPageRef.current) {
+        try {
+          sipPageRef.current.getConfig();
+        } catch {}
+      }
       setStep(4);
+    } else if (step === 4) {
+      setStep(5);
     }
   }, [selectedClient, selectedPath, selectedProduct, step]);
 
@@ -101,14 +112,14 @@ export default function ArnGoalSetupPage() {
         <div className={selectedPath === "direct" ? "pb-40" : ""}>
           {selectedPath === "direct" ? (
             <ArnDirectProductSelector
-              selectedClient={selectedClient}
+              selectedClient={selectedClient!}
               selectedProductKey={selectedProduct?.key ?? null}
               onSelect={handleProductSelect}
               onBack={() => setSelectedPath(null)}
             />
           ) : (
             <ArnGoalPathSelector
-              selectedClient={selectedClient}
+              selectedClient={selectedClient!}
               onSelect={handlePathSelect}
             />
           )}
@@ -119,9 +130,59 @@ export default function ArnGoalSetupPage() {
         <div className="pb-40">
           <ArnSetSipPage
             ref={sipPageRef}
-            selectedClient={selectedClient}
+            selectedClient={selectedClient!}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
             onBack={handleBack}
+          />
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="pb-40">
+          <ArnSetSipDatePage
+            ref={sipDatePageRef}
+            selectedProduct={selectedPath === "direct" ? selectedProduct : null}
+            sipConfig={sipPageRef.current?.getConfig() ?? {
+              sipAmount: 10000,
+              frequency: "monthly",
+              tenure: 10,
+              selectedFund: "",
+              selectedScheme: null,
+              selectedMfId: null,
+              expectedCagr: 0.12,
+            }}
+            onBack={handleBack}
+          />
+        </div>
+      )}
+
+      {step === 5 && (
+        <div className="pb-40">
+          <ArnReviewConfirmPage
+            ref={reviewPageRef}
+            selectedClient={selectedClient!}
+            selectedProduct={selectedPath === "direct" ? selectedProduct : null}
+            selectedGoal={null}
+            sipConfig={sipPageRef.current?.getConfig() ?? {
+              sipAmount: 10000,
+              frequency: "monthly",
+              tenure: 10,
+              selectedFund: "",
+              selectedScheme: null,
+              selectedMfId: null,
+              lumpSumEnabled: false,
+              lumpSumAmount: 0,
+              expectedCagr: 0.12,
+            }}
+            dateConfig={sipDatePageRef.current?.getDateConfig() ?? {
+              sipDate: 10,
+              startDate: new Date().toISOString().split("T")[0],
+              endDate: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+              autoRenewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+              sipFrequency: "monthly",
+            }}
+            onBack={handleBack}
+            onCtaChange={setReviewCta}
           />
         </div>
       )}
@@ -138,11 +199,13 @@ export default function ArnGoalSetupPage() {
               ? selectedPath === "direct"
                 ? !!selectedProduct
                 : !!selectedPath
-              : step === 3
+              : step === 3 || step === 4
                 ? true
-                : false
+                : step === 5
+                  ? !reviewCta.disabled
+                  : false
         }
-        continueLabel="Continue →"
+        continueLabel={step === 5 ? reviewCta.label : "Continue →"}
       />
     </div>
   );

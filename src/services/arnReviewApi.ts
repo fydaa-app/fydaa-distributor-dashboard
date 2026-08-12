@@ -1,0 +1,254 @@
+type JsonObject = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null;
+}
+
+function getStockApiUrl(): string {
+  return process.env.NEXT_PUBLIC_STOCK_API_URL || "";
+}
+
+function getAuthApiUrl(): string {
+  return process.env.NEXT_PUBLIC_AUTHENTICATION_API_URL || "";
+}
+
+async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers);
+  headers.set("Content-Type", "application/json");
+
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(/authToken=([^;]+)/);
+    const authToken = match ? decodeURIComponent(match[1]) : "";
+    if (authToken) {
+      headers.set("Authorization", `Bearer ${authToken}`);
+    }
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    cache: "no-store",
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      isRecord(payload) && typeof payload.message === "string"
+        ? payload.message
+        : "Request failed. Please try again.";
+    throw new Error(message);
+  }
+
+  return payload as T;
+}
+
+export interface UserStageResponse {
+  isSubscribed: boolean;
+  isSubscriptionExpiringSoon: boolean;
+  isSubscriptionExpired: boolean;
+  isNewSmallcaseSubscribed: boolean;
+  isRiskProfileComplete: boolean;
+  isPinCreated: boolean;
+  hadLegacyPin: boolean;
+  hasLegacyV1Pin: boolean;
+  pinSetupType: string;
+  isFirstInvestmentComplete: boolean;
+  isOrderAMO: boolean;
+  isFirstUsStockInvestmentComplete: boolean;
+  subscriptionExpiryDaysLeft: number | null;
+  kycExtraData: boolean;
+  isNonCompliantData: boolean;
+  isMaxSipAutopay: boolean;
+  isKiteSessionExpired: boolean;
+  isKiteUser: boolean;
+  isKiteRebalanceComplete: boolean;
+  isEmandate: boolean;
+  isAddressId: boolean;
+  isEmailId: boolean;
+  isPhoneId: boolean;
+  isInvestorProfileId: boolean;
+  isMfiaId: boolean;
+  isEmail: boolean;
+  isUSstock: number;
+  isInvestmentModelSelected: boolean;
+  investmentModel: string;
+  isKycCompliant: boolean;
+  isKycNonCompliant: boolean;
+  isNominee: boolean;
+  isDigiLocker: boolean;
+  isNSDL: boolean;
+  isPan: boolean;
+  isDob: boolean;
+  isBank: boolean;
+  isMfMandate: boolean;
+  mandateAmount: number;
+  isCompliant: boolean;
+  isPackage: boolean;
+  packageName: string;
+  isKycExpired: boolean;
+  isRepair: boolean;
+  isEmployee: boolean;
+  isSetuConsent: boolean;
+  isLumpsum: boolean;
+  lumpsumId: number | null;
+  isSavingGoal: boolean;
+  indianStockPortfolioId: number;
+  usStockPortfolioId: number | null;
+  isFinancialPlanComplete: boolean;
+  isHealthCheckUpComplete: boolean;
+  isDebtPlanComplete: boolean;
+  ismodify: boolean;
+  ismodifydigilocker: boolean;
+  ismodifyquestions: boolean;
+  ismodifyesign: boolean;
+  ismodifynsdl: boolean;
+  profileStage: Array<{
+    type: string;
+    completed: boolean;
+    details: Record<string, unknown>;
+  }>;
+}
+
+export interface KycCheckResponse {
+  status: boolean;
+  reason: string | null;
+  readiness?: {
+    status: string | null;
+    code: string | null;
+    reason: string | null;
+  };
+  pan?: {
+    status: string | null;
+    code: string | null;
+    reason: string | null;
+  };
+  name?: {
+    status: string | null;
+    code: string | null;
+    reason: string | null;
+  };
+  date_of_birth?: {
+    status: string | null;
+    code: string | null;
+    reason: string | null;
+  };
+  bank_accounts?: Array<{
+    status: string | null;
+    code: string | null;
+    reason: string | null;
+  }>;
+}
+
+export interface SipSetupPayload {
+  goalId: number;
+  sipAmount: string;
+  sipName: string;
+  goalAmount: string;
+  autoRenewDate: string;
+  startDate: string;
+  endDate: string;
+  status: "INACTIVE";
+  sipTenure: string;
+  sipFrequency: "daily" | "monthly";
+  sipDate?: string;
+  selectedScheme?: string | null;
+  selectedMfId?: number | null;
+}
+
+export interface SipSetupResponse {
+  sipData: {
+    id: number;
+    portfolioId?: number;
+  };
+  portfolioId?: number;
+}
+
+export interface BuyOrderMfResponse {
+  orders?: Array<{
+    isin: string;
+    quantity: string;
+    price: string;
+    orderValue: string;
+  }>;
+  data?: {
+    orders?: Array<{
+      isin: string;
+      quantity: string;
+      price: string;
+      orderValue: string;
+    }>;
+  };
+}
+
+export interface CompleteMandateRequest {
+  user_ip: string;
+  sipId: number;
+  orders: Array<{
+    isin: string;
+    quantity: string;
+    price: string;
+    orderValue: string;
+  }>;
+}
+
+export async function getUserStage(
+  userId: number,
+  goalId: number,
+  assetType = "MUTUALFUND"
+): Promise<UserStageResponse> {
+  const url = `${getAuthApiUrl()}/user/getUserStageForUser?userId=${userId}&goalId=${goalId}&assetType=${assetType}`;
+  return fetchJson<UserStageResponse>(url);
+}
+
+export async function checkKycForUser(userId: number): Promise<KycCheckResponse> {
+  const url = `${getAuthApiUrl()}/kyc/check-kyc-for-user?userId=${userId}`;
+  return fetchJson<KycCheckResponse>(url, { method: "POST" });
+}
+
+export async function sendConsentOtp(): Promise<void> {
+  const url = `${getStockApiUrl()}/mutualFund/consentOtp`;
+  await fetchJson(url, { method: "POST" });
+}
+
+export async function verifyConsentOtp(otp: string): Promise<void> {
+  const url = `${getStockApiUrl()}/mutualFund/verifyOtp`;
+  await fetchJson(url, {
+    method: "POST",
+    body: JSON.stringify({ otp }),
+  });
+}
+
+export async function createSipSetup(
+  payload: SipSetupPayload
+): Promise<SipSetupResponse> {
+  const url = `${getStockApiUrl()}/orders/sipSetup`;
+  return fetchJson<SipSetupResponse>(url, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getBuyOrderMf(
+  sipId: number,
+  minimumAmount: number
+): Promise<BuyOrderMfResponse> {
+  const url = `${getStockApiUrl()}/stock/buyOrderMf?sipId=${sipId}&minimumAmount=${minimumAmount}`;
+  return fetchJson<BuyOrderMfResponse>(url, { method: "GET" });
+}
+
+export async function completeWithMandateFirstDebit(
+  sipId: number,
+  orders: CompleteMandateRequest["orders"],
+  userIp: string
+): Promise<void> {
+  const url = `${getStockApiUrl()}/mutualFund/mf-purchase-plan/orders/flow/complete-with-mandate-first-debit`;
+  await fetchJson(url, {
+    method: "POST",
+    body: JSON.stringify({
+      user_ip: userIp,
+      sipId,
+      orders,
+    }),
+  });
+}
