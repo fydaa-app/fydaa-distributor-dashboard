@@ -6,7 +6,7 @@ function isRecord(value: unknown): value is JsonObject {
 
 function getStockApiUrl(): string {
   return (
-    process.env.NEXT_PUBLIC_STOCK_API_URL || "https://stocktransaction.fydaa.com"
+    process.env.NEXT_PUBLIC_STOCK_API_URL || ""
   );
 }
 

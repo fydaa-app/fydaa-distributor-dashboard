@@ -67,6 +67,8 @@ export default function ArnGoalSetupPage() {
       setStep(4);
     } else if (step === 4) {
       setStep(5);
+    } else if (step === 5) {
+      reviewPageRef.current?.handleCta();
     }
   }, [selectedClient, selectedPath, selectedProduct, step]);
 

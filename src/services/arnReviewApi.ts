@@ -192,6 +192,107 @@ export interface CompleteMandateRequest {
   }>;
 }
 
+function getPayApiUrl(): string {
+  return process.env.NEXT_PUBLIC_PAYMENT_API_URL || "";
+}
+
+export interface SetupMandateResponse {
+  mandateId: number;
+  authorizationUrl: string;
+  paymentId: number;
+  message: string;
+}
+
+export interface UpdateMfiaResponse {
+  success: boolean;
+  message: string;
+}
+
+export async function setupMandateForUser(
+  userId: number,
+  mandateType: string,
+  mandateLimit: number,
+  postbackUrl?: string
+): Promise<SetupMandateResponse> {
+  const url = `${getPayApiUrl()}/subscription/createAndAuthorizeMandate-for-user`;
+  return fetchJson<SetupMandateResponse>(url, {
+    method: "POST",
+    body: JSON.stringify({
+      userId,
+      mandate_type: mandateType,
+      mandate_limit: mandateLimit,
+      paymentPostbackUrl: postbackUrl,
+    }),
+  });
+}
+
+export async function getMandateForUser(mandateId: number, userId: number): Promise<Record<string, unknown>> {
+  const url = `${getPayApiUrl()}/subscription/mandate/${mandateId}-for-user?userId=${userId}`;
+  return fetchJson(url, { method: "GET" });
+}
+
+export async function updateMfiaForUser(userId: number): Promise<UpdateMfiaResponse> {
+  const url = `${getPayApiUrl()}/subscription/update-mfia-for-user`;
+  return fetchJson<UpdateMfiaResponse>(url, {
+    method: "PATCH",
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export async function sendConsentOtpForUser(userId: number): Promise<void> {
+  const url = `${getStockApiUrl()}/mutualFund/consentOtp-for-user`;
+  await fetchJson(url, {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export async function verifyConsentOtpForUser(userId: number, otp: string): Promise<void> {
+  const url = `${getStockApiUrl()}/mutualFund/verifyOtp-for-user`;
+  await fetchJson(url, {
+    method: "POST",
+    body: JSON.stringify({ userId, otp }),
+  });
+}
+
+export async function createSipSetupForUser(
+  userId: number,
+  payload: SipSetupPayload
+): Promise<SipSetupResponse> {
+  const url = `${getStockApiUrl()}/orders/sipSetup-for-user`;
+  return fetchJson<SipSetupResponse>(url, {
+    method: "POST",
+    body: JSON.stringify({ ...payload, userId }),
+  });
+}
+
+export async function getBuyOrderMfForUser(
+  userId: number,
+  sipId: number,
+  minimumAmount: number
+): Promise<BuyOrderMfResponse> {
+  const url = `${getStockApiUrl()}/stock/buyOrderMf?sipId=${sipId}&minimumAmount=${minimumAmount}&userId=${userId}`;
+  return fetchJson<BuyOrderMfResponse>(url, { method: "GET" });
+}
+
+export async function completeWithMandateFirstDebitForUser(
+  userId: number,
+  sipId: number,
+  orders: CompleteMandateRequest["orders"],
+  userIp: string
+): Promise<void> {
+  const url = `${getStockApiUrl()}/mutualFund/mf-purchase-plan/orders/flow/complete-with-mandate-first-debit-for-user`;
+  await fetchJson(url, {
+    method: "POST",
+    body: JSON.stringify({
+      userId,
+      user_ip: userIp,
+      sipId,
+      orders,
+    }),
+  });
+}
+
 export async function getUserStage(
   userId: number,
   goalId: number,

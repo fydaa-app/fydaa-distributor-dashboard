@@ -1,6 +1,6 @@
 "use client";
 
-import { getCookie } from "cookies-next";
+import { getCookie, setCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
@@ -79,8 +79,24 @@ export default function ArnOnboardPage() {
     setIsLoadingRisk(true);
     setPhase("risk");
 
+    let effectiveToken = token;
+
     import("@/services/arnOnboardService")
-      .then(({ getUserStage }) => getUserStage(token))
+      .then(({ getUserStage, selectInvestmentModel }) => {
+        return selectInvestmentModel("ARN", token)
+          .then((modelData) => {
+            const newAccessToken =
+              typeof modelData?.accessToken === "string" ? modelData.accessToken : null;
+
+            if (newAccessToken) {
+              setCookie("onboardedUserToken", newAccessToken, { path: "/" });
+              setOnboardedToken(newAccessToken);
+              effectiveToken = newAccessToken;
+            }
+            return getUserStage(effectiveToken);
+          })
+          .catch(() => getUserStage(effectiveToken));
+      })
       .then((stage) => {
         if (
           stage.isRiskProfileComplete &&
@@ -111,11 +127,11 @@ export default function ArnOnboardPage() {
           return;
         }
         if (stage.isRiskProfileComplete) {
-          return loadRiskScore(token);
+          return loadRiskScore(effectiveToken);
         }
         return import("@/services/arnOnboardService")
           .then(({ getRiskProfileQuestionnaire }) =>
-            getRiskProfileQuestionnaire(token)
+            getRiskProfileQuestionnaire(effectiveToken)
           )
           .then((questions) => {
             setRiskQuestions(questions);

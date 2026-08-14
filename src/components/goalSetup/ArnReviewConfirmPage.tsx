@@ -11,18 +11,23 @@ import { calculateProjectedCorpus } from "@/lib/sipMath";
 import {
   getUserStage,
   checkKycForUser,
-  sendConsentOtp,
-  verifyConsentOtp,
-  createSipSetup,
-  getBuyOrderMf,
-  completeWithMandateFirstDebit,
+  sendConsentOtpForUser,
+  verifyConsentOtpForUser,
+  createSipSetupForUser,
+  getBuyOrderMfForUser,
+  completeWithMandateFirstDebitForUser,
+  setupMandateForUser,
+  getMandateForUser,
+  updateMfiaForUser,
   type UserStageResponse,
   type KycCheckResponse,
   type SipSetupPayload,
+  type SetupMandateResponse,
 } from "@/services/arnReviewApi";
 
 export interface ArnReviewConfirmPageRef {
   getPayload: () => SipSetupPayload;
+  handleCta: () => Promise<void>;
 }
 
 interface ArnReviewConfirmPageProps {
@@ -62,6 +67,8 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
     const [submissionError, setSubmissionError] = useState<string | null>(null);
     const [userStage, setUserStage] = useState<UserStageResponse | null>(null);
     const [kycReason, setKycReason] = useState<string | null>(null);
+    const [isPollingMandate, setIsPollingMandate] = useState(false);
+    const [mandateError, setMandateError] = useState<string | null>(null);
 
     const product = useMemo(
       () =>
@@ -96,20 +103,18 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       [sipConfig]
     );
 
-    const monthlyEquivalent = useMemo(
-      () => (sipConfig.frequency === "daily" ? sipConfig.sipAmount * 22 : sipConfig.sipAmount),
-      [sipConfig]
-    );
-
     const mandateAmount = userStage?.mandateAmount ?? 0;
+    const sipInstallmentLabel = sipConfig.frequency === "daily" ? "/day" : "/mo";
 
     const ctaState = useMemo(() => {
       if (readiness.kyc === "fail") return { label: "Complete KYC", disabled: false };
+      if (isPollingMandate) return { label: "Waiting for mandate...", disabled: true };
       if (readiness.consentOtp === "fail") return { label: "Send consent OTP", disabled: false };
       if (otpSent && readiness.consentOtp !== "ok")
         return { label: "Verify OTP", disabled: otpInput.length < 6 };
+      if (readiness.mandate === "fail") return { label: "Set up UPI mandate", disabled: false };
       return { label: "Activate SIP", disabled: false };
-    }, [readiness, otpSent, otpInput]);
+    }, [readiness, otpSent, otpInput, isPollingMandate]);
 
     useEffect(() => {
       onCtaChange?.(ctaState);
@@ -123,7 +128,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         .then((data) => {
           if (!cancelled) {
             setUserStage(data);
-            const mandateOk = data.isMfMandate && data.mandateAmount >= monthlyEquivalent;
+            const mandateOk = data.isMfMandate && data.mandateAmount >= sipConfig.sipAmount;
             setReadiness((r) => ({
               ...r,
               mandate: mandateOk ? "ok" : "fail",
@@ -139,7 +144,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       return () => {
         cancelled = true;
       };
-    }, [selectedClient.userId, product.goalId, monthlyEquivalent]);
+    }, [selectedClient.userId, product.goalId, sipConfig.sipAmount]);
 
     useEffect(() => {
       let cancelled = false;
@@ -183,19 +188,23 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         ...(sipConfig.selectedScheme && { selectedScheme: sipConfig.selectedScheme }),
         ...(sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
       }),
+      handleCta: () => handleCta(),
     }));
 
     const handleCta = useCallback(async () => {
       setSubmissionError(null);
+      setMandateError(null);
 
+      // 1. KYC gate
       if (readiness.kyc === "fail") {
         return;
       }
 
+      // 2. Send consent OTP
       if (readiness.consentOtp === "fail") {
         setIsSubmitting(true);
         try {
-          await sendConsentOtp();
+          await sendConsentOtpForUser(selectedClient.userId);
           setOtpSent(true);
           setReadiness((r) => ({ ...r, consentOtp: "loading" }));
         } catch (err) {
@@ -206,12 +215,19 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         return;
       }
 
+      // 3. Verify OTP
       if (otpSent && readiness.consentOtp !== "ok") {
         setIsSubmitting(true);
         try {
-          await verifyConsentOtp(otpInput);
+          await verifyConsentOtpForUser(selectedClient.userId, otpInput);
           setReadiness((r) => ({ ...r, consentOtp: "ok" }));
           setOtpSent(false);
+
+          // Re-fetch mandate status after OTP verified (per MD sequence)
+          const stage = await getUserStage(selectedClient.userId, product.goalId);
+          setUserStage(stage);
+          const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
+          setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
         } catch (err) {
           setSubmissionError(err instanceof Error ? err.message : "Invalid OTP");
         } finally {
@@ -220,9 +236,83 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         return;
       }
 
-      if (readiness.kyc === "ok" && readiness.consentOtp === "ok") {
+      // 4. Mandate setup (after OTP verified, only if mandate needed)
+      if (readiness.consentOtp === "ok" && readiness.mandate === "fail") {
         setIsSubmitting(true);
         try {
+          const response: SetupMandateResponse = await setupMandateForUser(
+            selectedClient.userId,
+            "UPI",
+            sipConfig.sipAmount,
+            typeof window !== "undefined" ? `${window.location.origin}/arn-orders` : undefined
+          );
+          setIsPollingMandate(true);
+
+          // Open authorization URL in new tab
+          if (response.authorizationUrl) {
+            window.open(response.authorizationUrl, "_blank");
+          }
+
+          // Poll for mandate approval
+          const maxAttempts = 40;
+          let attempts = 0;
+          let approved = false;
+          const pollInterval = 3000;
+
+          while (attempts < maxAttempts && !approved) {
+            await new Promise((resolve) => setTimeout(resolve, pollInterval));
+            attempts++;
+
+            try {
+              const mandate = await getMandateForUser(response.mandateId, selectedClient.userId);
+              const status = mandate.mandate_status || mandate.status || "";
+
+              if (status === "APPROVED") {
+                approved = true;
+                const stage = await getUserStage(selectedClient.userId, product.goalId);
+                setUserStage(stage);
+                const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
+                setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
+                break;
+              } else               if (status === "REJECTED" || status === "CANCELLED") {
+                const reason = typeof mandate.rejected_reason === "string" ? mandate.rejected_reason : undefined;
+                throw new Error(reason || "Mandate was rejected or cancelled");
+              }
+            } catch (pollErr) {
+              if (
+                pollErr instanceof Error &&
+                (pollErr.message.includes("rejected") || pollErr.message.includes("cancelled"))
+              ) {
+                throw pollErr;
+              }
+            }
+          }
+
+          if (!approved) {
+            throw new Error("UPI mandate authorization was not completed in time. Please try again.");
+          }
+        } catch (err) {
+          const message =
+            err instanceof Error ? err.message : "Failed to set up UPI mandate. Please try again.";
+          setMandateError(message);
+          setSubmissionError(message);
+          setReadiness((r) => ({ ...r, mandate: "fail" }));
+        } finally {
+          setIsPollingMandate(false);
+          setIsSubmitting(false);
+        }
+        return;
+      }
+
+      // 5. Activate SIP
+      if (readiness.kyc === "ok" && readiness.consentOtp === "ok" && readiness.mandate === "ok") {
+        setIsSubmitting(true);
+        try {
+          const updateRes = await updateMfiaForUser(selectedClient.userId);
+          if (!updateRes?.success) {
+            throw new Error(updateRes?.message || "Failed to update MF investment account");
+          }
+
           const payload: SipSetupPayload = {
             goalId: product.goalId,
             sipAmount: sipConfig.sipAmount.toFixed(2),
@@ -241,7 +331,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
 
           let currentSipId: number;
           try {
-            const res = await createSipSetup(payload);
+            const res = await createSipSetupForUser(selectedClient.userId, payload);
             currentSipId = res.sipData.id;
           } catch (err: unknown) {
             const error = err as { status?: number; sipId?: number; sipData?: { id: number } };
@@ -252,7 +342,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             }
           }
 
-          const buyOrderRes = await getBuyOrderMf(currentSipId, sipConfig.sipAmount);
+          const buyOrderRes = await getBuyOrderMfForUser(selectedClient.userId, currentSipId, sipConfig.sipAmount);
           const orders = buyOrderRes.orders ?? buyOrderRes.data?.orders ?? [];
           const sanitizedOrders = orders.map((order) => ({
             isin: order.isin,
@@ -263,7 +353,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
 
           const userIp = "127.0.0.1";
 
-          await completeWithMandateFirstDebit(currentSipId, sanitizedOrders, userIp);
+          await completeWithMandateFirstDebitForUser(selectedClient.userId, currentSipId, sanitizedOrders, userIp);
 
           setReadiness((r) => ({ ...r, mandate: "ok" }));
           setTimeout(() => {
@@ -277,7 +367,17 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         }
         return;
       }
-    }, [readiness, otpSent, otpInput, sipConfig, dateConfig, projectedCorpus, product, router]);
+    }, [
+      readiness,
+      otpSent,
+      otpInput,
+      sipConfig,
+      dateConfig,
+      projectedCorpus,
+      product,
+      selectedClient,
+      router,
+    ]);
 
     const freqLabel = sipConfig.frequency === "daily" ? "/day" : "/mo";
 
@@ -364,7 +464,11 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                 sub={
                   readiness.mandate === "ok"
                     ? "Active"
-                    : `Current limit ₹${mandateAmount.toLocaleString("en-IN")} — SIP needs ₹${monthlyEquivalent.toLocaleString("en-IN")}/mo`
+                    : isPollingMandate
+                      ? "Waiting for UPI authorization..."
+                      : mandateError
+                        ? mandateError
+                        : `Current limit ₹${mandateAmount.toLocaleString("en-IN")} — SIP needs ₹${sipConfig.sipAmount.toLocaleString("en-IN")}${sipInstallmentLabel}`
                 }
               />
             </div>
@@ -402,7 +506,40 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           </div>
         )}
 
-        {submissionError && !otpSent && (
+        {/* Mandate polling indicator */}
+        {isPollingMandate && (
+          <div className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--arn-amber)] border-t-transparent" />
+              <div>
+                <div className="text-sm font-semibold text-[var(--arn-txt)]">
+                  Waiting for UPI authorization...
+                </div>
+                <div className="text-xs text-[var(--arn-txt-3)]">
+                  Complete the approval in your UPI app. Do not close this page.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mandate error / retry */}
+        {mandateError && !isPollingMandate && (
+          <div className="rounded-[12px] border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+            <div className="font-semibold">Mandate setup failed</div>
+            <div className="mt-1">{mandateError}</div>
+            <button
+              type="button"
+              onClick={handleCta}
+              disabled={isSubmitting}
+              className="mt-3 rounded-[12px] bg-[var(--arn-amber)] px-4 py-2 text-sm font-bold text-white transition-all hover:bg-[var(--arn-amber-h)] disabled:opacity-40"
+            >
+              Retry mandate setup
+            </button>
+          </div>
+        )}
+
+        {submissionError && !otpSent && !mandateError && (
           <div className="rounded-[12px] border border-red-200 bg-red-50 p-4 text-sm text-red-600">
             {submissionError}
           </div>
