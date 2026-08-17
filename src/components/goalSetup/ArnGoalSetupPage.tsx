@@ -30,6 +30,24 @@ export default function ArnGoalSetupPage() {
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
   const [reviewCta, setReviewCta] = useState({ label: "Activate SIP", disabled: false });
+  const [sipConfig, setSipConfig] = useState<ReturnType<ArnSetSipPageRef["getConfig"]>>({
+    sipAmount: 10000,
+    frequency: "monthly",
+    tenure: 10,
+    selectedFund: "",
+    selectedScheme: null,
+    selectedMfId: null,
+    lumpSumEnabled: false,
+    lumpSumAmount: 0,
+    expectedCagr: 0.12,
+  });
+  const [dateConfig, setDateConfig] = useState<ReturnType<ArnSetSipDatePageRef["getDateConfig"]>>({
+    sipDate: 10,
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    autoRenewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    sipFrequency: "monthly",
+  });
 
   const handleClientSelect = useCallback((client: GoalSetupClient) => {
     setSelectedClient(client);
@@ -135,6 +153,7 @@ export default function ArnGoalSetupPage() {
             selectedClient={selectedClient!}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
             onBack={handleBack}
+            onConfigChange={setSipConfig}
           />
         </div>
       )}
@@ -144,16 +163,9 @@ export default function ArnGoalSetupPage() {
           <ArnSetSipDatePage
             ref={sipDatePageRef}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
-            sipConfig={sipPageRef.current?.getConfig() ?? {
-              sipAmount: 10000,
-              frequency: "monthly",
-              tenure: 10,
-              selectedFund: "",
-              selectedScheme: null,
-              selectedMfId: null,
-              expectedCagr: 0.12,
-            }}
+            sipConfig={sipConfig}
             onBack={handleBack}
+            onDateConfigChange={setDateConfig}
           />
         </div>
       )}
@@ -165,24 +177,8 @@ export default function ArnGoalSetupPage() {
             selectedClient={selectedClient!}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
             selectedGoal={null}
-            sipConfig={sipPageRef.current?.getConfig() ?? {
-              sipAmount: 10000,
-              frequency: "monthly",
-              tenure: 10,
-              selectedFund: "",
-              selectedScheme: null,
-              selectedMfId: null,
-              lumpSumEnabled: false,
-              lumpSumAmount: 0,
-              expectedCagr: 0.12,
-            }}
-            dateConfig={sipDatePageRef.current?.getDateConfig() ?? {
-              sipDate: 10,
-              startDate: new Date().toISOString().split("T")[0],
-              endDate: new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-              autoRenewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-              sipFrequency: "monthly",
-            }}
+            sipConfig={sipConfig}
+            dateConfig={dateConfig}
             onBack={handleBack}
             onCtaChange={setReviewCta}
           />

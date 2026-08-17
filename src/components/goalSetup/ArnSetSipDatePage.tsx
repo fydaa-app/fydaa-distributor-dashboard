@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, forwardRef, useImperativeHandle } from "react";
+import { useCallback, useMemo, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { type DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 
@@ -26,6 +26,7 @@ interface ArnSetSipDatePageProps {
     expectedCagr: number;
   };
   onBack: () => void;
+  onDateConfigChange?: (config: ReturnType<ArnSetSipDatePageRef["getDateConfig"]>) => void;
 }
 
 const DATE_OPTIONS = [1, 5, 10, 15, 20, 25, 28];
@@ -102,7 +103,7 @@ function formatDisplayDate(date: Date): string {
 }
 
 const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProps>(
-  function ArnSetSipDatePage({ selectedProduct, sipConfig, onBack }, ref) {
+  function ArnSetSipDatePage({ selectedProduct, sipConfig, onBack, onDateConfigChange }, ref) {
     const product = selectedProduct ?? {
       key: "equity",
       name: "Equity",
@@ -151,6 +152,16 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
         sipFrequency: sipConfig.frequency,
       }),
     }));
+
+    useEffect(() => {
+      onDateConfigChange?.({
+        sipDate,
+        startDate,
+        endDate,
+        autoRenewDate,
+        sipFrequency: sipConfig.frequency,
+      });
+    }, [sipDate, startDate, endDate, autoRenewDate, sipConfig.frequency, onDateConfigChange]);
 
     const handleDateSelect = useCallback((day: number) => {
       setSipDate(day);

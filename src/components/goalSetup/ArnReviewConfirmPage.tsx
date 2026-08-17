@@ -244,7 +244,8 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             selectedClient.userId,
             "UPI",
             sipConfig.sipAmount,
-            typeof window !== "undefined" ? `${window.location.origin}/arn-orders` : undefined
+            //typeof window !== "undefined" ? `${window.location.origin}/arn-orders` : undefined
+            typeof window !== "undefined" ? `https://partner.fydaa.com/arn-orders` : undefined
           );
           setIsPollingMandate(true);
 
@@ -309,7 +310,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         setIsSubmitting(true);
         try {
           const updateRes = await updateMfiaForUser(selectedClient.userId);
-          if (!updateRes?.success) {
+          if (!updateRes || !updateRes.id) {
             throw new Error(updateRes?.message || "Failed to update MF investment account");
           }
 

@@ -514,16 +514,9 @@ export interface KycExtraParams {
     | "above_10lakh_upto_25lakh"
     | "above_25lakh_upto_1cr"
     | "above_1cr";
-  occupation_type:
-    | "private_sector"
-    | "public_sector"
-    | "government_sector"
-    | "business"
-    | "professional"
-    | "retired"
-    | "housewife"
-    | "student"
-    | "others";
+  occupation: string;
+  pep_details: string;
+  source_of_wealth: string;
 }
 
 export async function submitKycExtra(

@@ -26,6 +26,7 @@ interface ArnSetSipPageProps {
   selectedClient: GoalSetupClient | null;
   selectedProduct: DirectProduct | null;
   onBack: () => void;
+  onConfigChange?: (config: ReturnType<ArnSetSipPageRef["getConfig"]>) => void;
 }
 
 const AMOUNT_PICKS = [300, 1000, 5000, 10000, 25000, 50000];
@@ -51,7 +52,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
-  function ArnSetSipPage({ selectedClient, selectedProduct, onBack }, ref) {
+  function ArnSetSipPage({ selectedClient, selectedProduct, onBack, onConfigChange }, ref) {
     const product = selectedProduct ?? {
       key: "equity",
       name: "Equity",
@@ -252,6 +253,20 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         expectedCagr,
       }),
     }));
+
+    useEffect(() => {
+      onConfigChange?.({
+        sipAmount,
+        frequency,
+        tenure,
+        selectedFund: fundDisplayName,
+        selectedScheme,
+        selectedMfId,
+        lumpSumEnabled,
+        lumpSumAmount,
+        expectedCagr,
+      });
+    }, [sipAmount, frequency, tenure, fundDisplayName, selectedScheme, selectedMfId, lumpSumEnabled, lumpSumAmount, expectedCagr, onConfigChange]);
 
     const handleFundSelect = useCallback(
       (fund: FundOption) => {

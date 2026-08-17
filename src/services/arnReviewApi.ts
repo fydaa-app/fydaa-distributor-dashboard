@@ -227,7 +227,7 @@ export async function setupMandateForUser(
 }
 
 export async function getMandateForUser(mandateId: number, userId: number): Promise<Record<string, unknown>> {
-  const url = `${getPayApiUrl()}/subscription/mandate/${mandateId}-for-user?userId=${userId}`;
+  const url = `${getPayApiUrl()}/subscription/mandate/for-user/${mandateId}?userId=${userId}`;
   return fetchJson(url, { method: "GET" });
 }
 
@@ -271,7 +271,7 @@ export async function getBuyOrderMfForUser(
   sipId: number,
   minimumAmount: number
 ): Promise<BuyOrderMfResponse> {
-  const url = `${getStockApiUrl()}/stock/buyOrderMf?sipId=${sipId}&minimumAmount=${minimumAmount}&userId=${userId}`;
+  const url = `${getStockApiUrl()}/stock/buyOrderMf-for-user?sipId=${sipId}&minimumAmount=${minimumAmount}&userId=${userId}`;
   return fetchJson<BuyOrderMfResponse>(url, { method: "GET" });
 }
 

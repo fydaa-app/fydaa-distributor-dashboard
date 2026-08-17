@@ -431,6 +431,7 @@ export default function ArnOnboardForm({
   const [maritalStatus, setMaritalStatus] = useState("");
   const [incomeSlab, setIncomeSlab] = useState("");
   const [occupationType, setOccupationType] = useState("");
+  const [sourceOfWealth, setSourceOfWealth] = useState("");
   const [pepChecked, setPepChecked] = useState(false);
   const [isSubmittingIdentity, setIsSubmittingIdentity] = useState(false);
   const [identityError, setIdentityError] = useState<string | null>(null);
@@ -509,14 +510,29 @@ export default function ArnOnboardForm({
     { value: "above_1cr", label: "Above ₹1 Cr" },
   ];
   const occupationOptions = [
-    { value: "private_sector", label: "Private Sector" },
-    { value: "public_sector", label: "Public Sector" },
-    { value: "government_sector", label: "Government Sector" },
+    { value: "private_sector_service", label: "Private Sector" },
+    { value: "public_sector_service", label: "Public Sector" },
+    { value: "government_service", label: "Government Sector" },
     { value: "business", label: "Business" },
     { value: "professional", label: "Professional" },
     { value: "retired", label: "Retired" },
-    { value: "housewife", label: "Housewife" },
+    { value: "house_wife", label: "Housewife" },
     { value: "student", label: "Student" },
+    { value: "agriculture", label: "Agriculture" },
+    { value: "doctor", label: "Doctor" },
+    { value: "forex_dealer", label: "Forex Dealer" },
+    { value: "service", label: "Service" },
+    { value: "others", label: "Others" },
+  ];
+
+  const sourceOfWealthOptions = [
+    { value: "salary", label: "Salary" },
+    { value: "business", label: "Business" },
+    { value: "gift", label: "Gift" },
+    { value: "ancestral_property", label: "Ancestral Property" },
+    { value: "rental_income", label: "Rental Income" },
+    { value: "prize_money", label: "Prize Money" },
+    { value: "royalty", label: "Royalty" },
     { value: "others", label: "Others" },
   ];
 
@@ -526,6 +542,7 @@ export default function ArnOnboardForm({
     maritalStatus !== "" &&
     incomeSlab !== "" &&
     occupationType !== "" &&
+    sourceOfWealth !== "" &&
     pepChecked;
 
   const titleCase = (value: string): string =>
@@ -553,16 +570,9 @@ export default function ArnOnboardForm({
           | "above_10lakh_upto_25lakh"
           | "above_25lakh_upto_1cr"
           | "above_1cr",
-        occupation_type: occupationType as
-          | "private_sector"
-          | "public_sector"
-          | "government_sector"
-          | "business"
-          | "professional"
-          | "retired"
-          | "housewife"
-          | "student"
-          | "others",
+        occupation: occupationType,
+        pep_details: "not_applicable",
+        source_of_wealth: sourceOfWealth,
       });
       onIdentityVerified();
     } catch (err) {
@@ -1422,6 +1432,21 @@ export default function ArnOnboardForm({
               >
                 <option value="">Select your occupation</option>
                 {occupationOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Source of Wealth</label>
+              <select
+                className="field-select"
+                value={sourceOfWealth}
+                onChange={(e) => setSourceOfWealth(e.target.value)}
+              >
+                <option value="">Select your source of wealth</option>
+                {sourceOfWealthOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
