@@ -311,7 +311,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         try {
           const updateRes = await updateMfiaForUser(selectedClient.userId);
           if (!updateRes || !updateRes.id) {
-            throw new Error(updateRes?.message || "Failed to update MF investment account");
+            throw new Error("Failed to update MF investment account");
           }
 
           const payload: SipSetupPayload = {

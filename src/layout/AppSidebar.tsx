@@ -34,7 +34,7 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
   {
     title: "Grow",
     items: [
-      //{ label: "Goal & SIP setup", href: "/arn-goal-setup", icon: "target" },
+      { label: "Start Investing", href: "/arn-goal-setup", icon: "target" },
       { label: "Onboard client", href: "/arn-onboard", icon: "user-plus" },
       { label: "Reports", href: "/arn-reports", icon: "chart-bar" },
      // { label: "Share portfolio", href: "/arn-share", icon: "send" },

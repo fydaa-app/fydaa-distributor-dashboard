@@ -204,8 +204,41 @@ export interface SetupMandateResponse {
 }
 
 export interface UpdateMfiaResponse {
-  success: boolean;
-  message: string;
+  object: string;
+  id: string;
+  old_id: number;
+  primary_investor_pan: string;
+  second_investor_pan: string | null;
+  third_investor_pan: string | null;
+  primary_investor: string;
+  second_investor: string | null;
+  third_investor: string | null;
+  primary_investor_old_id: number | null;
+  second_investor_old_id: number | null;
+  third_investor_old_id: number | null;
+  holding_pattern: string;
+  created_at: string;
+  folio_defaults: {
+    communication_email_address: string;
+    communication_mobile_number: string;
+    communication_address: string;
+    overseas_communication_address: string | null;
+    payout_bank_account: string;
+    nominee1: string | null;
+    nominee1_allocation_percentage: number | null;
+    nominee1_identity_proof_type: string | null;
+    nominee1_guardian_identity_proof_type: string | null;
+    nominee2: string | null;
+    nominee2_allocation_percentage: number | null;
+    nominee2_identity_proof_type: string | null;
+    nominee2_guardian_identity_proof_type: string | null;
+    nominee3: string | null;
+    nominee3_allocation_percentage: number | null;
+    nominee3_identity_proof_type: string | null;
+    nominee3_guardian_identity_proof_type: string | null;
+    demat_account: string | null;
+    nominations_info_visibility: string;
+  };
 }
 
 export async function setupMandateForUser(
