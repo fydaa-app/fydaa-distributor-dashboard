@@ -112,6 +112,10 @@ function getHeaderCopy(pathname: string, userName: string) {
       title: "Reports",
       subtitle: "Generate distributor and client-level reports",
     },
+    "/arn-goal-setup": {
+      title: "Goal & SIP setup",
+      subtitle: "Set up goals and SIPs for your clients",
+    },
     "/arn-share": {
       title: "Share portfolio",
       subtitle: "Share portfolio snapshots with clients",

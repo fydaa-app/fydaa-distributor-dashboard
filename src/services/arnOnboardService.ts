@@ -341,6 +341,40 @@ export async function getUserStage(token?: string): Promise<UserStage> {
   return (isRecord(data) ? data : {}) as UserStage;
 }
 
+export async function selectInvestmentModel(
+  investmentModel: string,
+  token?: string
+): Promise<Record<string, unknown>> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/user/select-investment-model`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ investmentModel }),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to set investment model. Please try again.";
+    throw new Error(message);
+  }
+
+  return (isRecord(data) ? data : {}) as Record<string, unknown>;
+}
+
 export async function getRiskIndicators(
   token?: string
 ): Promise<Record<string, unknown>> {
@@ -480,16 +514,9 @@ export interface KycExtraParams {
     | "above_10lakh_upto_25lakh"
     | "above_25lakh_upto_1cr"
     | "above_1cr";
-  occupation_type:
-    | "private_sector"
-    | "public_sector"
-    | "government_sector"
-    | "business"
-    | "professional"
-    | "retired"
-    | "housewife"
-    | "student"
-    | "others";
+  occupation: string;
+  pep_details: string;
+  source_of_wealth: string;
 }
 
 export async function submitKycExtra(
