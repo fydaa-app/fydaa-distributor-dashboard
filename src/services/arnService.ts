@@ -9,6 +9,7 @@ export interface Employee {
   arnCode?: string;
   euin?: string;
   referralCode?: string;
+  isPartner?: boolean;
 }
 
 export interface LoginResponse {
@@ -24,6 +25,12 @@ function isRecord(value: unknown): value is JsonObject {
 
 function getString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function getBoolean(value: unknown, fallback = false): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.toLowerCase() === "true";
+  return fallback;
 }
 
 function getNestedRecord(value: unknown, key: string): JsonObject | undefined {
@@ -89,12 +96,16 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
   const arnCode = getString(source?.arnCode) || getString(source?.arn);
   const euin = getString(source?.euin);
   const referralCode = getString(source?.referralCode);
+  const isPartner =
+    getBoolean(source?.isPartner) ||
+    getBoolean(getNestedRecord(source, "partner")?.isPartner);
 
   return {
     id,
     name,
     email: employeeEmail,
     role,
+    isPartner,
     ...(arnCode ? { arnCode } : {}),
     ...(euin ? { euin } : {}),
     ...(referralCode ? { referralCode } : {}),

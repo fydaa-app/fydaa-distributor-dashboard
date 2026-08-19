@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import {
   getHierarchy,
   saveArnEuinDetails,
@@ -9,6 +11,7 @@ import {
 } from "@/services/arnHierarchyService";
 import ComponentCard from "@/components/common/ComponentCard";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
+import ArnLoadingState from "@/components/common/ArnLoadingState";
 
 type EditState = Record<string, { name: string; email: string; phone: string }>;
 
@@ -30,11 +33,20 @@ function getStatusMeta(status?: string) {
 }
 
 export default function ArnEuinsPage() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading, isPartner } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hierarchy, setHierarchy] = useState<HierarchyResponse | null>(null);
   const [editing, setEditing] = useState<EditState>({});
   const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !isPartner) {
+      router.replace("/");
+    }
+  }, [isLoading, isAuthenticated, isPartner, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +71,14 @@ export default function ArnEuinsPage() {
       cancelled = true;
     };
   }, []);
+
+  if (isLoading) {
+    return <ArnLoadingState label="Loading..." />;
+  }
+
+  if (!isAuthenticated || !isPartner) {
+    return null;
+  }
 
   const euins = hierarchy ? (() => {
     const flatten = (nodes: HierarchyOption[]): HierarchyOption[] => {

@@ -427,7 +427,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
               />
               <ConfirmRow
                 label="SIP date"
-                value={`${dateConfig.sipDate}${ordinal(dateConfig.sipDate)} of every month`}
+                value={`${ordinal(dateConfig.sipDate)} of every month`}
               />
               <ConfirmRow label="Next debit" value={formatDisplayDate(dateConfig.startDate)} />
               <ConfirmRow
@@ -479,13 +479,11 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                   label="UPI auto-debit mandate"
                   status={readiness.mandate}
                   sub={
-                    readiness.mandate === "ok"
-                      ? "Active"
-                      : isPollingMandate
-                        ? "Waiting for UPI authorization..."
-                        : mandateError
-                          ? mandateError
-                          : `Current limit ₹${mandateAmount.toLocaleString("en-IN")} — SIP needs ₹${sipConfig.sipAmount.toLocaleString("en-IN")}${sipInstallmentLabel}`
+                    isPollingMandate
+                      ? "Waiting for UPI authorization..."
+                      : mandateError
+                        ? mandateError
+                        : `Current limit ₹${mandateAmount.toLocaleString("en-IN")} — SIP needs ₹${sipConfig.sipAmount.toLocaleString("en-IN")}${sipInstallmentLabel}`
                   }
                 />
               )}
