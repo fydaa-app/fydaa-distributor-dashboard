@@ -359,13 +359,26 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
 
           const userIp = "127.0.0.1";
 
-          await completeWithMandateFirstDebitForUser(selectedClient.userId, currentSipId, sanitizedOrders, userIp);
-          setSipActivated(true);
+          const debitResult = await completeWithMandateFirstDebitForUser(
+            selectedClient.userId,
+            currentSipId,
+            sanitizedOrders,
+            userIp
+          );
 
-          setReadiness((r) => ({ ...r, mandate: "ok" }));
-          setTimeout(() => {
-            router.push("/arn-orders");
-          }, 1500);
+          const hasSuccess = debitResult.results?.some((r) => r.success);
+
+          if (hasSuccess) {
+            setSipActivated(true);
+            setReadiness((r) => ({ ...r, mandate: "ok" }));
+            setTimeout(() => {
+              router.push("/arn-orders");
+            }, 1500);
+          } else {
+            const errorMsg = debitResult.results?.[0]?.error || "SIP activation failed. Please try again.";
+            setSubmissionError(errorMsg);
+            setReadiness((r) => ({ ...r, mandate: "fail" }));
+          }
         } catch (err) {
           setSubmissionError(err instanceof Error ? err.message : "Activation failed. Please try again.");
           setReadiness((r) => ({ ...r, mandate: "fail" }));
