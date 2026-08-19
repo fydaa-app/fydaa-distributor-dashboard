@@ -118,7 +118,9 @@ function normalizeTopClients(source: JsonObject): ArnDashboardTopClient[] {
 function normalizeDashboardPayload(payload: unknown): ArnDashboardResponse {
   const root = isRecord(payload) ? payload : {};
   const data = getNestedRecord(root, "data") || root;
-  const employee = getNestedRecord(data, "employee") || data;
+  const partnerRecord = getNestedRecord(data, "partner");
+  const partnerEmployee = partnerRecord ? getNestedRecord(partnerRecord, "employee") : undefined;
+  const employee = getNestedRecord(data, "employee") || partnerEmployee || data;
 
   return {
     success: root.success === false ? false : true,

@@ -49,11 +49,17 @@ function getEmployeeSource(payload: unknown): JsonObject | undefined {
   if (!isRecord(payload)) return undefined;
 
   const data = getNestedRecord(payload, "data");
+  const partnerFromPayload = getNestedRecord(payload, "partner");
+  const partnerFromData = getNestedRecord(data, "partner");
   const employee =
     getNestedRecord(payload, "employee") ||
     getNestedRecord(payload, "user") ||
     getNestedRecord(data, "employee") ||
-    getNestedRecord(data, "user");
+    getNestedRecord(data, "user") ||
+    (partnerFromPayload ? getNestedRecord(partnerFromPayload, "employee") : undefined) ||
+    (partnerFromPayload ? getNestedRecord(partnerFromPayload, "user") : undefined) ||
+    (partnerFromData ? getNestedRecord(partnerFromData, "employee") : undefined) ||
+    (partnerFromData ? getNestedRecord(partnerFromData, "user") : undefined);
 
   if (employee) return employee;
 
@@ -64,13 +70,21 @@ function getEmployeeSource(payload: unknown): JsonObject | undefined {
   return payload;
 }
 
+function getNestedEmployee(source: JsonObject | undefined): JsonObject | undefined {
+  const partner = getNestedRecord(source, "partner");
+  if (!partner) return undefined;
+  return getNestedRecord(partner, "employee") || getNestedRecord(partner, "user");
+}
+
 function normalizeEmployee(source: JsonObject | undefined, email: string): Employee {
+  const effectiveSource = getNestedEmployee(source) || source;
+
   const idValue =
-    source?.id ??
-    source?.employeeId ??
-    source?.arnEmployeeId ??
-    source?.arnId ??
-    source?._id;
+    effectiveSource?.id ??
+    effectiveSource?.employeeId ??
+    effectiveSource?.arnEmployeeId ??
+    effectiveSource?.arnId ??
+    effectiveSource?._id;
 
   const id =
     typeof idValue === "number"
@@ -80,25 +94,26 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
         : 0;
 
   const name =
-    getString(source?.name) ||
-    getString(source?.fullName) ||
-    getString(source?.userName) ||
+    getString(effectiveSource?.name) ||
+    getString(effectiveSource?.fullName) ||
+    getString(effectiveSource?.userName) ||
     email.split("@")[0] ||
     "ARN Employee";
 
-  const employeeEmail = getString(source?.email) || email;
+  const employeeEmail = getString(effectiveSource?.email) || email;
   const role =
-    getString(source?.role) ||
-    getString(source?.designation) ||
-    getString(source?.userType) ||
+    getString(effectiveSource?.role) ||
+    getString(effectiveSource?.designation) ||
+    getString(effectiveSource?.userType) ||
     "ARN";
 
-  const arnCode = getString(source?.arnCode) || getString(source?.arn);
-  const euin = getString(source?.euin);
-  const referralCode = getString(source?.referralCode);
+  const arnCode = getString(effectiveSource?.arnCode) || getString(effectiveSource?.arn);
+  const euin = getString(effectiveSource?.euin);
+  const referralCode = getString(effectiveSource?.referralCode);
   const isPartner =
-    getBoolean(source?.isPartner) ||
-    getBoolean(getNestedRecord(source, "partner")?.isPartner);
+    getBoolean(effectiveSource?.isPartner) ||
+    getBoolean(getNestedRecord(source, "partner")?.isPartner) ||
+    getBoolean(source?.isPartner);
 
   return {
     id,
