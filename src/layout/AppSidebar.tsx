@@ -22,6 +22,7 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
       { label: "Dashboard", href: "/", icon: "layout-dashboard" },
       { label: "Clients", href: "/arn-clients", icon: "users" },
       { label: "SIP book", href: "/arn-sipbook", icon: "repeat" },
+      { label: "EUINs", href: "/arn-euins", icon: "key" },
     ],
   },
   {
