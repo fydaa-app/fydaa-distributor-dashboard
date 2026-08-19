@@ -241,6 +241,7 @@ export default function ArnOnboardForm({
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const panInputRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState("");
   const [emailOtpValues, setEmailOtpValues] = useState(["", "", "", "", "", ""]);
@@ -248,6 +249,8 @@ export default function ArnOnboardForm({
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [emailResendTimer, setEmailResendTimer] = useState(30);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
 
   useEffect(() => {
     setEmailVerified(getCookie("emailVerified") === "1");
@@ -617,8 +620,14 @@ export default function ArnOnboardForm({
   };
 
   useEffect(() => {
-    setResendTimer(30);
-    setOtpError(null);
+    if (phase === "otp") {
+      setResendTimer(30);
+      setOtpError(null);
+    }
+    if (phase === "emailOtp") {
+      setEmailResendTimer(30);
+      setEmailError(null);
+    }
   }, [phase]);
 
   useEffect(() => {
@@ -628,6 +637,14 @@ export default function ArnOnboardForm({
     }, 1000);
     return () => clearInterval(timer);
   }, [phase, resendTimer]);
+
+  useEffect(() => {
+    if (phase !== "emailOtp" || emailResendTimer <= 0) return;
+    const timer = setInterval(() => {
+      setEmailResendTimer((t) => (t <= 1 ? (clearInterval(timer), 0) : t - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [phase, emailResendTimer]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -733,6 +750,22 @@ export default function ArnOnboardForm({
       setOtpError(err instanceof Error ? err.message : "Failed to resend OTP. Please try again.");
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (isResendingEmail) return;
+
+    setEmailResendTimer(30);
+    setEmailError(null);
+    setIsResendingEmail(true);
+
+    try {
+      await requestLinkEmail({ email: email.trim() });
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Failed to resend email. Please try again.");
+    } finally {
+      setIsResendingEmail(false);
     }
   };
 
@@ -851,11 +884,11 @@ export default function ArnOnboardForm({
     }
   };
 
-  const masked = (() => {
+  const formattedMobile = (() => {
     const digits = mobile.replace(/\D/g, "");
     if (!digits) return "";
     const prefix = selectedCountry.flag + " " + selectedCountry.code;
-    return `${prefix} ${digits.slice(0, 5)} ${"*".repeat(Math.max(0, digits.length - 5))}`;
+    return `${prefix} ${digits}`;
   })();
 
   const isMobileValid = mobile.replace(/\D/g, "").length === 10;
@@ -911,9 +944,9 @@ export default function ArnOnboardForm({
                 className="field-input flex-1"
                 placeholder="98765 43210"
                 inputMode="numeric"
-                maxLength={15}
+                maxLength={10}
                 value={mobile}
-                onChange={(e) => onMobileChange(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                onChange={(e) => onMobileChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
               />
             </div>
           </div>
@@ -947,7 +980,7 @@ export default function ArnOnboardForm({
           <div className="text-center">
             <p className="step-eyebrow">Account Setup</p>
             <h2 className="step-title">Enter the OTP sent to</h2>
-            <p className="step-helper">{masked}</p>
+            <p className="step-helper">{formattedMobile}</p>
           </div>
 
           <div className="otp-row justify-center">
@@ -1227,6 +1260,16 @@ export default function ArnOnboardForm({
             </div>
           )}
 
+          <div className="mb-5 text-center">
+            <span
+              className={`resend-link ${emailResendTimer > 0 || isResendingEmail ? "disabled" : ""}`}
+              role="button"
+              onClick={handleResendEmail}
+            >
+              {isResendingEmail ? "Resending..." : emailResendTimer > 0 ? `Resend in ${emailResendTimer}s` : "Resend Email"}
+            </span>
+          </div>
+
           <button
             type="button"
             onClick={handleEmailVerify}
@@ -1262,7 +1305,7 @@ export default function ArnOnboardForm({
               className="field-input"
               placeholder="Enter your full name"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => setFullName(e.target.value.replace(/\d/g, ""))}
             />
           </div>
 
@@ -1275,7 +1318,18 @@ export default function ArnOnboardForm({
               placeholder="ABCDE1234F"
               value={pan}
               maxLength={10}
-              onChange={(e) => setPan(e.target.value.toUpperCase())}
+              ref={panInputRef}
+              onChange={(e) => {
+                const cursorPos = e.target.selectionStart ?? 0;
+                const newValue = e.target.value.replace(/\s/g, "").toUpperCase();
+                setPan(newValue);
+                requestAnimationFrame(() => {
+                  if (panInputRef.current) {
+                    const restoredPos = Math.min(cursorPos, newValue.length);
+                    panInputRef.current.setSelectionRange(restoredPos, restoredPos);
+                  }
+                });
+              }}
             />
           </div>
 
@@ -1368,12 +1422,12 @@ export default function ArnOnboardForm({
               className="field-input"
               placeholder="Enter father's name"
               value={fatherName}
-              onChange={(e) => setFatherName(e.target.value)}
+              onChange={(e) => setFatherName(e.target.value.replace(/\d/g, ""))}
             />
           </div>
 
           <div className="onboard-section-label">Personal Details</div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field-group">
               <label className="field-label">Gender</label>
               <select
@@ -1407,7 +1461,7 @@ export default function ArnOnboardForm({
           </div>
 
           <div className="onboard-section-label">Financial Details</div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field-group">
               <label className="field-label">Income Slab</label>
               <select
@@ -1990,7 +2044,7 @@ export default function ArnOnboardForm({
               <span className="summary-label">Mobile</span>
               <span className="summary-val">
                 <i className="ti ti-circle-check" aria-hidden="true" />
-                {masked ? mobile.replace(/\D/g, "") : "—"}
+                {mobile.replace(/\D/g, "") ? mobile.replace(/\D/g, "") : "—"}
               </span>
             </div>
             {riskScoreData && (
