@@ -308,14 +308,29 @@ export async function getBuyOrderMfForUser(
   return fetchJson<BuyOrderMfResponse>(url, { method: "GET" });
 }
 
+export interface CompleteMandateResponse {
+  planIds: string[];
+  totalCreated: number;
+  totalFailed: number;
+  totalPlansCreated: number;
+  partialSuccess: boolean;
+  readyForActivation: boolean;
+  mandateId: number;
+  results: Array<{
+    scheme: string;
+    success: boolean;
+    error?: string;
+  }>;
+}
+
 export async function completeWithMandateFirstDebitForUser(
   userId: number,
   sipId: number,
   orders: CompleteMandateRequest["orders"],
   userIp: string
-): Promise<void> {
+): Promise<CompleteMandateResponse> {
   const url = `${getStockApiUrl()}/mutualFund/mf-purchase-plan/orders/flow/complete-with-mandate-first-debit-for-user`;
-  await fetchJson(url, {
+  return fetchJson<CompleteMandateResponse>(url, {
     method: "POST",
     body: JSON.stringify({
       userId,
@@ -375,9 +390,9 @@ export async function completeWithMandateFirstDebit(
   sipId: number,
   orders: CompleteMandateRequest["orders"],
   userIp: string
-): Promise<void> {
+): Promise<CompleteMandateResponse> {
   const url = `${getStockApiUrl()}/mutualFund/mf-purchase-plan/orders/flow/complete-with-mandate-first-debit`;
-  await fetchJson(url, {
+  return fetchJson<CompleteMandateResponse>(url, {
     method: "POST",
     body: JSON.stringify({
       user_ip: userIp,

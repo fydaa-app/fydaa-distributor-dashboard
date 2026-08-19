@@ -29,8 +29,6 @@ interface ArnSetSipPageProps {
   onConfigChange?: (config: ReturnType<ArnSetSipPageRef["getConfig"]>) => void;
 }
 
-const AMOUNT_PICKS = [300, 1000, 5000, 10000, 25000, 50000];
-
 function formatRupee(n: number): string {
   if (n >= 1e7) return "₹" + (n / 1e7).toFixed(1) + "Cr";
   if (n >= 1e5) return "₹" + (n / 1e5).toFixed(1) + "L";
@@ -41,6 +39,21 @@ function formatRupee(n: number): string {
 function formatRupeeFull(n: number): string {
   return "₹" + n.toLocaleString("en-IN");
 }
+
+const AMOUNT_LIMITS: Record<"daily" | "monthly", { min: number; max: number; step: number }> = {
+  daily: { min: 100, max: 1000, step: 50 },
+  monthly: { min: 1000, max: 100000, step: 500 },
+};
+
+const TENURE_OPTIONS: Record<"daily" | "monthly", number[]> = {
+  daily: [1, 2, 3, 4],
+  monthly: [3, 5, 10, 20, 30],
+};
+
+const AMOUNT_PICKS: Record<"daily" | "monthly", number[]> = {
+  daily: [100, 200, 300, 500, 700, 1000],
+  monthly: [1000, 5000, 10000, 25000, 50000, 100000],
+};
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -268,6 +281,16 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       });
     }, [sipAmount, frequency, tenure, fundDisplayName, selectedScheme, selectedMfId, lumpSumEnabled, lumpSumAmount, expectedCagr, onConfigChange]);
 
+    useEffect(() => {
+      if (frequency === "daily") {
+        setSipAmount(300);
+        setTenure(1);
+      } else {
+        setSipAmount(1000);
+        setTenure(5);
+      }
+    }, [frequency]);
+
     const handleFundSelect = useCallback(
       (fund: FundOption) => {
         const displayName =
@@ -280,6 +303,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       [setSelectedFund, setSelectedScheme, setSelectedMfId, setFundSearchQuery]
     );
 
+    const amountLimits = AMOUNT_LIMITS[frequency];
+
     const handleSliderChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
         setSipAmount(Number(e.target.value));
@@ -290,13 +315,13 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const handleAmountBlur = useCallback(
       (e: React.FocusEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/[^0-9]/g, "");
-        const val = raw ? Math.min(100000, Math.max(100, Number(raw))) : product.defAmt;
+        const val = raw ? Math.min(amountLimits.max, Math.max(amountLimits.min, Number(raw))) : amountLimits.min;
         setSipAmount(val);
       },
-      [product.defAmt]
+      [amountLimits.min, amountLimits.max]
     );
 
-    const sliderPct = ((sipAmount - 100) / (100000 - 100)) * 100;
+    const sliderPct = ((sipAmount - amountLimits.min) / (amountLimits.max - amountLimits.min)) * 100;
     const freqLabel = frequency === "daily" ? "per day" : "per month";
 
     return (
@@ -332,15 +357,15 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                   <span className="text-2xl font-bold text-[var(--arn-txt-3)]">
                     ₹
                   </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={formatRupeeFull(sipAmount)}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, "");
-                      if (raw) setSipAmount(Math.min(100000, Math.max(100, Number(raw))));
-                    }}
-                    onBlur={handleAmountBlur}
+                   <input
+                     type="text"
+                     inputMode="numeric"
+                     value={formatRupeeFull(sipAmount)}
+                     onChange={(e) => {
+                       const raw = e.target.value.replace(/[^0-9]/g, "");
+                       if (raw) setSipAmount(Math.min(amountLimits.max, Math.max(amountLimits.min, Number(raw))));
+                     }}
+                     onBlur={handleAmountBlur}
                     onFocus={(e) => {
                       e.target.value = String(sipAmount);
                       e.target.select();
@@ -350,6 +375,9 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                 </div>
                 <div className="mt-1 text-xs font-medium text-[var(--arn-txt-3)]">
                   {freqLabel}
+                </div>
+                <div className="mt-0.5 text-[10px] font-semibold text-[var(--arn-txt-3)]">
+                  Min ₹{amountLimits.min.toLocaleString("en-IN")} — Max ₹{amountLimits.max.toLocaleString("en-IN")}
                 </div>
               </div>
 
@@ -392,9 +420,9 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
             {/* Slider */}
             <input
               type="range"
-              min={100}
-              max={100000}
-              step={100}
+              min={amountLimits.min}
+              max={amountLimits.max}
+              step={amountLimits.step}
               value={sipAmount}
               onChange={handleSliderChange}
               className="mt-4 w-full h-1 cursor-pointer appearance-none rounded-full"
@@ -405,7 +433,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
             {/* Quick Picks */}
             <div className="mt-3 flex flex-wrap gap-2">
-              {AMOUNT_PICKS.map((pick) => (
+              {AMOUNT_PICKS[frequency].map((pick) => (
                 <button
                   key={pick}
                   type="button"
@@ -434,7 +462,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                 onChange={(e) => setTenure(Number(e.target.value))}
                 className="max-w-[200px] flex-1 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] px-3 py-2 text-sm font-semibold text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)]"
               >
-                {product.tenures.map((t) => (
+                {TENURE_OPTIONS[frequency].map((t) => (
                   <option key={t} value={t}>
                     {t} {t === 1 ? "year" : "years"}
                   </option>
