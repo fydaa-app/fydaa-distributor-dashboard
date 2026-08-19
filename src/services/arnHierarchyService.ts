@@ -65,6 +65,8 @@ export interface HierarchyOption {
   email: string;
   phone: string;
   level: string;
+  status?: string;
+  rejectionReason?: string;
   children?: HierarchyOption[];
 }
 
@@ -92,6 +94,8 @@ type ArnEuinsBackendResponse = {
       email?: string | null;
       mobileNumber?: string | null;
       isPartner?: boolean;
+      verificationStatus?: string;
+      rejectionReason?: string | null;
     }>;
   };
 };
@@ -125,6 +129,8 @@ export async function getHierarchy(): Promise<HierarchyResponse> {
         name: row?.name ?? "",
         email: row?.email ?? "",
         phone: row?.mobileNumber ?? "",
+        status: getString(row?.verificationStatus),
+        rejectionReason: getString(row?.rejectionReason),
         // Current UI flattens the tree and only shows EUIN/ARN nodes.
         level: "euin",
       }))

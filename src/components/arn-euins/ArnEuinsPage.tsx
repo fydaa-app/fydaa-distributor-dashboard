@@ -8,6 +8,7 @@ import {
   type HierarchyResponse,
 } from "@/services/arnHierarchyService";
 import ComponentCard from "@/components/common/ComponentCard";
+import ArnStatusTag from "@/components/common/ArnStatusTag";
 
 type EditState = Record<string, { name: string; email: string; phone: string }>;
 
@@ -16,6 +17,16 @@ function getColumnVisibility(data: HierarchyOption[]) {
   const hasEmail = data.some((item) => item.email && item.email.trim().length > 0);
   const hasPhone = data.some((item) => item.phone && item.phone.trim().length > 0);
   return { hasName, hasEmail, hasPhone };
+}
+
+function getStatusMeta(status?: string) {
+  if (status === "ACCEPTED") {
+    return { label: "Active", variant: "active" as const };
+  }
+  if (status === "REJECTED") {
+    return { label: "Rejected", variant: "failed" as const };
+  }
+  return { label: "Pending", variant: "processing" as const };
 }
 
 export default function ArnEuinsPage() {
@@ -163,6 +174,7 @@ export default function ArnEuinsPage() {
               {hasName && <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Name</th>}
               {hasEmail && <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Email</th>}
               {hasPhone && <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Phone</th>}
+              <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Status</th>
               <th className="pb-3 pl-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Action</th>
             </tr>
           </thead>
@@ -177,7 +189,7 @@ export default function ArnEuinsPage() {
                       type="text"
                       readOnly
                       value={item.euinNumber}
-                      className="w-full rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg-3)] px-3 py-2 text-sm text-[var(--arn-txt-3)] cursor-not-allowed"
+                      className="w-full rounded-[8px] border border-black dark:border-white bg-[var(--arn-bg-3)] px-3 py-2 text-sm text-black dark:text-white cursor-not-allowed"
                     />
                   </td>
                   {hasName && (
@@ -222,6 +234,19 @@ export default function ArnEuinsPage() {
                       )}
                     </td>
                   )}
+                  <td className="py-4 pr-4">
+                    {(() => {
+                      const { label, variant } = getStatusMeta(item.status);
+                      return (
+                        <div>
+                          <ArnStatusTag label={label} variant={variant} />
+                          {item.status === "REJECTED" && item.rejectionReason && (
+                            <p className="mt-1 text-xs text-[var(--arn-red)]">{item.rejectionReason}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="py-4 pl-4">
                     {editingThis ? (
                       <div className="flex gap-2">
@@ -270,7 +295,7 @@ export default function ArnEuinsPage() {
                     type="text"
                     readOnly
                     value={item.euinNumber}
-                    className="w-32 rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg-3)] px-3 py-1.5 text-right text-xs text-[var(--arn-txt-3)] cursor-not-allowed"
+                      className="w-32 rounded-[8px] border border-black dark:border-white bg-[var(--arn-bg-3)] px-3 py-1.5 text-right text-xs text-black dark:text-white cursor-not-allowed"
                   />
                 </div>
 
@@ -321,6 +346,21 @@ export default function ArnEuinsPage() {
                     )}
                   </div>
                 )}
+
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Status</span>
+                  {(() => {
+                    const { label, variant } = getStatusMeta(item.status);
+                    return (
+                      <div className="text-right">
+                        <ArnStatusTag label={label} variant={variant} />
+                        {item.status === "REJECTED" && item.rejectionReason && (
+                          <p className="mt-1 text-xs text-[var(--arn-red)]">{item.rejectionReason}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
 
                 {editingThis ? (
                   <div className="flex gap-2">

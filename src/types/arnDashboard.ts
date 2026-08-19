@@ -55,6 +55,8 @@ export interface HierarchyOption {
   email: string;
   phone: string;
   level: string;
+  status?: string;
+  rejectionReason?: string;
   children?: HierarchyOption[];
 }
 
