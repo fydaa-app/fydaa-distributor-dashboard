@@ -47,3 +47,7 @@ export const ArnLeadEndpoints = {
 export const ArnGoalSetupEndpoints = {
   CLIENTS: "/arn/goal-sip-setup-client-list",
 } as const;
+
+export const ArnHierarchyEndpoints = {
+  HIERARCHY: "/arn/hierarchy",
+} as const;

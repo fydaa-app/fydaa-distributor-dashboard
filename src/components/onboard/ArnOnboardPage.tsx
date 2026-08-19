@@ -184,7 +184,7 @@ export default function ArnOnboardPage() {
 
   return (
     <div className="flex items-center justify-center pt-10 pb-10">
-      <div className="w-full max-w-[560px]">
+      <div className="w-full max-w-[560px] px-4 sm:px-0">
         <ArnOnboardForm
           phase={phase}
           mobile={mobile}

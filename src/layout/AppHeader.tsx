@@ -116,6 +116,10 @@ function getHeaderCopy(pathname: string, userName: string) {
       title: "Goal & SIP setup",
       subtitle: "Set up goals and SIPs for your clients",
     },
+    "/arn-euins": {
+      title: "EUINs",
+      subtitle: "Manage EUIN details and contact information",
+    },
     "/arn-share": {
       title: "Share portfolio",
       subtitle: "Share portfolio snapshots with clients",

@@ -114,38 +114,45 @@ export default function AppSidebar() {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-        {navSections.map((section) => (
-          <div key={section.title}>
-            <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--arn-txt-3)]">
-              {section.title}
-            </p>
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                const active =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+        {navSections.map((section) => {
+          const items =
+            section.title === "Overview" && user?.isPartner
+              ? [...section.items, { label: "EUINs", href: "/arn-euins", icon: "key" }]
+              : section.items;
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={closeSidebar}
-                    className={cn(
-                      "group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-semibold transition-colors",
-                      active
-                        ? "border border-[var(--arn-amber)]/30 bg-[linear-gradient(90deg,rgba(186,117,23,0.10),rgba(186,117,23,0.03))] text-[var(--arn-txt)]"
-                        : "text-[var(--arn-txt-2)] hover:bg-[var(--arn-bg)] hover:text-[var(--arn-txt)]"
-                    )}
-                  >
-                    <SidebarIcon icon={item.icon} active={active} />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+          return (
+            <div key={section.title}>
+              <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--arn-txt-3)]">
+                {section.title}
+              </p>
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const active =
+                    item.href === "/"
+                      ? pathname === "/"
+                      : pathname.startsWith(item.href);
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={closeSidebar}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-semibold transition-colors",
+                        active
+                          ? "border border-[var(--arn-amber)]/30 bg-[linear-gradient(90deg,rgba(186,117,23,0.10),rgba(186,117,23,0.03))] text-[var(--arn-txt)]"
+                          : "text-[var(--arn-txt-2)] hover:bg-[var(--arn-bg)] hover:text-[var(--arn-txt)]"
+                      )}
+                    >
+                      <SidebarIcon icon={item.icon} active={active} />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       <div className="border-t border-[var(--arn-bdr)] p-4">

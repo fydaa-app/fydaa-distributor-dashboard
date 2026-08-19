@@ -889,8 +889,58 @@ body {
 }
 
 @media (max-width: 520px) {
-  .answer-grid {
-    grid-template-columns: 1fr;
+  .step-title {
+    font-size: 22px;
+  }
+
+  .step-helper {
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+
+  .field-group {
+    margin-bottom: 16px;
+  }
+
+  .field-input,
+  .field-select {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .field-prefix {
+    min-width: 56px;
+    padding: 0 22px 0 10px;
+    font-size: 13px;
+  }
+
+  .otp-row {
+    gap: 8px;
+  }
+
+  .otp-box {
+    width: 44px;
+    height: 52px;
+    font-size: 20px;
+  }
+
+  .btn-primary {
+    padding: 13px 24px;
+    font-size: 13px;
+  }
+
+  .back-btn {
+    margin-bottom: 16px;
+  }
+
+  .answer-card {
+    padding: 16px 14px;
+    min-height: 52px;
+    font-size: 13px;
+  }
+
+  .country-dropdown {
+    width: 260px;
   }
 }
 

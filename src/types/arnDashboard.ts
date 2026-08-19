@@ -47,3 +47,26 @@ export interface ArnDashboardResponse {
   sipBook: ArnDashboardSipBookItem[];
   topClientsByAum: ArnDashboardTopClient[];
 }
+
+export interface HierarchyOption {
+  euinNumber: string;
+  label: string;
+  name: string;
+  email: string;
+  phone: string;
+  level: string;
+  status?: string;
+  rejectionReason?: string;
+  children?: HierarchyOption[];
+}
+
+export interface HierarchyResponse {
+  viewer: {
+    id: string | number;
+    name: string;
+    euinNumber: string;
+  };
+  canSwitch: boolean;
+  defaultViewPartnerId: string | number;
+  hierarchy: HierarchyOption[];
+}
