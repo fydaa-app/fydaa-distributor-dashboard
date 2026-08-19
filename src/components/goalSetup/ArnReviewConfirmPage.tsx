@@ -510,7 +510,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             <div className="text-sm font-semibold text-[var(--arn-txt)]">
               Enter the 6-digit OTP sent to the client
             </div>
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-3">
               <input
                 type="text"
                 inputMode="numeric"
@@ -520,14 +520,6 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                 placeholder="123456"
                 className="h-12 w-32 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-surf)] text-center text-lg font-bold tracking-widest text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)]"
               />
-              <button
-                type="button"
-                onClick={handleCta}
-                disabled={otpInput.length < 6 || isSubmitting}
-                className="h-12 rounded-[12px] bg-[var(--arn-amber)] px-6 text-sm font-bold text-white transition-all hover:bg-[var(--arn-amber-h)] disabled:opacity-40 disabled:pointer-events-none"
-              >
-                Verify
-              </button>
             </div>
             {submissionError && (
               <div className="mt-2 text-xs text-red-500">{submissionError}</div>
