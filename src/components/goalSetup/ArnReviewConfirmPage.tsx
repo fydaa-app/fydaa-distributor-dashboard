@@ -69,6 +69,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
     const [kycReason, setKycReason] = useState<string | null>(null);
     const [isPollingMandate, setIsPollingMandate] = useState(false);
     const [mandateError, setMandateError] = useState<string | null>(null);
+    const [sipActivated, setSipActivated] = useState(false);
 
     const product = useMemo(
       () =>
@@ -170,6 +171,10 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       return () => {
         cancelled = true;
       };
+    }, [selectedClient.userId]);
+
+    useEffect(() => {
+      setSipActivated(false);
     }, [selectedClient.userId]);
 
     useImperativeHandle(ref, () => ({
@@ -355,6 +360,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           const userIp = "127.0.0.1";
 
           await completeWithMandateFirstDebitForUser(selectedClient.userId, currentSipId, sanitizedOrders, userIp);
+          setSipActivated(true);
 
           setReadiness((r) => ({ ...r, mandate: "ok" }));
           setTimeout(() => {
@@ -448,6 +454,13 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                       : "Required before activation"
                 }
               />
+              {readiness.mandate === "ok" && (
+                <StatusItem
+                  label="UPI auto-debit mandate"
+                  status={readiness.mandate}
+                  sub="Active"
+                />
+              )}
               <StatusItem
                 label="Consent OTP"
                 status={readiness.consentOtp}
@@ -455,23 +468,27 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                   readiness.consentOtp === "ok"
                     ? "Verified"
                     : readiness.consentOtp === "fail"
-                      ? "Required before mandate setup"
+                      ? readiness.mandate === "ok"
+                        ? "Required before activation"
+                        : "Required before mandate setup"
                       : "Sending..."
                 }
               />
-              <StatusItem
-                label="UPI auto-debit mandate"
-                status={readiness.mandate}
-                sub={
-                  readiness.mandate === "ok"
-                    ? "Active"
-                    : isPollingMandate
-                      ? "Waiting for UPI authorization..."
-                      : mandateError
-                        ? mandateError
-                        : `Current limit ₹${mandateAmount.toLocaleString("en-IN")} — SIP needs ₹${sipConfig.sipAmount.toLocaleString("en-IN")}${sipInstallmentLabel}`
-                }
-              />
+              {readiness.mandate !== "ok" && (
+                <StatusItem
+                  label="UPI auto-debit mandate"
+                  status={readiness.mandate}
+                  sub={
+                    readiness.mandate === "ok"
+                      ? "Active"
+                      : isPollingMandate
+                        ? "Waiting for UPI authorization..."
+                        : mandateError
+                          ? mandateError
+                          : `Current limit ₹${mandateAmount.toLocaleString("en-IN")} — SIP needs ₹${sipConfig.sipAmount.toLocaleString("en-IN")}${sipInstallmentLabel}`
+                  }
+                />
+              )}
             </div>
           </div>
         </div>
@@ -546,7 +563,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           </div>
         )}
 
-        {readiness.mandate === "ok" && (
+        {sipActivated && (
           <div className="rounded-[12px] border border-green-200 bg-green-50 p-4 text-sm text-green-700">
             SIP activated successfully. Redirecting to orders...
           </div>
@@ -611,11 +628,10 @@ function formatRupee(n: number): string {
 
 function formatDisplayDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00");
-  return date.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const day = date.getDate();
+  const month = date.toLocaleDateString("en-US", { month: "short" });
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 function ordinal(n: number): string {

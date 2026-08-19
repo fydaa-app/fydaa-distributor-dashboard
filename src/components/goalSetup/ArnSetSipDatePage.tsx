@@ -95,11 +95,10 @@ function formatRupee(n: number): string {
 }
 
 function formatDisplayDate(date: Date): string {
-  return date.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const day = date.getDate();
+  const month = date.toLocaleDateString("en-US", { month: "short" });
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProps>(
