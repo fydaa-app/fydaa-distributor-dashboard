@@ -582,9 +582,21 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                        </div>
                      )}
                    </div>
-                 ) : (
-                   <div className="mt-3">
-                     <input
+                  ) : (
+                    <div className="mt-3">
+                      {selectedFund && (
+                        <div className="mb-2 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
+                              ✓
+                            </span>
+                            <span className="text-sm font-semibold text-[var(--arn-txt)]">
+                              {fundDisplayName}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <input
                        type="text"
                        value={fundSearchQuery}
                        onChange={(e) => setFundSearchQuery(e.target.value)}
