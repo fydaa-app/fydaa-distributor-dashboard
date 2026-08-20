@@ -7,10 +7,12 @@ import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
 import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar";
 import ArnGoalPathSelector from "@/components/goalSetup/ArnGoalPathSelector";
 import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
+import ArnGoalGrid from "@/components/goalSetup/ArnGoalGrid";
 import ArnSetSipPage, { type ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
 import ArnSetSipDatePage, { type ArnSetSipDatePageRef } from "@/components/goalSetup/ArnSetSipDatePage";
 import ArnReviewConfirmPage, { type ArnReviewConfirmPageRef } from "@/components/goalSetup/ArnReviewConfirmPage";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
+import type { GoalResponse } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 
 const STEP_NAMES: Record<number, string> = {
@@ -25,6 +27,7 @@ export default function ArnGoalSetupPage() {
   const [step, setStep] = useState(1);
   const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(null);
   const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<GoalResponse | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
@@ -63,10 +66,16 @@ export default function ArnGoalSetupPage() {
 
   const handlePathSelect = useCallback((path: "goal" | "direct") => {
     setSelectedPath(path);
+    setSelectedGoal(null);
+    setSelectedProduct(null);
   }, []);
 
   const handleProductSelect = useCallback((product: DirectProduct) => {
     setSelectedProduct(product);
+  }, []);
+
+  const handleGoalSelect = useCallback((goal: GoalResponse) => {
+    setSelectedGoal(goal);
   }, []);
 
   const handleContinue = useCallback(() => {
@@ -74,7 +83,7 @@ export default function ArnGoalSetupPage() {
       setStep(2);
     } else if (selectedPath === "direct" && selectedProduct && step === 2) {
       setStep(3);
-    } else if (selectedPath === "goal" && step === 2) {
+    } else if (selectedPath === "goal" && selectedGoal && step === 2) {
       setStep(3);
     } else if (step === 3) {
       if (sipPageRef.current) {
@@ -88,7 +97,7 @@ export default function ArnGoalSetupPage() {
     } else if (step === 5) {
       reviewPageRef.current?.handleCta();
     }
-  }, [selectedClient, selectedPath, selectedProduct, step]);
+  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step]);
 
   const handleBack = useCallback(() => {
     if (step > 1) {
@@ -129,7 +138,7 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 2 && selectedClient && (
-        <div className={selectedPath === "direct" ? "pb-40" : ""}>
+        <div className="pb-40">
           {selectedPath === "direct" ? (
             <ArnDirectProductSelector
               selectedClient={selectedClient!}
@@ -137,6 +146,25 @@ export default function ArnGoalSetupPage() {
               onSelect={handleProductSelect}
               onBack={() => setSelectedPath(null)}
             />
+          ) : selectedPath === "goal" ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPath(null);
+                  setSelectedGoal(null);
+                }}
+                className="shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
+              >
+                ← Change path
+              </button>
+              <div className="mt-4">
+                <ArnGoalGrid
+                  selectedGoalId={selectedGoal?.id ?? null}
+                  onSelect={handleGoalSelect}
+                />
+              </div>
+            </div>
           ) : (
             <ArnGoalPathSelector
               selectedClient={selectedClient!}
@@ -151,7 +179,9 @@ export default function ArnGoalSetupPage() {
           <ArnSetSipPage
             ref={sipPageRef}
             selectedClient={selectedClient!}
+            selectedGoal={selectedPath === "goal" ? selectedGoal : null}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
+            mode={selectedPath === "goal" ? "goal" : "direct"}
             onBack={handleBack}
             onConfigChange={setSipConfig}
           />
@@ -196,7 +226,7 @@ export default function ArnGoalSetupPage() {
             : step === 2
               ? selectedPath === "direct"
                 ? !!selectedProduct
-                : !!selectedPath
+                : !!selectedGoal
               : step === 3 || step === 4
                 ? true
                 : step === 5

@@ -19,6 +19,7 @@ import {
   setupMandateForUser,
   getMandateForUser,
   updateMfiaForUser,
+  getMySipMfForUser,
   type UserStageResponse,
   type KycCheckResponse,
   type SipSetupPayload,
@@ -70,6 +71,8 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
     const [isPollingMandate, setIsPollingMandate] = useState(false);
     const [mandateError, setMandateError] = useState<string | null>(null);
     const [sipActivated, setSipActivated] = useState(false);
+    const [canResend, setCanResend] = useState(false);
+    const [resendSeconds, setResendSeconds] = useState(25);
 
     const product = useMemo(
       () =>
@@ -177,6 +180,25 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       setSipActivated(false);
     }, [selectedClient.userId]);
 
+    useEffect(() => {
+      if (!otpSent) {
+        setCanResend(false);
+        setResendSeconds(25);
+        return;
+      }
+
+      if (resendSeconds <= 0) {
+        setCanResend(true);
+        return;
+      }
+
+      const timer = setInterval(() => {
+        setResendSeconds((s) => s - 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }, [otpSent, resendSeconds]);
+
     useImperativeHandle(ref, () => ({
       getPayload: () => ({
         goalId: product.goalId,
@@ -195,6 +217,21 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       }),
       handleCta: () => handleCta(),
     }));
+
+    const handleResendOtp = useCallback(async () => {
+      if (!canResend || isSubmitting) return;
+      setIsSubmitting(true);
+      setSubmissionError(null);
+      try {
+        await sendConsentOtpForUser(selectedClient.userId);
+        setResendSeconds(25);
+        setCanResend(false);
+      } catch (err) {
+        setSubmissionError(err instanceof Error ? err.message : "Failed to resend OTP");
+      } finally {
+        setIsSubmitting(false);
+      }
+    }, [canResend, isSubmitting, selectedClient.userId]);
 
     const handleCta = useCallback(async () => {
       setSubmissionError(null);
@@ -227,6 +264,8 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           await verifyConsentOtpForUser(selectedClient.userId, otpInput);
           setReadiness((r) => ({ ...r, consentOtp: "ok" }));
           setOtpSent(false);
+          setResendSeconds(25);
+          setCanResend(false);
 
           // Re-fetch mandate status after OTP verified (per MD sequence)
           const stage = await getUserStage(selectedClient.userId, product.goalId);
@@ -249,8 +288,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             selectedClient.userId,
             "UPI",
             sipConfig.sipAmount,
-            //typeof window !== "undefined" ? `${window.location.origin}/arn-orders` : undefined
-            typeof window !== "undefined" ? `https://partner.fydaa.com/arn-orders` : undefined
+            typeof window !== "undefined" ? window.location.href : undefined
           );
           setIsPollingMandate(true);
 
@@ -371,17 +409,36 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           if (hasSuccess) {
             setSipActivated(true);
             setReadiness((r) => ({ ...r, mandate: "ok" }));
+            getMySipMfForUser(selectedClient.userId).catch(() => {});
             setTimeout(() => {
               router.push("/arn-orders");
             }, 1500);
           } else {
             const errorMsg = debitResult.results?.[0]?.error || "SIP activation failed. Please try again.";
             setSubmissionError(errorMsg);
-            setReadiness((r) => ({ ...r, mandate: "fail" }));
+            setOtpSent(false);
+            setReadiness((r) => ({ ...r, consentOtp: "fail" }));
+            try {
+              const stage = await getUserStage(selectedClient.userId, product.goalId);
+              setUserStage(stage);
+              const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
+              setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
+            } catch {
+              setReadiness((r) => ({ ...r, mandate: "fail" }));
+            }
           }
         } catch (err) {
           setSubmissionError(err instanceof Error ? err.message : "Activation failed. Please try again.");
-          setReadiness((r) => ({ ...r, mandate: "fail" }));
+          setOtpSent(false);
+          setReadiness((r) => ({ ...r, consentOtp: "fail" }));
+          try {
+            const stage = await getUserStage(selectedClient.userId, product.goalId);
+            setUserStage(stage);
+            const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
+            setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
+          } catch {
+            setReadiness((r) => ({ ...r, mandate: "fail" }));
+          }
         } finally {
           setIsSubmitting(false);
         }
@@ -521,11 +578,24 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                 className="h-12 w-32 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-surf)] text-center text-lg font-bold tracking-widest text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)]"
               />
             </div>
-            {submissionError && (
-              <div className="mt-2 text-xs text-red-500">{submissionError}</div>
-            )}
-          </div>
-        )}
+             {submissionError && (
+               <div className="mt-2 text-xs text-red-500">{submissionError}</div>
+             )}
+             <div className="mt-3 flex items-center justify-between">
+               <span className="text-xs text-[var(--arn-txt-3)]">
+                 Didn&apos;t receive it?
+               </span>
+               <button
+                 type="button"
+                 onClick={handleResendOtp}
+                 disabled={!canResend || isSubmitting}
+                 className="text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70 disabled:opacity-40"
+               >
+                 {canResend ? "Resend OTP" : `Resend in ${resendSeconds}s`}
+               </button>
+             </div>
+           </div>
+         )}
 
         {/* Mandate polling indicator */}
         {isPollingMandate && (
