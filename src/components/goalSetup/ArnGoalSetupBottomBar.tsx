@@ -7,6 +7,7 @@ interface ArnGoalSetupBottomBarProps {
   onContinue: () => void;
   canContinue: boolean;
   continueLabel: string;
+  isLoading?: boolean;
 }
 
 const STEP_NAMES: Record<number, string> = {
@@ -24,6 +25,7 @@ export default function ArnGoalSetupBottomBar({
   onContinue,
   canContinue,
   continueLabel,
+  isLoading,
 }: ArnGoalSetupBottomBarProps) {
   const displayName = stepName || STEP_NAMES[step] || "";
 
@@ -180,6 +182,9 @@ export default function ArnGoalSetupBottomBar({
                   `
               )}
             >
+              {isLoading && (
+                <span className="mr-1.5 inline-flex h-4 w-4 animate-spin rounded-full border-2 border-[var(--arn-amber)] border-t-transparent" />
+              )}
               {continueLabel}
             </button>
           </div>

@@ -38,7 +38,7 @@ interface ArnReviewConfirmPageProps {
   sipConfig: ReturnType<ArnSetSipPageRef["getConfig"]>;
   dateConfig: ReturnType<ArnSetSipDatePageRef["getDateConfig"]>;
   onBack: () => void;
-  onCtaChange?: (state: { label: string; disabled: boolean }) => void;
+  onCtaChange?: (state: { label: string; disabled: boolean; isLoading?: boolean }) => void;
 }
 
 type ReadinessStatus = "ok" | "fail" | "loading";
@@ -118,8 +118,9 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       if (otpSent && readiness.consentOtp !== "ok")
         return { label: "Verify OTP", disabled: otpInput.length < 6 };
       if (readiness.mandate === "fail") return { label: "Set up UPI mandate", disabled: false };
+      if (isSubmitting) return { label: "Activating SIP...", disabled: true, isLoading: true };
       return { label: "Activate SIP", disabled: false };
-    }, [readiness, otpSent, otpInput, isPollingMandate]);
+    }, [readiness, otpSent, otpInput, isPollingMandate, isSubmitting]);
 
     useEffect(() => {
       onCtaChange?.(ctaState);
