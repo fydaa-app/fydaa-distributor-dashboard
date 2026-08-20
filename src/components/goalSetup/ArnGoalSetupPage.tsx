@@ -32,7 +32,7 @@ export default function ArnGoalSetupPage() {
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
-  const [reviewCta, setReviewCta] = useState({ label: "Activate SIP", disabled: false });
+  const [reviewCta, setReviewCta] = useState<{ label: string; disabled: boolean; isLoading?: boolean }>({ label: "Activate SIP", disabled: false });
   const [sipConfig, setSipConfig] = useState<ReturnType<ArnSetSipPageRef["getConfig"]>>({
     sipAmount: 10000,
     frequency: "monthly",
@@ -234,6 +234,7 @@ export default function ArnGoalSetupPage() {
                   : false
         }
         continueLabel={step === 5 ? reviewCta.label : "Continue →"}
+        isLoading={step === 5 ? reviewCta.isLoading : false}
       />
     </div>
   );
