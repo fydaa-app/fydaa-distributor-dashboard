@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from "react";
+import { useCallback, useEffect, useMemo, useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { type GoalSetupClient } from "@/services/arnGoalSetupService";
@@ -73,6 +73,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
     const [sipActivated, setSipActivated] = useState(false);
     const [canResend, setCanResend] = useState(false);
     const [resendSeconds, setResendSeconds] = useState(25);
+    const paymentWindowRef = useRef<Window | null>(null);
 
     const product = useMemo(
       () =>
@@ -181,6 +182,21 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
     }, [selectedClient.userId]);
 
     useEffect(() => {
+      const paymentWindow = paymentWindowRef.current;
+      if (paymentWindow && !paymentWindow.closed) {
+        paymentWindow.close();
+      }
+      paymentWindowRef.current = null;
+      return () => {
+        const win = paymentWindowRef.current;
+        if (win && !win.closed) {
+          win.close();
+        }
+        paymentWindowRef.current = null;
+      };
+    }, []);
+
+    useEffect(() => {
       if (!otpSent) {
         setCanResend(false);
         setResendSeconds(25);
@@ -287,14 +303,13 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           const response: SetupMandateResponse = await setupMandateForUser(
             selectedClient.userId,
             "UPI",
-            sipConfig.sipAmount,
-            typeof window !== "undefined" ? window.location.href : undefined
+            sipConfig.sipAmount
           );
           setIsPollingMandate(true);
 
-          // Open authorization URL in new tab
+          // Open authorization URL in new tab and keep reference
           if (response.authorizationUrl) {
-            window.open(response.authorizationUrl, "_blank");
+            paymentWindowRef.current = window.open(response.authorizationUrl, "_blank");
           }
 
           // Poll for mandate approval
@@ -313,6 +328,12 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
 
               if (status === "APPROVED") {
                 approved = true;
+                const paymentWindow = paymentWindowRef.current;
+                if (paymentWindow && !paymentWindow.closed) {
+                  paymentWindow.close();
+                }
+                paymentWindowRef.current = null;
+
                 const stage = await getUserStage(selectedClient.userId, product.goalId);
                 setUserStage(stage);
                 const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
