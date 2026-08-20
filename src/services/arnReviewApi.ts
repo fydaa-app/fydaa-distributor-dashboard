@@ -341,6 +341,11 @@ export async function completeWithMandateFirstDebitForUser(
   });
 }
 
+export async function getMySipMfForUser(userId: number) {
+  const url = `${getStockApiUrl()}/orders/getMySipMf-for-user?userId=${userId}`;
+  return fetchJson(url);
+}
+
 export async function getUserStage(
   userId: number,
   goalId: number,

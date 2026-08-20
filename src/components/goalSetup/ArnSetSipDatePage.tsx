@@ -116,7 +116,7 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
     };
 
     const [sipDate, setSipDate] = useState(10);
-    const [isHowOpen, setIsHowOpen] = useState(false);
+    const [isHowOpen, setIsHowOpen] = useState(true);
 
     const { startDate, endDate, autoRenewDate } = useMemo(() => {
       const today = new Date();
@@ -171,10 +171,16 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-extrabold text-[var(--arn-txt)] sm:text-2xl">
-              Pick the <span className="text-[var(--arn-amber)]">SIP date</span>
+              {sipConfig.frequency === "daily" ? (
+                "Your SIP Schedule"
+              ) : (
+                <>Pick the <span className="text-[var(--arn-amber)]">SIP date</span></>
+              )}
             </h2>
             <p className="mt-1 text-sm text-[var(--arn-txt-2)] sm:text-base">
-              When should the auto-debit run each month?
+              {sipConfig.frequency === "daily"
+                ? "Your auto-debit will run every weekday"
+                : "When should the auto-debit run each month?"}
             </p>
           </div>
           <button
@@ -189,28 +195,32 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
           {/* LEFT: Date picker */}
           <div className="space-y-4">
-            <div className="text-sm font-semibold text-[var(--arn-txt)]">Debit date</div>
-            <div className="flex flex-wrap gap-2">
-              {DATE_OPTIONS.map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => handleDateSelect(day)}
-                  className={cn(
-                    "h-12 w-12 rounded-[12px] border text-sm font-bold transition-all",
-                    sipDate === day
-                      ? "border-[var(--arn-amber)] bg-[var(--arn-amber)] text-white"
-                      : "border-[var(--arn-bdr)] bg-[var(--arn-bg)] text-[var(--arn-txt-2)] hover:border-[var(--arn-bdr-2)]"
-                  )}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
+            {sipConfig.frequency !== "daily" && (
+              <>
+                <div className="text-sm font-semibold text-[var(--arn-txt)]">Debit date</div>
+                <div className="flex flex-wrap gap-2">
+                  {DATE_OPTIONS.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => handleDateSelect(day)}
+                      className={cn(
+                        "h-12 w-12 rounded-[12px] border text-sm font-bold transition-all",
+                        sipDate === day
+                          ? "border-[var(--arn-amber)] bg-[var(--arn-amber)] text-white"
+                          : "border-[var(--arn-bdr)] bg-[var(--arn-bg)] text-[var(--arn-txt-2)] hover:border-[var(--arn-bdr-2)]"
+                      )}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
 
-            <p className="text-xs text-[var(--arn-txt-3)]">
-              SIP runs on the {ordinal(sipDate)} of every month · first debit {firstDebitDisplay}
-            </p>
+                <p className="text-xs text-[var(--arn-txt-3)]">
+                  SIP runs on the {ordinal(sipDate)} of every month · first debit {firstDebitDisplay}
+                </p>
+              </>
+            )}
 
             {/* How it works */}
             <div className={cn("rounded-[14px] border bg-[var(--arn-bg)] overflow-hidden transition-colors", isHowOpen ? "border-[var(--arn-amber)]" : "border-[var(--arn-bdr)]")}>
@@ -275,8 +285,14 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-[var(--arn-txt)]">Auto-debit monthly</div>
-                      <div className="text-xs text-[var(--arn-txt-2)]">Debited on the chosen date each month · pause or cancel anytime</div>
+                      <div className="text-xs font-semibold text-[var(--arn-txt)]">
+                        {sipConfig.frequency === "daily" ? "Auto-debit weekdays" : "Auto-debit monthly"}
+                      </div>
+                      <div className="text-xs text-[var(--arn-txt-2)]">
+                        {sipConfig.frequency === "daily"
+                          ? "Debited every weekday, Monday to Friday · pause or cancel anytime"
+                          : "Debited on the chosen date each month · pause or cancel anytime"}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -323,7 +339,9 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
             <div className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-[var(--arn-txt-2)]">Monthly SIP</span>
+                  <span className="text-[var(--arn-txt-2)]">
+                    {sipConfig.frequency === "daily" ? "Daily SIP" : "Monthly SIP"}
+                  </span>
                   <span className="font-semibold text-[var(--arn-txt)]">
                     {formatRupee(sipConfig.sipAmount)}
                   </span>

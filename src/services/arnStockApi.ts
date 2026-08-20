@@ -66,6 +66,27 @@ export interface FundSearchResponse {
   limit: number;
 }
 
+export interface GoalResponse {
+  id: number;
+  name: string;
+  termId: number;
+  termName: string;
+  tenureMin: number;
+  tenureMax: number;
+  feePricing: number;
+  goalAmountMin: number;
+  goalAmountMax: number;
+  description: string;
+  items: object[];
+  imageUrl: string;
+  iconUrl: string;
+}
+
+export async function getAllGoals(): Promise<GoalResponse[]> {
+  const url = `${getStockApiUrl()}/goal/getAllGoals`;
+  return fetchJson<GoalResponse[]>(url);
+}
+
 export interface RecommendedPortfolioResponse {
   userId: number;
   goalId: number;
