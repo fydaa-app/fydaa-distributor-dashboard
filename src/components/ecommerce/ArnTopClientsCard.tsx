@@ -44,7 +44,7 @@ export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps
       <ArnCardHeader
         title="Top clients by AUM"
         action={
-          <Link href="/arn-clients" className="text-xs font-bold text-[#BA7517] sm:text-sm">
+          <Link href="/arn-clients" className="text-xs font-bold text-[var(--arn-amber)] sm:text-sm">
             All →
           </Link>
         }
