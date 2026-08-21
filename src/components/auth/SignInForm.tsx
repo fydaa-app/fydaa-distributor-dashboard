@@ -71,10 +71,10 @@ export default function SignInForm() {
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
           <div className="mb-5 sm:mb-8">
-            <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
+            <h1 className="mb-2 font-semibold text-[var(--arn-txt)] text-title-sm dark:text-[var(--arn-txt)] sm:text-title-md">
               Sign In
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-[var(--arn-txt-2)] dark:text-[var(--arn-txt-2)]">
               Enter your email and password to sign in!
             </p>
           </div>
@@ -88,7 +88,7 @@ export default function SignInForm() {
               <div className="space-y-6">
                 <div>
                   <Label>
-                    Email <span className="text-[#A32D2D]">*</span>{" "}
+                    Email <span className="text-[var(--arn-red)]">*</span>{" "}
                   </Label>
                   <div className="relative flex">
                     <div className="flex-1 z-10">
@@ -105,7 +105,7 @@ export default function SignInForm() {
                 </div>
                 <div>
                   <Label>
-                    Password <span className="text-[#A32D2D]">*</span>{" "}
+                    Password <span className="text-[var(--arn-red)]">*</span>{" "}
                   </Label>
                   <div className="relative flex">
                     <div className="flex-1 z-10">
@@ -123,13 +123,13 @@ export default function SignInForm() {
                       className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
                     >
                       {showPassword ? (
-                        <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
+                        <EyeIcon className="fill-[var(--arn-txt-2)] dark:fill-[var(--arn-txt-2)]" />
                       ) : (
-                        <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
+                        <EyeCloseIcon className="fill-[var(--arn-txt-2)] dark:fill-[var(--arn-txt-2)]" />
                       )}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <p className="mt-2 text-xs text-[var(--arn-txt-2)] dark:text-[var(--arn-txt-2)]">
                     Use your ARN login credentials.
                   </p>
                 </div>
@@ -139,13 +139,13 @@ export default function SignInForm() {
                       checked={isChecked}
                       onChange={setIsChecked}
                     />
-                    <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
+                    <span className="block font-normal text-[var(--arn-txt)] text-theme-sm dark:text-[var(--arn-txt-2)]">
                       Keep me logged in
                     </span>
                   </div>
                   <Link
                     href="/forgotpassword"
-                    className="text-sm text-[#854F0B] hover:text-[#BA7517] dark:text-[#FAC775]"
+                    className="text-sm text-[var(--arn-amber)] hover:text-[var(--arn-amber-hover)] dark:text-[var(--arn-amber)]"
                   >
                     Forgot password?
                   </Link>
@@ -154,8 +154,8 @@ export default function SignInForm() {
                   <button
                     onClick={submitForm}
                     disabled={isLoading}
-                    className="w-full inline-flex items-center justify-center bg-[#BA7517] text-white hover:bg-[#A46512] 
-                              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#BA7517] px-4 py-2 
+                    className="w-full inline-flex items-center justify-center bg-[var(--arn-amber)] text-[var(--arn-white)] hover:bg-[var(--arn-amber-hover)] 
+                              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--arn-amber)] px-4 py-2 
                               rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed"
                     type="button"
                   >

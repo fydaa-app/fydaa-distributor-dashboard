@@ -1,5 +1,3 @@
-export type BrandKey = "amber" | "green" | "blue" | "red" | "purple" | "teal";
-
 export const COLORS = {
   white: "#ffffff",
 
@@ -10,7 +8,6 @@ export const COLORS = {
   txt: "#1a1a18",
   txt2: "#6b6b67",
   txt3: "#a8a8a3",
-  txtAlt: "#8a8a85",
 
   bdr: "rgba(0, 0, 0, 0.10)",
   bdr2: "rgba(0, 0, 0, 0.20)",
@@ -27,15 +24,15 @@ export const COLORS = {
   darkBdr2: "rgba(255, 255, 255, 0.22)",
 
   brand: {
-  amber: {
-    DEFAULT: "#3B7D3A",
-    bg: "#EAF4E8",
-    txt: "#2F6630",
-    hover: "#326D31",
-    shadow: "rgba(59, 125, 58, 0.24)",
-    darkBg: "#163617",
-    darkTxt: "#A8D5A5",
-  },
+    amber: {
+      DEFAULT: "#BA7517",
+      bg: "#FAEEDA",
+      txt: "#854F0B",
+      hover: "#A46512",
+      shadow: "rgba(186, 117, 23, 0.24)",
+      darkBg: "#412402",
+      darkTxt: "#FAC775",
+    },
     green: {
       DEFAULT: "#3B6D11",
       bg: "#EAF3DE",
@@ -83,46 +80,20 @@ export const COLORS = {
     },
   } as const,
 
-  green: "#3B6D11",
-  greenBg: "#EAF3DE",
-  greenDarkTxt: "#C0DD97",
+  currentBrand: "amber" as const,
 
-  blue: "#185FA5",
-  blueBg: "#E6F1FB",
-  blueDarkTxt: "#B5D4F4",
-
-  red: "#A32D2D",
-  redBg: "#FCEBEB",
-  redDarkTxt: "#F09595",
-
-  purple: "#534AB7",
-  purpleBg: "#EEEDFE",
-  purpleDarkTxt: "#CECBF6",
-
-  teal: "#0F6E56",
-  tealBg: "#E1F5EE",
-  tealDarkTxt: "#9fe1cb",
-
-  chartBorder: "rgba(0, 0, 0, 0.08)",
-  darkChartBorder: "rgba(255, 255, 255, 0.08)",
-  checkboxBorder: "#E4E7EC",
-
-  brandShadow4: "rgba(186, 117, 23, 0.04)",
-  brandShadow6: "rgba(186, 117, 23, 0.06)",
-  brandShadow8: "rgba(186, 117, 23, 0.08)",
-  brandShadow12: "rgba(186, 117, 23, 0.12)",
-  brandShadow15: "rgba(186, 117, 23, 0.15)",
-  brandShadow18: "rgba(186, 117, 23, 0.18)",
-  brandShadow20: "rgba(186, 117, 23, 0.20)",
-  brandShadow30: "rgba(186, 117, 23, 0.30)",
-  brandShadow40: "rgba(186, 117, 23, 0.40)",
-
-  neutralShadow4: "rgba(0, 0, 0, 0.04)",
-  neutralShadow6: "rgba(0, 0, 0, 0.06)",
-
-  authBlue: "rgba(24, 95, 165, 0.18)",
-  glassLight: "rgba(255, 255, 255, 0.54)",
-  glassDark: "rgba(28, 28, 26, 0.58)",
+  inputRing: "rgba(186, 117, 23, 0.1)",
+  loginShadow: "rgba(186, 117, 23, 0.20)",
+  loginShadowHover: "rgba(186, 117, 23, 0.26)",
+  loginGlassLight: "rgba(255, 255, 255, 0.54)",
+  loginGlassDark: "rgba(28, 28, 26, 0.58)",
+  brandGradAmber: "rgba(186, 117, 23, 0.22)",
+  brandGradBlue: "rgba(24, 95, 165, 0.18)",
+  dropShadow: "rgba(0, 0, 0, 0.18)",
+  dropShadowDark: "rgba(0, 0, 0, 0.35)",
+  successRing: "rgba(59, 109, 17, 0.4)",
+  brandBg: "#2d2d2a",
 } as const;
 
 export type ColorKey = keyof typeof COLORS;
+export type BrandKey = keyof typeof COLORS.brand;
