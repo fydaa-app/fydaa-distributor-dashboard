@@ -37,6 +37,8 @@
   --arn-drop-shadow: rgba(0, 0, 0, 0.18);
   --arn-success-ring: rgba(59, 109, 17, 0.4);
   --arn-brand-bg: #2d2d2a;
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.10);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.03);
 }
 
 .dark {
@@ -67,6 +69,8 @@
   --arn-drop-shadow: rgba(0, 0, 0, 0.35);
   --arn-success-ring: rgba(59, 109, 17, 0.4);
   --arn-brand-bg: #2d2d2a;
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.10);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.03);
 }
 
 /* ---- Tone switching ---- */
@@ -79,6 +83,8 @@
   --arn-login-shadow-hover: rgba(186, 117, 23, 0.26);
   --arn-input-ring: rgba(186, 117, 23, 0.1);
   --arn-brand-grad-amber: rgba(186, 117, 23, 0.22);
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.10);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.03);
 }
 
 .tone-green {
@@ -90,6 +96,8 @@
   --arn-login-shadow-hover: rgba(59, 109, 17, 0.26);
   --arn-input-ring: rgba(59, 109, 17, 0.1);
   --arn-brand-grad-amber: rgba(59, 109, 17, 0.22);
+  --arn-amber-bg-grad-1: rgba(59, 109, 17, 0.10);
+  --arn-amber-bg-grad-2: rgba(59, 109, 17, 0.03);
 }
 
 .tone-blue {
@@ -101,6 +109,8 @@
   --arn-login-shadow-hover: rgba(24, 95, 165, 0.26);
   --arn-input-ring: rgba(24, 95, 165, 0.1);
   --arn-brand-grad-amber: rgba(24, 95, 165, 0.22);
+  --arn-amber-bg-grad-1: rgba(24, 95, 165, 0.10);
+  --arn-amber-bg-grad-2: rgba(24, 95, 165, 0.03);
 }
 
 .tone-red {
@@ -112,6 +122,8 @@
   --arn-login-shadow-hover: rgba(163, 45, 45, 0.26);
   --arn-input-ring: rgba(163, 45, 45, 0.1);
   --arn-brand-grad-amber: rgba(163, 45, 45, 0.22);
+  --arn-amber-bg-grad-1: rgba(163, 45, 45, 0.10);
+  --arn-amber-bg-grad-2: rgba(163, 45, 45, 0.03);
 }
 
 .tone-purple {
@@ -123,6 +135,8 @@
   --arn-login-shadow-hover: rgba(83, 74, 183, 0.26);
   --arn-input-ring: rgba(83, 74, 183, 0.1);
   --arn-brand-grad-amber: rgba(83, 74, 183, 0.22);
+  --arn-amber-bg-grad-1: rgba(83, 74, 183, 0.10);
+  --arn-amber-bg-grad-2: rgba(83, 74, 183, 0.03);
 }
 
 .tone-teal {
@@ -134,42 +148,56 @@
   --arn-login-shadow-hover: rgba(15, 110, 86, 0.26);
   --arn-input-ring: rgba(15, 110, 86, 0.1);
   --arn-brand-grad-amber: rgba(15, 110, 86, 0.22);
+  --arn-amber-bg-grad-1: rgba(15, 110, 86, 0.10);
+  --arn-amber-bg-grad-2: rgba(15, 110, 86, 0.03);
 }
 
 .dark.tone-amber {
   --arn-amber-bg: #412402;
   --arn-amber-txt: #fac775;
   --arn-amber-hover: #a46512;
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.10);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.03);
 }
 
 .dark.tone-green {
   --arn-amber-bg: #173404;
   --arn-amber-txt: #9fe1cb;
   --arn-amber-hover: #2d570d;
+  --arn-amber-bg-grad-1: rgba(59, 109, 17, 0.10);
+  --arn-amber-bg-grad-2: rgba(59, 109, 17, 0.03);
 }
 
 .dark.tone-blue {
   --arn-amber-bg: #042c53;
   --arn-amber-txt: #b5d4f4;
   --arn-amber-hover: #14487d;
+  --arn-amber-bg-grad-1: rgba(24, 95, 165, 0.10);
+  --arn-amber-bg-grad-2: rgba(24, 95, 165, 0.03);
 }
 
 .dark.tone-red {
   --arn-amber-bg: #501313;
   --arn-amber-txt: #f09595;
   --arn-amber-hover: #7f2424;
+  --arn-amber-bg-grad-1: rgba(163, 45, 45, 0.10);
+  --arn-amber-bg-grad-2: rgba(163, 45, 45, 0.03);
 }
 
 .dark.tone-purple {
   --arn-amber-bg: #26215c;
   --arn-amber-txt: #cecbf6;
   --arn-amber-hover: #423d92;
+  --arn-amber-bg-grad-1: rgba(83, 74, 183, 0.10);
+  --arn-amber-bg-grad-2: rgba(83, 74, 183, 0.03);
 }
 
 .dark.tone-teal {
   --arn-amber-bg: #04342c;
   --arn-amber-txt: #9fe1cb;
   --arn-amber-hover: #0c5643;
+  --arn-amber-bg-grad-1: rgba(15, 110, 86, 0.10);
+  --arn-amber-bg-grad-2: rgba(15, 110, 86, 0.03);
 }
 
 * {

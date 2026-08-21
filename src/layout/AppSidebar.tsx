@@ -140,7 +140,7 @@ export default function AppSidebar() {
                       className={cn(
                         "group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-semibold transition-colors",
                         active
-                          ? "border border-[var(--arn-amber)]/30 bg-[linear-gradient(90deg,rgba(186,117,23,0.10),rgba(186,117,23,0.03))] text-[var(--arn-txt)]"
+                          ? "border border-[var(--arn-amber)]/30 bg-[linear-gradient(90deg,var(--arn-amber-bg-grad-1),var(--arn-amber-bg-grad-2))] text-[var(--arn-txt)]"
                           : "text-[var(--arn-txt-2)] hover:bg-[var(--arn-bg)] hover:text-[var(--arn-txt)]"
                       )}
                     >
@@ -158,7 +158,7 @@ export default function AppSidebar() {
       <div className="border-t border-[var(--arn-bdr)] p-4">
         <div className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--arn-amber)] text-xs font-black text-white">
+            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--arn-amber)] text-xs font-black text-[var(--arn-white)]">
               {initials}
             </div>
             <div className="min-w-0">
