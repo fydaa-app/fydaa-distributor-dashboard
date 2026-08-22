@@ -140,7 +140,7 @@ export default function AppSidebar() {
                       className={cn(
                         "group flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-semibold transition-colors",
                         active
-                          ? "border border-[var(--arn-amber)]/30 bg-[linear-gradient(90deg,var(--arn-amber-bg-grad-1),var(--arn-amber-bg-grad-2))] text-[var(--arn-txt)]"
+                          ? "border border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)] text-[var(--arn-txt)]"
                           : "text-[var(--arn-txt-2)] hover:bg-[var(--arn-bg)] hover:text-[var(--arn-txt)]"
                       )}
                     >

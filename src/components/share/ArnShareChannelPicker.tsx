@@ -31,9 +31,9 @@ export default function ArnShareChannelPicker({
             onClick={() => onChange(channel.id)}
             className={cn(
               "flex items-center gap-2 rounded-md border px-3 py-2.5 text-left text-xs transition-all duration-100",
-              selectedChannel === channel.id
-                ? "border-[var(--arn-amber)] bg-[var(--arn-amber-bg)] font-semibold text-[var(--arn-amber-txt)]"
-                : "border-[var(--arn-bdr-2)] text-[var(--arn-txt-2)] hover:border-[var(--arn-bdr)] hover:bg-[var(--arn-bg-2)]"
+                selectedChannel === channel.id
+                  ? "border border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)] font-semibold text-[var(--arn-amber-txt)]"
+                  : "border-[var(--arn-bdr-2)] text-[var(--arn-txt-2)] hover:border-[var(--arn-bdr)] hover:bg-[var(--arn-bg-2)]"
             )}
           >
             <i aria-hidden="true" className={channel.icon} />

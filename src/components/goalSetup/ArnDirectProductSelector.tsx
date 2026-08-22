@@ -284,7 +284,7 @@ export default function ArnDirectProductSelector({
                 className={cn(
                   "flex min-w-0 w-full flex-col items-center gap-2 overflow-hidden rounded-[14px] border p-4 text-center transition-all sm:p-5",
                   isSelected
-                    ? "border-[var(--arn-amber)] bg-[var(--arn-amber-bg)] shadow-[0_4px_16px_rgba(184,134,11,.12)]"
+                      ? "border border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)] shadow-[0_4px_16px_rgba(184,134,11,.12)]"
                     : "border-[var(--arn-bdr)] bg-[var(--arn-bg)] hover:border-[var(--arn-bdr-2)] hover:shadow-[0_4px_16px_rgba(0,0,0,.04)]"
                 )}
               >

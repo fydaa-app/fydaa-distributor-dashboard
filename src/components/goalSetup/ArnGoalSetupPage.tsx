@@ -6,13 +6,14 @@ import ArnClientSelector from "@/components/goalSetup/ArnClientSelector";
 import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
 import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar";
 import ArnGoalPathSelector from "@/components/goalSetup/ArnGoalPathSelector";
+import ArnFundSearchBar from "@/components/goalSetup/ArnFundSearchBar";
 import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
 import ArnGoalGrid from "@/components/goalSetup/ArnGoalGrid";
 import ArnSetSipPage, { type ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
 import ArnSetSipDatePage, { type ArnSetSipDatePageRef } from "@/components/goalSetup/ArnSetSipDatePage";
 import ArnReviewConfirmPage, { type ArnReviewConfirmPageRef } from "@/components/goalSetup/ArnReviewConfirmPage";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
-import type { GoalResponse } from "@/services/arnStockApi";
+import type { GoalResponse, FundOption } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 
 const STEP_NAMES: Record<number, string> = {
@@ -76,6 +77,10 @@ export default function ArnGoalSetupPage() {
 
   const handleGoalSelect = useCallback((goal: GoalResponse) => {
     setSelectedGoal(goal);
+  }, []);
+
+  const handleSearchFundSelect = useCallback((fund: FundOption, chipLabel: string) => {
+    console.log("Fund selected:", fund, chipLabel);
   }, []);
 
   const handleContinue = useCallback(() => {
@@ -166,10 +171,15 @@ export default function ArnGoalSetupPage() {
               </div>
             </div>
           ) : (
-            <ArnGoalPathSelector
-              selectedClient={selectedClient!}
-              onSelect={handlePathSelect}
-            />
+            <div className="space-y-6">
+              <ArnGoalPathSelector
+                selectedClient={selectedClient!}
+                onSelect={handlePathSelect}
+              />
+              <div className="mt-6">
+                <ArnFundSearchBar onSelect={handleSearchFundSelect} />
+              </div>
+            </div>
           )}
         </div>
       )}
