@@ -89,8 +89,17 @@ export default function ArnGoalSetupPage() {
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
+  const didMount = useRef(false);
 
   const onboardedTarget = initialOnboardTarget;
+
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [step]);
 
   useEffect(() => {
     if (!initialOnboardTarget) return;
@@ -205,6 +214,7 @@ export default function ArnGoalSetupPage() {
     } else if (selectedPath === "goal" && selectedGoal && step === 2) {
       setStep(3);
     } else if (step === 3) {
+      if (sipPageRef.current?.hasTenureError) return;
       if (sipPageRef.current) {
         try {
           sipPageRef.current.getConfig();
@@ -351,11 +361,13 @@ export default function ArnGoalSetupPage() {
               ? selectedPath === "direct"
                 ? !!selectedProduct
                 : !!selectedGoal
-              : step === 3 || step === 4
-                ? true
-                : step === 5
-                  ? !reviewCta.disabled
-                  : false
+              : step === 3
+                ? !sipPageRef.current?.hasTenureError
+                : step === 4
+                  ? true
+                  : step === 5
+                    ? !reviewCta.disabled
+                    : false
         }
         continueLabel={step === 5 ? reviewCta.label : "Continue →"}
         isLoading={step === 5 ? reviewCta.isLoading : false}

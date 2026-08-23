@@ -20,6 +20,7 @@ export interface ArnSetSipPageRef {
     lumpSumAmount: number;
     expectedCagr: number;
   };
+  hasTenureError: boolean;
 }
 
 interface ArnSetSipPageProps {
@@ -45,6 +46,11 @@ function formatRupeeFull(n: number): string {
 const AMOUNT_LIMITS: Record<"daily" | "monthly", { min: number; max: number; step: number }> = {
   daily: { min: 100, max: 1000, step: 50 },
   monthly: { min: 1000, max: 100000, step: 500 },
+};
+
+const TENURE_LIMITS: Record<"daily" | "monthly", { min: number; max: number }> = {
+  daily: { min: 1, max: 4 },
+  monthly: { min: 3, max: 30 },
 };
 
 const TENURE_OPTIONS: Record<"daily" | "monthly", number[]> = {
@@ -96,6 +102,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const [sipAmount, setSipAmount] = useState(product.defAmt);
     const [frequency, setFrequency] = useState<"daily" | "monthly">("monthly");
     const [tenure, setTenure] = useState(product.defTenure);
+    const [displayTenure, setDisplayTenure] = useState(String(product.defTenure));
+    const [tenureError, setTenureError] = useState<string | null>(null);
     const [fundMode, setFundMode] = useState<"rec" | "own">("rec");
     const [selectedFund, setSelectedFund] = useState(product.defFund);
     const [selectedScheme, setSelectedScheme] = useState<string | null>(null);
@@ -276,6 +284,10 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       `;
     }, [projection.corpus, sipAmount, frequency, tenure, expectedCagr, isGoalMode]);
 
+    useEffect(() => {
+      setDisplayTenure(String(tenure));
+    }, [tenure]);
+
     useImperativeHandle(ref, () => ({
       getConfig: () => ({
         sipAmount,
@@ -288,6 +300,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         lumpSumAmount,
         expectedCagr,
       }),
+      hasTenureError: !!tenureError,
     }));
 
     useEffect(() => {
@@ -333,6 +346,14 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
     const amountLimits = isGoalMode ? AMOUNT_LIMITS.monthly : AMOUNT_LIMITS[frequency];
 
+    const tenureMin = isGoalMode
+      ? Math.round(selectedGoal!.tenureMin / 12)
+      : TENURE_LIMITS[frequency].min;
+
+    const tenureMax = isGoalMode
+      ? Math.round(selectedGoal!.tenureMax / 12)
+      : TENURE_LIMITS[frequency].max;
+
     const handleSliderChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
         setSipAmount(Number(e.target.value));
@@ -340,13 +361,45 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       []
     );
 
-    const handleAmountBlur = useCallback(
+    const handleTenureChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value.replace(/[^0-9]/g, "");
+        if (!raw) {
+          setDisplayTenure("");
+          setTenureError(null);
+          return;
+        }
+        const num = Number(raw);
+        const clamped = Math.min(tenureMax, num);
+        setTenure(clamped);
+        setDisplayTenure(String(clamped));
+        if (num >= tenureMin) {
+          setTenureError(null);
+        }
+      },
+      [tenureMin, tenureMax]
+    );
+
+    const handleTenureBlur = useCallback(
       (e: React.FocusEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/[^0-9]/g, "");
-        const val = raw ? Math.min(amountLimits.max, Math.max(amountLimits.min, Number(raw))) : amountLimits.min;
-        setSipAmount(val);
+        if (!raw) {
+          setTenure(tenureMin);
+          setDisplayTenure(String(tenureMin));
+          setTenureError(null);
+          return;
+        }
+        const num = Number(raw);
+        const clamped = Math.min(tenureMax, Math.max(tenureMin, num));
+        setTenure(clamped);
+        setDisplayTenure(String(clamped));
+        if (num < tenureMin) {
+          setTenureError(`Minimum tenure is ${tenureMin} year${tenureMin === 1 ? "" : "s"}`);
+        } else {
+          setTenureError(null);
+        }
       },
-      [amountLimits.min, amountLimits.max]
+      [tenureMin, tenureMax]
     );
 
     const sliderPct = ((sipAmount - amountLimits.min) / (amountLimits.max - amountLimits.min)) * 100;
@@ -358,6 +411,14 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       }
       return TENURE_OPTIONS[frequency];
     }, [isGoalMode, frequency, product.tenures]);
+
+    const cappedTenureOptions = useMemo(() => {
+      if (tenureOptions.length <= 6) return tenureOptions;
+      const step = (tenureOptions.length - 1) / 5;
+      return Array.from({ length: 6 }, (_, i) =>
+        tenureOptions[Math.round(i * step)]
+      );
+    }, [tenureOptions]);
 
     return (
       <div className="space-y-6">
@@ -388,26 +449,14 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--arn-amber)]">
                    YOU INVEST
                  </div>
-                 <div className="mt-1 flex items-baseline gap-1">
-                   <span className="text-2xl font-bold text-[var(--arn-txt-3)]">
-                     ₹
-                   </span>
+                  <div className="mt-1 flex items-baseline gap-1">
                     <input
-                       type="text"
-                       inputMode="numeric"
-                       value={formatRupeeFull(sipAmount)}
-                       onChange={(e) => {
-                         const raw = e.target.value.replace(/[^0-9]/g, "");
-                         if (raw) setSipAmount(Math.min(amountLimits.max, Math.max(amountLimits.min, Number(raw))));
-                       }}
-                       onBlur={handleAmountBlur}
-                      onFocus={(e) => {
-                        e.target.value = String(sipAmount);
-                        e.target.select();
-                      }}
-                       className="w-full max-w-[200px] bg-transparent text-3xl font-extrabold text-[var(--arn-txt)] outline-none sm:text-[38px]"
-                     />
-                 </div>
+                      type="text"
+                      readOnly
+                      value={formatRupeeFull(sipAmount)}
+                      className="w-full max-w-[200px] bg-transparent text-3xl font-extrabold text-[var(--arn-txt)] outline-none sm:text-[38px]"
+                    />
+                  </div>
                  <div className="mt-1 text-xs font-medium text-[var(--arn-txt-3)]">
                    {freqLabel}
                  </div>
@@ -454,8 +503,11 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
               </div>
             </div>
 
-            {/* Slider */}
-            <input
+             {/* Slider */}
+             <div className="mt-4 text-[10px] font-bold uppercase tracking-wider text-[var(--arn-amber)] sm:mt-5 md:mt-6">
+               Edit your investment amount
+             </div>
+             <input
               type="range"
               min={amountLimits.min}
               max={amountLimits.max}
@@ -490,21 +542,50 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
             <div className="my-4 h-px bg-[var(--arn-bdr)]" />
 
              {/* Tenure */}
-             <div className="flex items-center gap-4">
-               <span className="text-sm font-semibold text-[var(--arn-txt)]">
-                 Tenure
-               </span>
-               <select
-                 value={tenure}
-                 onChange={(e) => setTenure(Number(e.target.value))}
-                 className="max-w-[200px] flex-1 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] px-3 py-2 text-sm font-semibold text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)]"
-               >
-                 {tenureOptions.map((t) => (
-                   <option key={t} value={t}>
-                     {t} {t === 1 ? "year" : "years"}
-                   </option>
+             <div className="flex flex-col gap-2">
+               <div className="flex items-center gap-4">
+                 <span className="text-sm font-semibold text-[var(--arn-txt)]">
+                   Tenure
+                 </span>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-baseline gap-1">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={displayTenure}
+                        onChange={handleTenureChange}
+                        onBlur={handleTenureBlur}
+                        className={cn(
+                          "max-w-[100px] rounded-[12px] border bg-[var(--arn-bg)] px-3 py-2 text-sm font-semibold text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)]",
+                          tenureError ? "border-[var(--arn-red)]" : "border-[var(--arn-bdr)]"
+                        )}
+                      />
+                      <span className="text-xs font-medium text-[var(--arn-txt-3)]">
+                        {tenure === 1 ? "year" : "years"}
+                      </span>
+                    </div>
+                    {tenureError && (
+                      <span className="text-xs font-medium text-[var(--arn-red)]">{tenureError}</span>
+                    )}
+                  </div>
+               </div>
+               <div className="flex flex-wrap gap-2">
+                 {cappedTenureOptions.map((t) => (
+                   <button
+                     key={t}
+                     type="button"
+                     onClick={() => setTenure(t)}
+                     className={cn(
+                       "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                       tenure === t
+                         ? "border-[var(--arn-amber)] bg-[var(--arn-amber)] text-white"
+                         : "border-[var(--arn-bdr)] bg-[var(--arn-bg)] text-[var(--arn-txt-2)] hover:border-[var(--arn-bdr-2)]"
+                     )}
+                   >
+                     {t} {t === 1 ? "yr" : "yrs"}
+                   </button>
                  ))}
-               </select>
+               </div>
              </div>
 
              <div className="my-4 h-px bg-[var(--arn-bdr)]" />
