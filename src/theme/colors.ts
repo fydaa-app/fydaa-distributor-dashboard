@@ -80,7 +80,7 @@ export const COLORS = {
     },
   } as const,
 
-  currentBrand: "amber" as const,
+  currentBrand: "amberx" as const,
 
   inputRing: "rgba(186, 117, 23, 0.1)",
   loginShadow: "rgba(186, 117, 23, 0.20)",

@@ -24,6 +24,16 @@ import {
   type AccountType,
 } from "@/services/arnInvestmentSetupService";
 
+function mergeOnboardedUserData(updates: Record<string, unknown>) {
+  try {
+    const raw = getCookie("onboardedUserData");
+    const data = raw ? JSON.parse(raw as string) : {};
+    setCookie("onboardedUserData", JSON.stringify({ ...data, ...updates }), { path: "/" });
+  } catch {
+    setCookie("onboardedUserData", JSON.stringify(updates), { path: "/" });
+  }
+}
+
 interface ArnOnboardFormProps {
   phase: "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
   mobile: string;
@@ -452,8 +462,8 @@ export default function ArnOnboardForm({
   const [bankError, setBankError] = useState<string | null>(null);
 
   const handleBankVerify = async () => {
-    if (!bankIfsc.trim()) {
-      setBankError("Please enter your IFSC code.");
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc.trim())) {
+      setBankError("Please enter a valid IFSC code (e.g., SBIN0001234).");
       return;
     }
     if (!bankAccountType) {
@@ -602,6 +612,11 @@ export default function ArnOnboardForm({
         pan: pan.trim().toUpperCase(),
         date_of_birth: dob,
         name: fullName.trim(),
+      });
+
+      mergeOnboardedUserData({
+        name: fullName.trim(),
+        fullName: fullName.trim(),
       });
 
       if (result.isKycCompliant) {
@@ -822,6 +837,7 @@ export default function ArnOnboardForm({
     try {
       const digits = emailOtpValues.join("");
       await verifyLinkEmail({ email: email.trim(), otp: digits });
+      mergeOnboardedUserData({ email: email.trim() });
       setCookie("emailVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
       setEmailVerified(true);
       onEmailVerified();
@@ -1601,8 +1617,9 @@ export default function ArnOnboardForm({
                 <input
                   className="field-input"
                   placeholder="Enter your IFSC code"
+                  maxLength={11}
                   value={bankIfsc}
-                  onChange={(e) => setBankIfsc(e.target.value)}
+                  onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
                 />
               </div>
 
@@ -2091,7 +2108,7 @@ export default function ArnOnboardForm({
             onClick={onReset}
             className="btn-primary btn-wide"
           >
-            Go to Dashboard <i className="ti ti-arrow-right" aria-hidden="true" />
+            Start Investment <i className="ti ti-arrow-right" aria-hidden="true" />
           </button>
         </div>
       )}

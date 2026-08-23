@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ArnGoalSetupStepper from "@/components/goalSetup/ArnGoalSetupStepper";
 import ArnClientSelector from "@/components/goalSetup/ArnClientSelector";
 import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
@@ -24,16 +24,79 @@ const STEP_NAMES: Record<number, string> = {
   5: "Review & confirm",
 };
 
+interface OnboardedTarget {
+  userId: string;
+  name: string;
+  phone: string;
+  email: string;
+  skipClientStep?: boolean;
+}
+
+function readOnboardTarget(): OnboardedTarget | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored = sessionStorage.getItem("arn_onboard_target_user");
+    if (!stored) return null;
+    return JSON.parse(stored) as OnboardedTarget;
+  } catch {
+    return null;
+  }
+}
+
+function buildClientFromTarget(target: OnboardedTarget): GoalSetupClient | null {
+  const userId = Number(target.userId);
+  if (!target.userId || !Number.isFinite(userId) || userId <= 0) return null;
+
+  return {
+    userId,
+    name: target.name.trim(),
+    mobileNumber: target.phone || "",
+    email: target.email || "",
+    mandateStatus: "PENDING",
+    panStatus: undefined,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function needsClientLookup(
+  client: GoalSetupClient | null,
+  target: OnboardedTarget | null
+): boolean {
+  if (!target?.skipClientStep) return false;
+
+  const phone = target.phone || client?.mobileNumber;
+  if (!phone) return false;
+
+  if (!client) return true;
+
+  return !client.name.trim();
+}
+
 export default function ArnGoalSetupPage() {
-  const [step, setStep] = useState(1);
-  const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(null);
+  const initialOnboardTarget = readOnboardTarget();
+  const initialClient = initialOnboardTarget
+    ? buildClientFromTarget(initialOnboardTarget)
+    : null;
+  const shouldSkipClientStep =
+    initialOnboardTarget?.skipClientStep === true && !!initialClient;
+
+  const [step, setStep] = useState(shouldSkipClientStep ? 2 : 1);
+  const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(initialClient);
   const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<GoalResponse | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
-  const [reviewCta, setReviewCta] = useState<{ label: string; disabled: boolean; isLoading?: boolean }>({ label: "Activate SIP", disabled: false });
+
+  const onboardedTarget = initialOnboardTarget;
+
+  useEffect(() => {
+    if (!initialOnboardTarget) return;
+    sessionStorage.removeItem("arn_onboard_target_user");
+  }, [initialOnboardTarget]);
+
   const [sipConfig, setSipConfig] = useState<ReturnType<ArnSetSipPageRef["getConfig"]>>({
     sipAmount: 10000,
     frequency: "monthly",
@@ -52,6 +115,57 @@ export default function ArnGoalSetupPage() {
     autoRenewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     sipFrequency: "monthly",
   });
+  const [reviewCta, setReviewCta] = useState<{ label: string; disabled: boolean; isLoading?: boolean }>({ label: "Activate SIP", disabled: false });
+
+  useEffect(() => {
+    if (!needsClientLookup(selectedClient, onboardedTarget)) return;
+
+    const phone = onboardedTarget?.phone || selectedClient?.mobileNumber || "";
+    let cancelled = false;
+
+    import("@/services/arnGoalSetupService")
+      .then(({ getGoalSetupClients }) =>
+        getGoalSetupClients({
+          page: 1,
+          limit: 10,
+          search: phone,
+        })
+      )
+      .then((response) => {
+        if (cancelled) return;
+
+        const normalizedPhone = phone.replace(/\D/g, "");
+        const match = response.users.find((client) => {
+          const clientPhone = client.mobileNumber.replace(/\D/g, "");
+          return (
+            clientPhone === normalizedPhone ||
+            clientPhone.endsWith(normalizedPhone) ||
+            normalizedPhone.endsWith(clientPhone)
+          );
+        });
+
+        if (match) {
+          setSelectedClient(match);
+          setStep(2);
+          return;
+        }
+
+        const fallbackName = onboardedTarget?.name?.trim();
+        if (selectedClient && fallbackName) {
+          setSelectedClient({ ...selectedClient, name: fallbackName });
+        }
+      })
+      .catch(() => {
+        const fallbackName = onboardedTarget?.name?.trim();
+        if (selectedClient && fallbackName) {
+          setSelectedClient({ ...selectedClient, name: fallbackName });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onboardedTarget, selectedClient]);
 
   const handleClientSelect = useCallback((client: GoalSetupClient) => {
     setSelectedClient(client);
