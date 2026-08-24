@@ -87,7 +87,18 @@ function extractOnboardUserName(
 
 export default function ArnOnboardPage() {
   const [phase, setPhase] = useState<Phase>("mobile");
-  const [mobile, setMobile] = useState("");
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const sessionMobile = sessionStorage.getItem("arn_onboard_mobile");
+      if (sessionMobile) {
+        sessionStorage.removeItem("arn_onboard_mobile");
+        return sessionMobile.replace(/\D/g, '').slice(0, 10);
+      }
+      const params = new URLSearchParams(window.location.search);
+      return (params.get('mobile') || '').replace(/\D/g, '').slice(0, 10);
+    }
+    return '';
+  });
   const [otpValues, setOtpValues] = useState(["", "", "", "", "", ""]);
   const [onboardedToken, setOnboardedToken] = useState("");
   const [riskQuestions, setRiskQuestions] = useState<RiskProfileQuestion[]>([]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ArnGoalSetupStepper from "@/components/goalSetup/ArnGoalSetupStepper";
 import ArnClientSelector from "@/components/goalSetup/ArnClientSelector";
 import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
@@ -15,6 +16,7 @@ import ArnReviewConfirmPage, { type ArnReviewConfirmPageRef } from "@/components
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
 import type { GoalResponse, FundOption } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
+import { getUserStage } from "@/services/arnReviewApi";
 
 const STEP_NAMES: Record<number, string> = {
   1: "Select a client",
@@ -74,6 +76,7 @@ function needsClientLookup(
 }
 
 export default function ArnGoalSetupPage() {
+  const router = useRouter();
   const initialOnboardTarget = readOnboardTarget();
   const initialClient = initialOnboardTarget
     ? buildClientFromTarget(initialOnboardTarget)
@@ -88,6 +91,10 @@ export default function ArnGoalSetupPage() {
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
   const [preselectedFund, setPreselectedFund] = useState<FundOption | null>(null);
   const [fundSelectError, setFundSelectError] = useState<string | null>(null);
+  const [showIncompleteModal, setShowIncompleteModal] = useState(false);
+  const [incompleteClientName, setIncompleteClientName] = useState("");
+  const [incompleteUserMobile, setIncompleteUserMobile] = useState("");
+  const [isCheckingStage, setIsCheckingStage] = useState(false);
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
@@ -223,9 +230,36 @@ export default function ArnGoalSetupPage() {
     setPreselectedFund(fund);
   }, []);
 
-  const handleContinue = useCallback(() => {
+  const handleContinue = useCallback(async () => {
     if (selectedClient && step === 1) {
-      setStep(2);
+      if (isCheckingStage) return;
+
+      setIsCheckingStage(true);
+      try {
+        const stage = await getUserStage(selectedClient.userId, 0, "MUTUALFUND");
+
+        if (
+          stage.isRiskProfileComplete &&
+          stage.isEmail &&
+          stage.isKycCompliant &&
+          stage.isBank &&
+          stage.isNominee
+        ) {
+          setStep(2);
+          return;
+        }
+
+        setIncompleteClientName(selectedClient.name);
+        setIncompleteUserMobile(selectedClient.mobileNumber);
+        setShowIncompleteModal(true);
+      } catch {
+        setIncompleteClientName(selectedClient.name);
+        setIncompleteUserMobile(selectedClient.mobileNumber);
+        setShowIncompleteModal(true);
+      } finally {
+        setIsCheckingStage(false);
+      }
+      return;
     } else if (selectedPath === "direct" && selectedProduct && step === 2) {
       setStep(3);
     } else if (step === 2 && selectedPath === "goal" && !selectedGoal && preselectedFund) {
@@ -285,7 +319,7 @@ export default function ArnGoalSetupPage() {
     } else if (step === 5) {
       reviewPageRef.current?.handleCta();
     }
-  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step, preselectedFund]);
+  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step, preselectedFund, isCheckingStage]);
 
   const handleBack = useCallback(() => {
     if (step > 1) {
@@ -472,6 +506,50 @@ export default function ArnGoalSetupPage() {
         continueLabel={step === 5 ? reviewCta.label : "Continue →"}
         isLoading={step === 5 ? reviewCta.isLoading : false}
       />
+
+      {showIncompleteModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-[400px] rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--arn-red-bg)]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--arn-red)]">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-[var(--arn-txt)]">User Onboarding Incomplete</h3>
+                <p className="mt-1 text-sm text-[var(--arn-txt-2)]">
+                  <span className="font-semibold text-[var(--arn-txt)]">{incompleteClientName}</span> hasn&apos;t completed onboarding yet. Please complete their onboarding before setting up a goal or SIP.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowIncompleteModal(false)}
+                className="min-h-10 rounded-[10px] border border-[var(--arn-bdr)] px-4 py-2 text-xs font-semibold text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)] hover:text-[var(--arn-txt)] sm:text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowIncompleteModal(false);
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem("arn_onboard_mobile", incompleteUserMobile);
+                  }
+                  router.push(`/arn-onboard?mobile=${encodeURIComponent(incompleteUserMobile)}`);
+                }}
+                className="min-h-10 rounded-[10px] bg-[var(--arn-amber)] px-4 py-2 text-xs font-bold text-white shadow-[0_2px_8px_rgba(184,134,11,.2)] transition-colors hover:bg-[#A46512] hover:shadow-[0_4px_16px_rgba(184,134,11,.3)] active:scale-[0.99] sm:text-sm"
+              >
+                Complete Onboarding
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
