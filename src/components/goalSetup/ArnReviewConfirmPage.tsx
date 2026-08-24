@@ -596,26 +596,26 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                 maxLength={6}
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="123456"
-                className="h-12 w-32 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-surf)] text-center text-lg font-bold tracking-widest text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)]"
+                placeholder=""
+                className="h-12 w-32 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] text-center text-lg font-bold tracking-widest text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)]"
               />
             </div>
              {submissionError && (
                <div className="mt-2 text-xs text-red-500">{submissionError}</div>
              )}
-             <div className="mt-3 flex items-center justify-between">
-               <span className="text-xs text-[var(--arn-txt-3)]">
-                 Didn&apos;t receive it?
-               </span>
-               <button
-                 type="button"
-                 onClick={handleResendOtp}
-                 disabled={!canResend || isSubmitting}
-                 className="text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70 disabled:opacity-40"
-               >
-                 {canResend ? "Resend OTP" : `Resend in ${resendSeconds}s`}
-               </button>
-             </div>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-xs text-[var(--arn-txt-3)]">
+                  Didn&apos;t receive it?
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={!canResend || isSubmitting}
+                  className="text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70 disabled:opacity-40"
+                >
+                  {canResend ? "Resend OTP" : `Resend in ${resendSeconds}s`}
+                </button>
+              </div>
            </div>
          )}
 
