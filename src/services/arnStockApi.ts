@@ -52,7 +52,10 @@ export interface FundOption {
   isin: string;
   schemeCode: string;
   selectedMfId: number | null;
+  suggestedGoalId?: number;
   suggestedGoalName?: string;
+  stockType?: string;
+  fund_category?: string;
 }
 
 export interface FundSearchResponse {

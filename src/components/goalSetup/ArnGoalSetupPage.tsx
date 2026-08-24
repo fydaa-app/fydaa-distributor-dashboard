@@ -86,6 +86,8 @@ export default function ArnGoalSetupPage() {
   const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<GoalResponse | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
+  const [preselectedFund, setPreselectedFund] = useState<FundOption | null>(null);
+  const [fundSelectError, setFundSelectError] = useState<string | null>(null);
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
@@ -192,24 +194,80 @@ export default function ArnGoalSetupPage() {
     setSelectedPath(path);
     setSelectedGoal(null);
     setSelectedProduct(null);
+    setPreselectedFund(null);
+    setFundSelectError(null);
   }, []);
 
   const handleProductSelect = useCallback((product: DirectProduct) => {
     setSelectedProduct(product);
+    setPreselectedFund(null);
+    setFundSelectError(null);
   }, []);
 
   const handleGoalSelect = useCallback((goal: GoalResponse) => {
     setSelectedGoal(goal);
+    setPreselectedFund(null);
+    setFundSelectError(null);
   }, []);
 
-  const handleSearchFundSelect = useCallback((fund: FundOption, chipLabel: string) => {
-    console.log("Fund selected:", fund, chipLabel);
+  const handleSearchFundSelect = useCallback((fund: FundOption) => {
+    if (!fund.suggestedGoalName || !fund.suggestedGoalId) {
+      setFundSelectError("This fund does not have a valid goal configuration.");
+      return;
+    }
+
+    setFundSelectError(null);
+    setSelectedPath("goal");
+    setSelectedGoal(null);
+    setSelectedProduct(null);
+    setPreselectedFund(fund);
   }, []);
 
   const handleContinue = useCallback(() => {
     if (selectedClient && step === 1) {
       setStep(2);
     } else if (selectedPath === "direct" && selectedProduct && step === 2) {
+      setStep(3);
+    } else if (step === 2 && selectedPath === "goal" && !selectedGoal && preselectedFund) {
+      if (!preselectedFund.suggestedGoalName || !preselectedFund.suggestedGoalId) {
+        setFundSelectError("This fund does not have a valid goal configuration.");
+        return;
+      }
+
+      const syntheticGoal: GoalResponse = {
+        id: preselectedFund.suggestedGoalId,
+        name: preselectedFund.suggestedGoalName,
+        termId: 2,
+        termName: "Medium Term",
+        tenureMin: 36,
+        tenureMax: 360,
+        feePricing: 0,
+        goalAmountMin: 10000,
+        goalAmountMax: 10000000,
+        description: preselectedFund.suggestedGoalName,
+        items: [],
+        imageUrl: "",
+        iconUrl: "",
+      };
+
+      const syntheticProduct: DirectProduct = {
+        key: `fund-search-${preselectedFund.id ?? preselectedFund.isin}`,
+        name: preselectedFund.suggestedGoalName,
+        tagline: preselectedFund.suggestedGoalName,
+        goldLine: preselectedFund.suggestedGoalName,
+        description: preselectedFund.suggestedGoalName,
+        goalId: preselectedFund.suggestedGoalId,
+        stockType: preselectedFund.stockType || "IndianStock",
+        assumedCagr: "12%",
+        defAmt: 10000,
+        defTenure: 10,
+        tenures: [3, 5, 10, 20, 30],
+        defFund: preselectedFund.schemeName || preselectedFund.fundName || preselectedFund.stockName || preselectedFund.name || "",
+      };
+
+      setSelectedGoal(syntheticGoal);
+      setSelectedProduct(syntheticProduct);
+      setFundSelectError(null);
       setStep(3);
     } else if (selectedPath === "goal" && selectedGoal && step === 2) {
       setStep(3);
@@ -220,13 +278,14 @@ export default function ArnGoalSetupPage() {
           sipPageRef.current.getConfig();
         } catch {}
       }
+      setPreselectedFund(null);
       setStep(4);
     } else if (step === 4) {
       setStep(5);
     } else if (step === 5) {
       reviewPageRef.current?.handleCta();
     }
-  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step]);
+  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step, preselectedFund]);
 
   const handleBack = useCallback(() => {
     if (step > 1) {
@@ -276,34 +335,72 @@ export default function ArnGoalSetupPage() {
               onBack={() => setSelectedPath(null)}
             />
           ) : selectedPath === "goal" ? (
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPath(null);
-                  setSelectedGoal(null);
-                }}
-                className="shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
-              >
-                ← Change path
-              </button>
-              <div className="mt-4">
-                <ArnGoalGrid
-                  selectedGoalId={selectedGoal?.id ?? null}
-                  onSelect={handleGoalSelect}
-                />
+            preselectedFund ? (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPath(null);
+                    setSelectedGoal(null);
+                    setPreselectedFund(null);
+                    setFundSelectError(null);
+                  }}
+                  className="shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
+                >
+                  ← Change path
+                </button>
+                <div className="mt-6">
+                  <ArnFundSearchBar onSelect={handleSearchFundSelect} />
+                  {preselectedFund && (
+                    <div className="mt-3 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
+                          ✓
+                        </span>
+                        <span className="text-sm font-semibold text-[var(--arn-txt)]">
+                          {preselectedFund.schemeName || preselectedFund.fundName || preselectedFund.stockName || preselectedFund.name}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {fundSelectError && (
+                    <p className="mt-2 text-xs text-[var(--arn-red)]">{fundSelectError}</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPath(null);
+                    setSelectedGoal(null);
+                  }}
+                  className="shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
+                >
+                  ← Change path
+                </button>
+                <div className="mt-4">
+                  <ArnGoalGrid
+                    selectedGoalId={selectedGoal?.id ?? null}
+                    onSelect={handleGoalSelect}
+                  />
+                </div>
+              </div>
+            )
           ) : (
-            <div className="space-y-6">
-              <ArnGoalPathSelector
-                selectedClient={selectedClient!}
-                onSelect={handlePathSelect}
-              />
-              <div className="mt-6">
-                <ArnFundSearchBar onSelect={handleSearchFundSelect} />
+              <div className="space-y-6">
+                <ArnGoalPathSelector
+                  selectedClient={selectedClient!}
+                  onSelect={handlePathSelect}
+                />
+                <div className="mt-6">
+                  <ArnFundSearchBar onSelect={handleSearchFundSelect} />
+                  {fundSelectError && (
+                    <p className="mt-2 text-xs text-[var(--arn-red)]">{fundSelectError}</p>
+                  )}
+                </div>
               </div>
-            </div>
           )}
         </div>
       )}
@@ -318,6 +415,7 @@ export default function ArnGoalSetupPage() {
             mode={selectedPath === "goal" ? "goal" : "direct"}
             onBack={handleBack}
             onConfigChange={setSipConfig}
+            preselectedFund={preselectedFund}
           />
         </div>
       )}
@@ -360,7 +458,9 @@ export default function ArnGoalSetupPage() {
             : step === 2
               ? selectedPath === "direct"
                 ? !!selectedProduct
-                : !!selectedGoal
+                : selectedPath === "goal"
+                  ? !!selectedGoal || !!preselectedFund
+                  : !!preselectedFund
               : step === 3
                 ? !sipPageRef.current?.hasTenureError
                 : step === 4

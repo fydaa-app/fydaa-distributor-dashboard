@@ -30,6 +30,7 @@ interface ArnSetSipPageProps {
   mode: "goal" | "direct";
   onBack: () => void;
   onConfigChange?: (config: ReturnType<ArnSetSipPageRef["getConfig"]>) => void;
+  preselectedFund?: FundOption | null;
 }
 
 function formatRupee(n: number): string {
@@ -73,7 +74,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
-  function ArnSetSipPage({ selectedClient, selectedGoal, selectedProduct, mode, onBack, onConfigChange }, ref) {
+  function ArnSetSipPage({ selectedClient, selectedGoal, selectedProduct, mode, onBack, onConfigChange, preselectedFund }, ref) {
     const isGoalMode = mode === "goal" && selectedGoal != null;
     const product = isGoalMode
       ? {
@@ -104,10 +105,22 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const [tenure, setTenure] = useState(product.defTenure);
     const [displayTenure, setDisplayTenure] = useState(String(product.defTenure));
     const [tenureError, setTenureError] = useState<string | null>(null);
-    const [fundMode, setFundMode] = useState<"rec" | "own">("rec");
-    const [selectedFund, setSelectedFund] = useState(product.defFund);
-    const [selectedScheme, setSelectedScheme] = useState<string | null>(null);
-    const [selectedMfId, setSelectedMfId] = useState<number | null>(null);
+
+    const initialFundMode = preselectedFund ? "own" : "rec";
+    const initialSelectedFund = preselectedFund
+      ? preselectedFund.schemeName || preselectedFund.fundName || preselectedFund.stockName || preselectedFund.name || product.defFund || ""
+      : product.defFund || "";
+    const initialSelectedScheme = preselectedFund
+      ? preselectedFund.ticker || preselectedFund.scheme || preselectedFund.isin || preselectedFund.schemeCode || null
+      : null;
+    const initialSelectedMfId = preselectedFund
+      ? preselectedFund.selectedMfId ?? preselectedFund.id ?? null
+      : null;
+
+    const [fundMode, setFundMode] = useState<"rec" | "own">(initialFundMode);
+    const [selectedFund, setSelectedFund] = useState(initialSelectedFund);
+    const [selectedScheme, setSelectedScheme] = useState<string | null>(initialSelectedScheme);
+    const [selectedMfId, setSelectedMfId] = useState<number | null>(initialSelectedMfId);
     const [lumpSumEnabled, setLumpSumEnabled] = useState(false);
     const [lumpSumAmount, setLumpSumAmount] = useState(50000);
     const [fundSearchQuery, setFundSearchQuery] = useState("");
@@ -139,7 +152,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const projection = useMemo(() => {
       const corpus = calculateProjectedCorpus({
         sipAmount,
-        frequency: isGoalMode ? "monthly" : frequency,
+        frequency: isGoalMode && !preselectedFund ? "monthly" : frequency,
         tenure,
         expectedCagr,
       });
@@ -154,26 +167,25 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         gains: Math.round(gains),
         growth: Math.round(growth),
       };
-    }, [sipAmount, frequency, tenure, expectedCagr, isGoalMode]);
+    }, [sipAmount, frequency, tenure, expectedCagr, isGoalMode, preselectedFund]);
 
     const fundDisplayName = useMemo(() => {
-      if (isGoalMode) {
-        if (recommendedPortfolio?.schemeAllocations?.[0]?.stockName) {
-          return recommendedPortfolio.schemeAllocations[0].stockName;
-        }
-        return selectedFund || "Loading recommended fund...";
+      if (!isGoalMode && fundMode === "rec" && recommendedPortfolio?.schemeAllocations?.[0]?.stockName) {
+        return recommendedPortfolio.schemeAllocations[0].stockName;
       }
-      if (fundMode === "rec") {
-        if (recommendedPortfolio?.schemeAllocations?.[0]?.stockName) {
-          return recommendedPortfolio.schemeAllocations[0].stockName;
-        }
-        return selectedFund.split(" —")[0] || selectedFund;
+      if (fundMode === "own") {
+        return selectedFund ? selectedFund.split(" —")[0] || selectedFund : "";
       }
-      return selectedFund.split(" —")[0] || selectedFund;
+      return selectedFund ? selectedFund.split(" —")[0] || selectedFund : "";
     }, [isGoalMode, fundMode, selectedFund, recommendedPortfolio]);
 
     useEffect(() => {
       if (!selectedClient) return;
+      if (preselectedFund) {
+        setIsLoadingRec(false);
+        setRecError(null);
+        return;
+      }
 
       let cancelled = false;
       setIsLoadingRec(true);
@@ -210,7 +222,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       return () => {
         cancelled = true;
       };
-    }, [selectedClient, selectedClient?.userId, isGoalMode, selectedGoal, selectedGoal?.id, product.goalId, product.defFund]);
+    }, [selectedClient, selectedClient?.userId, isGoalMode, selectedGoal, selectedGoal?.id, product.goalId, product.defFund, preselectedFund]);
 
     useEffect(() => {
       if (fundMode !== "own" || isGoalMode) {
@@ -306,7 +318,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     useEffect(() => {
       onConfigChange?.({
         sipAmount,
-        frequency: isGoalMode ? "monthly" : frequency,
+        frequency: isGoalMode && !preselectedFund ? "monthly" : frequency,
         tenure,
         selectedFund: fundDisplayName,
         selectedScheme,
@@ -315,10 +327,10 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         lumpSumAmount,
         expectedCagr,
       });
-    }, [sipAmount, frequency, tenure, fundDisplayName, selectedScheme, selectedMfId, lumpSumEnabled, lumpSumAmount, expectedCagr, onConfigChange, isGoalMode]);
+    }, [sipAmount, frequency, tenure, fundDisplayName, selectedScheme, selectedMfId, lumpSumEnabled, lumpSumAmount, expectedCagr, onConfigChange, isGoalMode, preselectedFund]);
 
     useEffect(() => {
-      if (isGoalMode) {
+      if (isGoalMode && !preselectedFund) {
         setSipAmount(product.defAmt);
         setTenure(product.defTenure);
         return;
@@ -330,7 +342,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         setSipAmount(1000);
         setTenure(5);
       }
-    }, [frequency, isGoalMode, product.defAmt, product.defTenure]);
+    }, [frequency, isGoalMode, preselectedFund, product.defAmt, product.defTenure]);
 
     const handleFundSelect = useCallback(
       (fund: FundOption) => {
@@ -344,13 +356,13 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       [setSelectedFund, setSelectedScheme, setSelectedMfId, setFundSearchQuery]
     );
 
-    const amountLimits = isGoalMode ? AMOUNT_LIMITS.monthly : AMOUNT_LIMITS[frequency];
+    const amountLimits = isGoalMode && !preselectedFund ? AMOUNT_LIMITS.monthly : AMOUNT_LIMITS[frequency];
 
-    const tenureMin = isGoalMode
+    const tenureMin = isGoalMode && !preselectedFund
       ? Math.round(selectedGoal!.tenureMin / 12)
       : TENURE_LIMITS[frequency].min;
 
-    const tenureMax = isGoalMode
+    const tenureMax = isGoalMode && !preselectedFund
       ? Math.round(selectedGoal!.tenureMax / 12)
       : TENURE_LIMITS[frequency].max;
 
@@ -406,11 +418,11 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const freqLabel = isGoalMode ? "per month" : frequency === "daily" ? "per day" : "per month";
 
     const tenureOptions = useMemo(() => {
-      if (isGoalMode) {
+      if (isGoalMode && !preselectedFund) {
         return product.tenures;
       }
       return TENURE_OPTIONS[frequency];
-    }, [isGoalMode, frequency, product.tenures]);
+    }, [isGoalMode, preselectedFund, frequency, product.tenures]);
 
     const cappedTenureOptions = useMemo(() => {
       if (tenureOptions.length <= 6) return tenureOptions;
@@ -465,7 +477,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                  </div>
                </div>
 
-               {!isGoalMode && (
+                {(!isGoalMode || !!preselectedFund) && (
                  <div className="flex-shrink-0">
                    <div className="flex rounded-[8px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-[3px]">
                      {(["daily", "monthly"] as const).map((f) => (
@@ -522,7 +534,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
              {/* Quick Picks */}
              <div className="mt-3 flex flex-wrap gap-2">
-               {AMOUNT_PICKS[isGoalMode ? "monthly" : frequency].map((pick) => (
+                {AMOUNT_PICKS[isGoalMode && !preselectedFund ? "monthly" : frequency].map((pick) => (
                  <button
                    key={pick}
                    type="button"
@@ -590,29 +602,29 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
              <div className="my-4 h-px bg-[var(--arn-bdr)]" />
 
-             {/* Fund */}
-             {isGoalMode ? (
-               <div className="flex items-center gap-4">
-                 <span className="text-sm font-semibold text-[var(--arn-txt)]">
-                   Fund
-                 </span>
-                 <div className="flex-1 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
-                   <div className="flex items-center gap-2">
-                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
-                       {isLoadingRec ? "..." : "✓"}
-                     </span>
-                     <span className="text-sm font-semibold text-[var(--arn-txt)]">
-                       {isLoadingRec ? "Loading recommended fund..." : fundDisplayName}
-                     </span>
-                   </div>
-                   {recError && !isLoadingRec && (
-                     <div className="mt-1 text-xs text-[var(--arn-amber-txt)]">
-                       Showing default fund ({recError})
-                     </div>
-                   )}
-                 </div>
-               </div>
-             ) : (
+              {/* Fund */}
+              {isGoalMode || !!preselectedFund ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-semibold text-[var(--arn-txt)]">
+                    Fund
+                  </span>
+                  <div className="flex-1 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
+                        {isLoadingRec ? "..." : "✓"}
+                      </span>
+                      <span className="text-sm font-semibold text-[var(--arn-txt)]">
+                        {isLoadingRec ? "Loading recommended fund..." : fundDisplayName}
+                      </span>
+                    </div>
+                    {recError && !isLoadingRec && (
+                      <div className="mt-1 text-xs text-[var(--arn-amber-txt)]">
+                        Showing default fund ({recError})
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
                <>
                  <div className="flex items-center gap-4">
                    <span className="text-sm font-semibold text-[var(--arn-txt)]">

@@ -70,6 +70,15 @@ function saveRecentSearch(query: string) {
   }
 }
 
+function toCamelCase(str: string): string {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function extractItems(
   response: unknown,
   isAllChip: boolean,
@@ -89,8 +98,6 @@ function extractItems(
 
   if (!Array.isArray(rawItems)) return [];
 
-  const subtitle = isAllChip ? "Market" : chipLabel;
-
   return rawItems
     .filter((item) => {
       const fund = item as FundOption;
@@ -105,6 +112,11 @@ function extractItems(
       const fund = item as FundOption;
       const title = getFundTitle(fund);
       const identity = getFundIdentity(fund);
+      const subtitle = fund.fund_category
+        ? toCamelCase(fund.fund_category)
+        : isAllChip
+          ? "Market"
+          : chipLabel;
       return { title, subtitle, identity, raw: fund };
     });
 }
@@ -206,7 +218,6 @@ export default function ArnFundSearchBar({ onSelect }: ArnFundSearchBarProps) {
 
   const handleChipChange = useCallback((chipValue: string) => {
     setActiveChipValue(chipValue);
-    setQuery("");
     setResults([]);
     setError(null);
     inputRef.current?.focus();
