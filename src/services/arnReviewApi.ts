@@ -164,21 +164,38 @@ export interface SipSetupResponse {
   portfolioId?: number;
 }
 
+export interface RawOrder {
+  stockId: number;
+  ticker: string;
+  stockName: string;
+  stockType: string;
+  capType: string;
+  weight: number;
+  price: string;
+  minimumamount: number;
+  quantity: number;
+  systemQty: number;
+  orderValue: number;
+  balanceQty: number;
+  stock: number;
+  type: string;
+  portfolioId: number;
+  transactionType: number;
+  portfolioType: number;
+  minInitialInvestment?: number;
+  minSipAmount?: number;
+  scheme?: string;
+  isin?: string;
+}
+
 export interface BuyOrderMfResponse {
-  orders?: Array<{
-    isin: string;
-    quantity: string;
-    price: string;
-    orderValue: string;
-  }>;
-  data?: {
-    orders?: Array<{
-      isin: string;
-      quantity: string;
-      price: string;
-      orderValue: string;
-    }>;
-  };
+  orders?: RawOrder[];
+  data?: RawOrder[] | { orders?: RawOrder[] };
+  minimumamount?: number;
+  orderValue?: number;
+  weight?: number;
+  portfolioId?: number;
+  portfolioName?: string;
 }
 
 export interface CompleteMandateRequest {
@@ -405,4 +422,110 @@ export async function completeWithMandateFirstDebit(
       orders,
     }),
   });
+}
+
+export interface LumpsumCanCreateResponse {
+  action: "create" | "add_money";
+  existingLumpsum?: { id: number; portfolioId: number };
+}
+
+export interface LumpsumCreatePayload {
+  investedAmount: number;
+  goalId: number;
+  investmentDate: string;
+  portfolioId?: number;
+  selectedMfId?: number;
+  selectedScheme?: string;
+}
+
+export interface LumpsumCreateResponse {
+  lumpsumData: { id: number; portfolioId?: number };
+  lumpsumId: number;
+  portfolioId?: number;
+}
+
+export interface LumpsumOrder {
+  stockId: number;
+  ticker: string;
+  stockName: string;
+  stockType: string;
+  capType: string;
+  weight: number;
+  price: number;
+  orderValue: number;
+  scheme: string;
+  type: "purchase";
+  transactionType: number;
+  portfolioType: number;
+  portfolioId: number;
+  minimumamount: number;
+  quantity: number;
+  systemQty: number;
+  stock: number;
+}
+
+export interface LumpsumCompletePayload {
+  user_ip: string;
+  payment_postback_url: string;
+  payment_method: "UPI" | "NETBANKING";
+  userId: number;
+  orders: LumpsumOrder[];
+}
+
+export interface LumpsumCompleteResponse {
+  paymentUrl: string;
+  paymentId: number;
+  lumpsumId: number;
+  investedAmount: number;
+}
+
+export async function checkLumpsumCanCreate(
+  userId: number,
+  goalId: number,
+  selectedMfId?: number,
+  selectedScheme?: string
+): Promise<LumpsumCanCreateResponse> {
+  let url = `${getStockApiUrl()}/mutualFund/lumpsum/can-create-for-user?userId=${userId}&goalId=${goalId}`;
+  if (selectedMfId) url += `&selectedMfId=${selectedMfId}`;
+  if (selectedScheme) url += `&selectedScheme=${encodeURIComponent(selectedScheme)}`;
+  return fetchJson<LumpsumCanCreateResponse>(url, { method: "GET" });
+}
+
+export async function createLumpsumForUser(
+  userId: number,
+  payload: LumpsumCreatePayload
+): Promise<LumpsumCreateResponse> {
+  const url = `${getStockApiUrl()}/mutualFund/lumpsum/create-for-user`;
+  return fetchJson<LumpsumCreateResponse>(url, {
+    method: "POST",
+    body: JSON.stringify({ ...payload, userId }),
+  });
+}
+
+export async function completeLumpsumForUser(
+  lumpsumId: number,
+  payload: LumpsumCompletePayload
+): Promise<LumpsumCompleteResponse> {
+  const url = `${getStockApiUrl()}/mutualFund/lumpsum/${lumpsumId}/complete-for-user`;
+  return fetchJson<LumpsumCompleteResponse>(url, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function captureLumpsumPayment(
+  paymentId: number,
+  userId: number
+): Promise<Record<string, unknown>> {
+  const url = `${getPayApiUrl()}/subscription/payment-for-user/${paymentId}?userId=${userId}`;
+  return fetchJson(url, { method: "GET" });
+}
+
+export async function getBuyOrderMfForPortfolio(
+  userId: number,
+  portfolioId: number,
+  minimumAmount: number
+): Promise<BuyOrderMfResponse> {
+  const url = `${getStockApiUrl()}/stock/buyOrderMf-for-user?portfolioId=${portfolioId}&minimumAmount=${minimumAmount}&userId=${userId}`;
+  return fetchJson<BuyOrderMfResponse>(url, { method: "GET" });
 }

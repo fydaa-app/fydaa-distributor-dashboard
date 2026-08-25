@@ -18,12 +18,19 @@ import type { GoalResponse, FundOption } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 import { getUserStage } from "@/services/arnReviewApi";
 
-const STEP_NAMES: Record<number, string> = {
+const STEP_NAMES_SIP: Record<number, string> = {
   1: "Select a client",
   2: "Choose path",
   3: "Set SIP",
   4: "Pick SIP date",
   5: "Review & confirm",
+};
+
+const STEP_NAMES_LUMPSUM: Record<number, string> = {
+  1: "Select a client",
+  2: "Choose path",
+  3: "Set investment",
+  4: "Review & confirm",
 };
 
 interface OnboardedTarget {
@@ -95,12 +102,15 @@ export default function ArnGoalSetupPage() {
   const [incompleteClientName, setIncompleteClientName] = useState("");
   const [incompleteUserMobile, setIncompleteUserMobile] = useState("");
   const [isCheckingStage, setIsCheckingStage] = useState(false);
+  const [investmentMode, setInvestmentMode] = useState<"sip" | "lumpsum">("sip");
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
   const didMount = useRef(false);
 
   const onboardedTarget = initialOnboardTarget;
+
+  const STEP_NAMES = investmentMode === "lumpsum" ? STEP_NAMES_LUMPSUM : STEP_NAMES_SIP;
 
   useEffect(() => {
     if (!didMount.current) {
@@ -122,9 +132,9 @@ export default function ArnGoalSetupPage() {
     selectedFund: "",
     selectedScheme: null,
     selectedMfId: null,
-    lumpSumEnabled: false,
-    lumpSumAmount: 0,
+    investmentMode: "sip",
     expectedCagr: 0.12,
+    portfolioId: null,
   });
   const [dateConfig, setDateConfig] = useState<ReturnType<ArnSetSipDatePageRef["getDateConfig"]>>({
     sipDate: 10,
@@ -314,23 +324,33 @@ export default function ArnGoalSetupPage() {
         } catch {}
       }
       setPreselectedFund(null);
-      setStep(4);
-    } else if (step === 4) {
+      if (investmentMode === "lumpsum") {
+        setStep(5);
+      } else {
+        setStep(4);
+      }
+    } else if (step === 4 && investmentMode === "sip") {
       setStep(5);
     } else if (step === 5) {
       reviewPageRef.current?.handleCta();
     }
-  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step, preselectedFund, isCheckingStage]);
+  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step, preselectedFund, isCheckingStage, investmentMode]);
 
   const handleBack = useCallback(() => {
     if (step > 1) {
-      setStep(step - 1);
+      if (step === 3) setInvestmentMode("sip");
+
+      if (step === 5 && investmentMode === "lumpsum") {
+        setStep(3);
+      } else {
+        setStep(step - 1);
+      }
     }
-  }, [step]);
+  }, [step, investmentMode]);
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
-      <ArnGoalSetupStepper currentStep={step} />
+      <ArnGoalSetupStepper currentStep={step} investmentMode={investmentMode} />
 
       {step === 1 && (
         <>
@@ -448,6 +468,8 @@ export default function ArnGoalSetupPage() {
             selectedGoal={selectedPath === "goal" ? selectedGoal : null}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
             mode={selectedPath === "goal" ? "goal" : "direct"}
+            investmentMode={investmentMode}
+            onModeChange={setInvestmentMode}
             onBack={handleBack}
             onConfigChange={setSipConfig}
             preselectedFund={preselectedFund}
@@ -455,7 +477,7 @@ export default function ArnGoalSetupPage() {
         </div>
       )}
 
-      {step === 4 && (
+      {step === 4 && investmentMode === "sip" && (
         <div>
           <ArnSetSipDatePage
             ref={sipDatePageRef}
@@ -478,6 +500,7 @@ export default function ArnGoalSetupPage() {
             dateConfig={dateConfig}
             onBack={handleBack}
             onCtaChange={setReviewCta}
+            investmentMode={investmentMode}
           />
         </div>
       )}
@@ -485,6 +508,7 @@ export default function ArnGoalSetupPage() {
       <ArnGoalSetupBottomBar
         step={step}
         stepName={STEP_NAMES[step]}
+        investmentMode={investmentMode}
         onBack={handleBack}
         onContinue={handleContinue}
         canContinue={
@@ -498,7 +522,7 @@ export default function ArnGoalSetupPage() {
                   : !!preselectedFund
               : step === 3
                 ? !sipPageRef.current?.hasTenureError
-                : step === 4
+                : step === 4 && investmentMode === "sip"
                   ? true
                   : step === 5
                     ? !reviewCta.disabled

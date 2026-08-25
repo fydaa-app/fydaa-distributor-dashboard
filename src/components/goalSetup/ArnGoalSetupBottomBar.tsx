@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils";
 
-interface ArnGoalSetupBottomBarProps {
+export interface ArnGoalSetupBottomBarProps {
   step: number;
   stepName: string;
+  investmentMode?: "sip" | "lumpsum";
   onBack: () => void;
   onContinue: () => void;
   canContinue: boolean;
@@ -10,7 +11,7 @@ interface ArnGoalSetupBottomBarProps {
   isLoading?: boolean;
 }
 
-const STEP_NAMES: Record<number, string> = {
+const STEP_NAMES_SIP: Record<number, string> = {
   1: "Select a client",
   2: "Choose path",
   3: "Set SIP",
@@ -18,15 +19,25 @@ const STEP_NAMES: Record<number, string> = {
   5: "Review & confirm",
 };
 
+const STEP_NAMES_LUMPSUM: Record<number, string> = {
+  1: "Select a client",
+  2: "Choose path",
+  3: "Set investment",
+  4: "Review & confirm",
+};
+
 export default function ArnGoalSetupBottomBar({
   step,
   stepName,
+  investmentMode,
   onBack,
   onContinue,
   canContinue,
   continueLabel,
   isLoading,
 }: ArnGoalSetupBottomBarProps) {
+  const totalSteps = investmentMode === "lumpsum" ? 4 : 5;
+  const STEP_NAMES = investmentMode === "lumpsum" ? STEP_NAMES_LUMPSUM : STEP_NAMES_SIP;
   const displayName = stepName || STEP_NAMES[step] || "";
 
   return (
@@ -84,7 +95,7 @@ export default function ArnGoalSetupBottomBar({
             "
           >
             <span className="whitespace-nowrap">
-              Step {step} of 5
+              Step {step} of {totalSteps}
             </span>
 
             <span className="mx-1.5 sm:mx-2">·</span>

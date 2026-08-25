@@ -56,6 +56,8 @@ export interface FundOption {
   suggestedGoalName?: string;
   stockType?: string;
   fund_category?: string;
+  minInitialInvestment?: number;
+  minSipAmount?: number;
 }
 
 export interface FundSearchResponse {
