@@ -311,6 +311,7 @@ export interface UserStage {
   isEmail?: boolean;
   isBank?: boolean;
   isNominee?: boolean;
+  kycExtraData?: boolean;
   [key: string]: unknown;
 }
 

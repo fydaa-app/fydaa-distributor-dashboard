@@ -243,7 +243,8 @@ export default function ArnGoalSetupPage() {
           stage.isEmail &&
           stage.isKycCompliant &&
           stage.isBank &&
-          stage.isNominee
+          stage.isNominee &&
+          !!stage.kycExtraData
         ) {
           setStep(2);
           return;

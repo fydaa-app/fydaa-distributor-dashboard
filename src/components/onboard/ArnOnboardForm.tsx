@@ -491,6 +491,7 @@ export default function ArnOnboardForm({
   } | null>(null);
   const [isFetchingBankDetails, setIsFetchingBankDetails] = useState(false);
   const [bankDetailsError, setBankDetailsError] = useState<string | null>(null);
+  const [optOutNominee, setOptOutNominee] = useState(true);
 
   useEffect(() => {
     if (!bankIfsc || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc)) {
@@ -1483,7 +1484,7 @@ export default function ArnOnboardForm({
 
           <button
             type="button"
-            onClick={onGoToIdentity}
+            onClick={userStage?.kycExtraData ? onGoToBank : onGoToIdentity}
             className="btn-primary btn-wide"
             style={{ marginTop: 20 }}
           >
@@ -1609,11 +1610,12 @@ export default function ArnOnboardForm({
               onChange={(e) => setPepChecked(e.target.checked)}
             />
             <span>
-              I confirm I am not a politically exposed person (PEP). By continuing, you agree to our{" "}
+              I confirm I am not a politically exposed person (PEP).
+               {/* By continuing, you agree to our{" "}
               <a href="#" onClick={(e) => e.preventDefault()}>
                 Terms &amp; Conditions
               </a>
-              .
+              . */}
             </span>
           </label>
 
@@ -1672,9 +1674,25 @@ export default function ArnOnboardForm({
                 </div>
               </div>
 
+              <label className="onboard-check">
+                <input
+                  type="checkbox"
+                  checked={optOutNominee}
+                  onChange={(e) => setOptOutNominee(e.target.checked)}
+                />
+                <span>I want to opt out of adding a nominee</span>
+              </label>
+
               <button
                 type="button"
-                onClick={onBankVerified}
+                onClick={() => {
+                  if (optOutNominee) {
+                    handleNomineeOptOut();
+                    onGoToWelcome();
+                  } else {
+                    onBankVerified();
+                  }
+                }}
                 className="btn-primary btn-wide"
                 style={{ marginTop: 20 }}
               >

@@ -247,6 +247,10 @@ export default function ArnOnboardPage() {
           setPhase("nominee");
           return;
         }
+        if (stage.isRiskProfileComplete && stage.isEmail && stage.isKycCompliant && !!stage.kycExtraData) {
+          setPhase("bank");
+          return;
+        }
         if (stage.isRiskProfileComplete && stage.isEmail && stage.isKycCompliant) {
           setPhase("kycCompliant");
           return;
