@@ -27,6 +27,19 @@
   --arn-tel-txt: #0f6e56;
   --arn-radius: 8px;
   --arn-radius-lg: 12px;
+  --arn-white: #ffffff;
+  --arn-input-ring: rgba(186, 117, 23, 0.1);
+  --arn-login-shadow: rgba(186, 117, 23, 0.20);
+  --arn-login-shadow-hover: rgba(186, 117, 23, 0.26);
+  --arn-login-glass: rgba(255, 255, 255, 0.54);
+  --arn-brand-grad-amber: rgba(186, 117, 23, 0.22);
+  --arn-brand-grad-blue: rgba(24, 95, 165, 0.18);
+  --arn-drop-shadow: rgba(0, 0, 0, 0.18);
+  --arn-success-ring: rgba(59, 109, 17, 0.4);
+  --arn-brand-bg: #2d2d2a;
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.25);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.10);
+  --arn-amber-sel-bg: #faeeda;
 }
 
 .dark {
@@ -47,6 +60,158 @@
   --arn-pur-txt: #cecbf6;
   --arn-tel-bg: #04342c;
   --arn-tel-txt: #9fe1cb;
+  --arn-white: #ffffff;
+  --arn-input-ring: rgba(186, 117, 23, 0.1);
+  --arn-login-shadow: rgba(186, 117, 23, 0.20);
+  --arn-login-shadow-hover: rgba(186, 117, 23, 0.26);
+  --arn-login-glass: rgba(28, 28, 26, 0.58);
+  --arn-brand-grad-amber: rgba(186, 117, 23, 0.22);
+  --arn-brand-grad-blue: rgba(24, 95, 165, 0.18);
+  --arn-drop-shadow: rgba(0, 0, 0, 0.35);
+  --arn-success-ring: rgba(59, 109, 17, 0.4);
+  --arn-brand-bg: #2d2d2a;
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.25);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.10);
+  --arn-amber-sel-bg: rgba(186, 117, 23, 0.15);
+}
+
+/* ---- Tone switching ---- */
+.tone-amber {
+  --arn-amber: #ba7517;
+  --arn-amber-bg: #faeeda;
+  --arn-amber-txt: #854f0b;
+  --arn-amber-hover: #a46512;
+  --arn-login-shadow: rgba(186, 117, 23, 0.20);
+  --arn-login-shadow-hover: rgba(186, 117, 23, 0.26);
+  --arn-input-ring: rgba(186, 117, 23, 0.1);
+  --arn-brand-grad-amber: rgba(186, 117, 23, 0.22);
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.25);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.10);
+  --arn-amber-sel-bg: #faeeda;
+}
+
+.tone-green {
+  --arn-amber: #3b6d11;
+  --arn-amber-bg: #eaf3de;
+  --arn-amber-txt: #1a1a18;
+  --arn-amber-hover: #2d570d;
+  --arn-login-shadow: rgba(59, 109, 17, 0.20);
+  --arn-login-shadow-hover: rgba(59, 109, 17, 0.26);
+  --arn-input-ring: rgba(59, 109, 17, 0.1);
+  --arn-brand-grad-amber: rgba(59, 109, 17, 0.22);
+  --arn-amber-bg-grad-1: rgba(59, 109, 17, 0.25);
+  --arn-amber-bg-grad-2: rgba(59, 109, 17, 0.10);
+  --arn-amber-sel-bg: #eaf3de;
+}
+
+.tone-blue {
+  --arn-amber: #185fa5;
+  --arn-amber-bg: #e6f1fb;
+  --arn-amber-txt: #1a1a18;
+  --arn-amber-hover: #14487d;
+  --arn-login-shadow: rgba(24, 95, 165, 0.20);
+  --arn-login-shadow-hover: rgba(24, 95, 165, 0.26);
+  --arn-input-ring: rgba(24, 95, 165, 0.1);
+  --arn-brand-grad-amber: rgba(24, 95, 165, 0.22);
+  --arn-amber-bg-grad-1: rgba(24, 95, 165, 0.25);
+  --arn-amber-bg-grad-2: rgba(24, 95, 165, 0.10);
+  --arn-amber-sel-bg: #e6f1fb;
+}
+
+.tone-red {
+  --arn-amber: #a32d2d;
+  --arn-amber-bg: #fcebeb;
+  --arn-amber-txt: #1a1a18;
+  --arn-amber-hover: #7f2424;
+  --arn-login-shadow: rgba(163, 45, 45, 0.20);
+  --arn-login-shadow-hover: rgba(163, 45, 45, 0.26);
+  --arn-input-ring: rgba(163, 45, 45, 0.1);
+  --arn-brand-grad-amber: rgba(163, 45, 45, 0.22);
+  --arn-amber-bg-grad-1: rgba(163, 45, 45, 0.25);
+  --arn-amber-bg-grad-2: rgba(163, 45, 45, 0.10);
+  --arn-amber-sel-bg: #fcebeb;
+}
+
+.tone-purple {
+  --arn-amber: #534ab7;
+  --arn-amber-bg: #eeedfe;
+  --arn-amber-txt: #1a1a18;
+  --arn-amber-hover: #423d92;
+  --arn-login-shadow: rgba(83, 74, 183, 0.20);
+  --arn-login-shadow-hover: rgba(83, 74, 183, 0.26);
+  --arn-input-ring: rgba(83, 74, 183, 0.1);
+  --arn-brand-grad-amber: rgba(83, 74, 183, 0.22);
+  --arn-amber-bg-grad-1: rgba(83, 74, 183, 0.25);
+  --arn-amber-bg-grad-2: rgba(83, 74, 183, 0.10);
+  --arn-amber-sel-bg: #eeedfe;
+}
+
+.tone-teal {
+  --arn-amber: #0f6e56;
+  --arn-amber-bg: #e1f5ee;
+  --arn-amber-txt: #1a1a18;
+  --arn-amber-hover: #0c5643;
+  --arn-login-shadow: rgba(15, 110, 86, 0.20);
+  --arn-login-shadow-hover: rgba(15, 110, 86, 0.26);
+  --arn-input-ring: rgba(15, 110, 86, 0.1);
+  --arn-brand-grad-amber: rgba(15, 110, 86, 0.22);
+  --arn-amber-bg-grad-1: rgba(15, 110, 86, 0.25);
+  --arn-amber-bg-grad-2: rgba(15, 110, 86, 0.10);
+  --arn-amber-sel-bg: #e1f5ee;
+}
+
+.dark .tone-amber {
+  --arn-amber-bg: #412402;
+  --arn-amber-txt: #fac775;
+  --arn-amber-hover: #a46512;
+  --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.25);
+  --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.10);
+  --arn-amber-sel-bg: rgba(186, 117, 23, 0.15);
+}
+
+.dark .tone-green {
+  --arn-amber-bg: #173404;
+  --arn-amber-txt: #9fe1cb;
+  --arn-amber-hover: #2d570d;
+  --arn-amber-bg-grad-1: rgba(59, 109, 17, 0.25);
+  --arn-amber-bg-grad-2: rgba(59, 109, 17, 0.10);
+  --arn-amber-sel-bg: rgba(59, 109, 17, 0.15);
+}
+
+.dark .tone-blue {
+  --arn-amber-bg: #042c53;
+  --arn-amber-txt: #b5d4f4;
+  --arn-amber-hover: #14487d;
+  --arn-amber-bg-grad-1: rgba(24, 95, 165, 0.25);
+  --arn-amber-bg-grad-2: rgba(24, 95, 165, 0.10);
+  --arn-amber-sel-bg: rgba(24, 95, 165, 0.15);
+}
+
+.dark .tone-red {
+  --arn-amber-bg: #501313;
+  --arn-amber-txt: #f09595;
+  --arn-amber-hover: #7f2424;
+  --arn-amber-bg-grad-1: rgba(163, 45, 45, 0.25);
+  --arn-amber-bg-grad-2: rgba(163, 45, 45, 0.10);
+  --arn-amber-sel-bg: rgba(163, 45, 45, 0.15);
+}
+
+.dark .tone-purple {
+  --arn-amber-bg: #26215c;
+  --arn-amber-txt: #cecbf6;
+  --arn-amber-hover: #423d92;
+  --arn-amber-bg-grad-1: rgba(83, 74, 183, 0.25);
+  --arn-amber-bg-grad-2: rgba(83, 74, 183, 0.10);
+  --arn-amber-sel-bg: rgba(83, 74, 183, 0.15);
+}
+
+.dark .tone-teal {
+  --arn-amber-bg: #04342c;
+  --arn-amber-txt: #9fe1cb;
+  --arn-amber-hover: #0c5643;
+  --arn-amber-bg-grad-1: rgba(15, 110, 86, 0.25);
+  --arn-amber-bg-grad-2: rgba(15, 110, 86, 0.10);
+  --arn-amber-sel-bg: rgba(15, 110, 86, 0.15);
 }
 
 * {
@@ -109,8 +274,8 @@ body {
   padding: 40px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 18% 18%, rgba(186, 117, 23, 0.22), transparent 28%),
-    radial-gradient(circle at 82% 24%, rgba(24, 95, 165, 0.18), transparent 26%),
+    radial-gradient(circle at 18% 18%, var(--arn-brand-grad-amber), transparent 28%),
+    radial-gradient(circle at 82% 24%, var(--arn-brand-grad-blue), transparent 26%),
     linear-gradient(145deg, var(--arn-bg-2), var(--arn-bg-3));
 }
 
@@ -135,13 +300,13 @@ body {
   padding: 32px;
   border: 0.5px solid var(--arn-bdr);
   border-radius: var(--arn-radius-lg);
-  background: rgba(255, 255, 255, 0.54);
+  background: var(--arn-login-glass);
   backdrop-filter: blur(18px);
 }
 
 @media (prefers-color-scheme: dark) {
   .arn-auth-brand-card {
-    background: rgba(28, 28, 26, 0.58);
+    background: var(--arn-login-glass);
   }
 }
 
@@ -152,11 +317,11 @@ body {
   place-items: center;
   margin-bottom: 20px;
   border-radius: 14px;
-  color: #ffffff;
+  color: var(--arn-white);
   font-size: 24px;
   font-weight: 800;
   background: var(--arn-amber);
-  box-shadow: 0 16px 32px rgba(186, 117, 23, 0.24);
+  box-shadow: 0 16px 32px var(--arn-login-shadow);
 }
 
 .arn-auth-brand-kicker {
@@ -245,7 +410,7 @@ body {
   color: var(--arn-txt);
   font-size: 30px;
   line-height: 1.15;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.10em;
 }
 
 .arn-signin-heading p {
@@ -291,7 +456,7 @@ body {
 .arn-signin-fields input[type="password"]:focus {
   border-color: var(--arn-amber);
   background: var(--arn-bg);
-  box-shadow: 0 0 0 4px rgba(186, 117, 23, 0.12);
+  box-shadow: 0 0 0 4px var(--arn-input-ring);
 }
 
 .arn-password-field {
@@ -362,19 +527,19 @@ body {
   margin-top: 8px;
   border: 0;
   border-radius: var(--arn-radius);
-  color: #ffffff;
+  color: var(--arn-white);
   background: var(--arn-amber);
   font: inherit;
   font-size: 14px;
   font-weight: 900;
   cursor: pointer;
   transition: transform 0.16s ease, opacity 0.16s ease, box-shadow 0.16s ease;
-  box-shadow: 0 14px 28px rgba(186, 117, 23, 0.2);
+  box-shadow: 0 14px 28px var(--arn-login-shadow);
 }
 
 .arn-signin-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 18px 34px rgba(186, 117, 23, 0.26);
+  box-shadow: 0 18px 34px var(--arn-login-shadow-hover);
 }
 
 .arn-signin-button:active:not(:disabled) {
@@ -490,7 +655,7 @@ body {
 .field-input:focus {
   border-color: var(--arn-amber);
   background: var(--arn-bg);
-  box-shadow: 0 0 0 4px rgba(186, 117, 23, 0.12);
+  box-shadow: 0 0 0 4px var(--arn-input-ring);
 }
 
 .field-select {
@@ -515,7 +680,7 @@ body {
 .field-select:focus {
   border-color: var(--arn-amber);
   background-color: var(--arn-bg);
-  box-shadow: 0 0 0 4px rgba(186, 117, 23, 0.12);
+  box-shadow: 0 0 0 4px var(--arn-input-ring);
 }
 
 .field-select option {
@@ -602,7 +767,7 @@ body {
   color: var(--arn-txt-3);
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.10em;
   font-variant-numeric: tabular-nums;
   user-select: none;
   flex-shrink: 0;
@@ -625,7 +790,7 @@ body {
 }
 
 .back-btn:hover {
-  border-color: rgba(186, 117, 23, 0.4);
+  border-color: var(--arn-amber);
   color: var(--arn-txt);
 }
 
@@ -652,7 +817,7 @@ body {
 
 .otp-box:focus {
   border-color: var(--arn-amber);
-  box-shadow: 0 0 0 4px rgba(186, 117, 23, 0.1);
+  box-shadow: 0 0 0 4px var(--arn-input-ring);
 }
 
 .resend-link {
@@ -682,7 +847,7 @@ body {
   border: 0;
   border-radius: var(--arn-radius);
   background: var(--arn-amber);
-  color: #ffffff;
+  color: var(--arn-white);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -706,12 +871,35 @@ body {
   width: 100%;
 }
 
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 15px 30px;
+  border: 1.5px solid var(--arn-amber);
+  border-radius: var(--arn-radius);
+  background: transparent;
+  color: var(--arn-amber);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.16s ease, transform 0.16s ease;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(184, 134, 11, 0.08);
+}
+.btn-ghost:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .success-ring {
   width: 60px;
   height: 60px;
   border-radius: 50%;
   background: var(--arn-green-bg);
-  border: 1.5px solid rgba(59, 109, 17, 0.4);
+  border: 1.5px solid var(--arn-success-ring);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -773,7 +961,7 @@ body {
 }
 
 .glass-card.gold {
-  border-color: rgba(186, 117, 23, 0.35);
+  border-color: var(--arn-input-ring);
   background: var(--arn-amber-bg);
 }
 
@@ -806,7 +994,7 @@ body {
   border-radius: var(--arn-radius);
   border: 1px solid var(--arn-bdr-2);
   background: var(--arn-bg);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 20px 40px var(--arn-drop-shadow);
 }
 
 /* ── Risk profile questionnaire ── */

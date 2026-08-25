@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { COLORS } from "@/theme/colors";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
@@ -29,11 +30,13 @@ export default function DistributorShell({
 
   return (
     <ProtectedRoute>
-      <AppSidebar />
-      <Backdrop />
-      <div className="min-h-screen lg:ml-[220px]">
-        <AppHeader />
-        <main className="pt-[72px]">{children}</main>
+      <div className={`tone-${COLORS.currentBrand}`}>
+        <AppSidebar />
+        <Backdrop />
+        <div className="min-h-screen lg:ml-[220px]">
+          <AppHeader />
+          <main className="pt-[72px]">{children}</main>
+        </div>
       </div>
     </ProtectedRoute>
   );

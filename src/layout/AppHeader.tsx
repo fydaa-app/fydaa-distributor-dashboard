@@ -197,7 +197,7 @@ export default function AppHeader() {
           <button
             type="button"
             aria-label="Toggle theme"
-            className="grid size-10 place-items-center rounded-[10px] bg-[#BA7517] text-white transition-colors hover:bg-[#A46512]"
+            className="grid size-10 place-items-center rounded-[10px] bg-[var(--arn-amber)] text-[var(--arn-white)] transition-colors hover:bg-[var(--arn-amber-hover)]"
             onClick={toggleTheme}
           >
             <ThemeIcon dark={theme === "dark"} />
@@ -211,7 +211,7 @@ export default function AppHeader() {
               className="flex items-center gap-2 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] px-3 py-2 transition-colors hover:bg-[var(--arn-bg-3)]"
               onClick={() => setOpen((value) => !value)}
             >
-              <div className="grid size-8 place-items-center rounded-full bg-[var(--arn-amber)] text-xs font-black text-white">
+              <div className="grid size-8 place-items-center rounded-full bg-[var(--arn-amber)] text-xs font-black text-[var(--arn-white)]">
                 {initials}
               </div>
               <span className="hidden max-w-[120px] truncate text-sm font-bold text-[var(--arn-txt)] sm:block">

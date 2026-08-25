@@ -46,11 +46,18 @@ export interface FundOption {
   schemeName: string;
   fundName: string;
   stockName: string;
+  name?: string;
   ticker: string;
   scheme: string;
   isin: string;
   schemeCode: string;
   selectedMfId: number | null;
+  suggestedGoalId?: number;
+  suggestedGoalName?: string;
+  stockType?: string;
+  fund_category?: string;
+  minInitialInvestment?: number;
+  minSipAmount?: number;
 }
 
 export interface FundSearchResponse {
@@ -156,4 +163,41 @@ export async function searchFunds(params: {
 
   const url = `${getStockApiUrl()}/mutualFund/search?${searchParams.toString()}`;
   return fetchJson<FundSearchResponse>(url);
+}
+
+export interface SearchTypeOption {
+  label: string;
+  value: string;
+}
+
+export interface SearchTypeResponse {
+  options: SearchTypeOption[];
+}
+
+export async function getSearchTypes(): Promise<SearchTypeResponse> {
+  const url = `${getStockApiUrl()}/mutualFund/search/types`;
+  return fetchJson<SearchTypeResponse>(url);
+}
+
+export interface AllFundSearchResponse {
+  items: FundOption[];
+  totalItems?: number;
+  totalPages?: number;
+  currentPage?: number;
+  limit?: number;
+  [key: string]: unknown;
+}
+
+export async function searchAllFunds(params: {
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AllFundSearchResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("page", String(params.page ?? 0));
+  searchParams.set("limit", String(params.limit ?? 20));
+  if (params.search) searchParams.set("search", params.search);
+
+  const url = `${getStockApiUrl()}/mutualFund/finprim-search-for-user?${searchParams.toString()}`;
+  return fetchJson<AllFundSearchResponse>(url);
 }

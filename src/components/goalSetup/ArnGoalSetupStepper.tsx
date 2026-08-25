@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 
-const STEPS = [
+const STEPS_SIP = [
   { number: 1, label: "Select client" },
   { number: 2, label: "Choose path" },
   { number: 3, label: "Set SIP" },
@@ -9,11 +9,20 @@ const STEPS = [
   { number: 5, label: "Review" },
 ] as const;
 
-interface ArnGoalSetupStepperProps {
+const STEPS_LUMPSUM = [
+  { number: 1, label: "Select client" },
+  { number: 2, label: "Choose path" },
+  { number: 3, label: "Set investment" },
+  { number: 4, label: "Review" },
+] as const;
+
+export interface ArnGoalSetupStepperProps {
   currentStep: number;
+  investmentMode?: "sip" | "lumpsum";
 }
 
-export default function ArnGoalSetupStepper({ currentStep }: ArnGoalSetupStepperProps) {
+export default function ArnGoalSetupStepper({ currentStep, investmentMode }: ArnGoalSetupStepperProps) {
+  const STEPS = investmentMode === "lumpsum" ? STEPS_LUMPSUM : STEPS_SIP;
   return (
     <div className="w-full rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-4 sm:p-5">
       <div className="flex w-full items-center">

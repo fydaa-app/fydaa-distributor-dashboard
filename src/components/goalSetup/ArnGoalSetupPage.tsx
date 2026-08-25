@@ -1,21 +1,24 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ArnGoalSetupStepper from "@/components/goalSetup/ArnGoalSetupStepper";
 import ArnClientSelector from "@/components/goalSetup/ArnClientSelector";
 import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
 import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar";
 import ArnGoalPathSelector from "@/components/goalSetup/ArnGoalPathSelector";
+import ArnFundSearchBar from "@/components/goalSetup/ArnFundSearchBar";
 import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
 import ArnGoalGrid from "@/components/goalSetup/ArnGoalGrid";
 import ArnSetSipPage, { type ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
 import ArnSetSipDatePage, { type ArnSetSipDatePageRef } from "@/components/goalSetup/ArnSetSipDatePage";
 import ArnReviewConfirmPage, { type ArnReviewConfirmPageRef } from "@/components/goalSetup/ArnReviewConfirmPage";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
-import type { GoalResponse } from "@/services/arnStockApi";
+import type { GoalResponse, FundOption } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
+import { getUserStage } from "@/services/arnReviewApi";
 
-const STEP_NAMES: Record<number, string> = {
+const STEP_NAMES_SIP: Record<number, string> = {
   1: "Select a client",
   2: "Choose path",
   3: "Set SIP",
@@ -23,16 +26,105 @@ const STEP_NAMES: Record<number, string> = {
   5: "Review & confirm",
 };
 
+const STEP_NAMES_LUMPSUM: Record<number, string> = {
+  1: "Select a client",
+  2: "Choose path",
+  3: "Set investment",
+  4: "Review & confirm",
+};
+
+interface OnboardedTarget {
+  userId: string;
+  name: string;
+  phone: string;
+  email: string;
+  skipClientStep?: boolean;
+}
+
+function readOnboardTarget(): OnboardedTarget | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored = sessionStorage.getItem("arn_onboard_target_user");
+    if (!stored) return null;
+    return JSON.parse(stored) as OnboardedTarget;
+  } catch {
+    return null;
+  }
+}
+
+function buildClientFromTarget(target: OnboardedTarget): GoalSetupClient | null {
+  const userId = Number(target.userId);
+  if (!target.userId || !Number.isFinite(userId) || userId <= 0) return null;
+
+  return {
+    userId,
+    name: target.name.trim(),
+    mobileNumber: target.phone || "",
+    email: target.email || "",
+    mandateStatus: "PENDING",
+    panStatus: undefined,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function needsClientLookup(
+  client: GoalSetupClient | null,
+  target: OnboardedTarget | null
+): boolean {
+  if (!target?.skipClientStep) return false;
+
+  const phone = target.phone || client?.mobileNumber;
+  if (!phone) return false;
+
+  if (!client) return true;
+
+  return !client.name.trim();
+}
+
 export default function ArnGoalSetupPage() {
-  const [step, setStep] = useState(1);
-  const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(null);
+  const router = useRouter();
+  const initialOnboardTarget = readOnboardTarget();
+  const initialClient = initialOnboardTarget
+    ? buildClientFromTarget(initialOnboardTarget)
+    : null;
+  const shouldSkipClientStep =
+    initialOnboardTarget?.skipClientStep === true && !!initialClient;
+
+  const [step, setStep] = useState(shouldSkipClientStep ? 2 : 1);
+  const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(initialClient);
   const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<GoalResponse | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
+  const [preselectedFund, setPreselectedFund] = useState<FundOption | null>(null);
+  const [fundSelectError, setFundSelectError] = useState<string | null>(null);
+  const [showIncompleteModal, setShowIncompleteModal] = useState(false);
+  const [incompleteClientName, setIncompleteClientName] = useState("");
+  const [incompleteUserMobile, setIncompleteUserMobile] = useState("");
+  const [isCheckingStage, setIsCheckingStage] = useState(false);
+  const [investmentMode, setInvestmentMode] = useState<"sip" | "lumpsum">("sip");
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
-  const [reviewCta, setReviewCta] = useState<{ label: string; disabled: boolean; isLoading?: boolean }>({ label: "Activate SIP", disabled: false });
+  const didMount = useRef(false);
+
+  const onboardedTarget = initialOnboardTarget;
+
+  const STEP_NAMES = investmentMode === "lumpsum" ? STEP_NAMES_LUMPSUM : STEP_NAMES_SIP;
+
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [step]);
+
+  useEffect(() => {
+    if (!initialOnboardTarget) return;
+    sessionStorage.removeItem("arn_onboard_target_user");
+  }, [initialOnboardTarget]);
+
   const [sipConfig, setSipConfig] = useState<ReturnType<ArnSetSipPageRef["getConfig"]>>({
     sipAmount: 10000,
     frequency: "monthly",
@@ -40,9 +132,9 @@ export default function ArnGoalSetupPage() {
     selectedFund: "",
     selectedScheme: null,
     selectedMfId: null,
-    lumpSumEnabled: false,
-    lumpSumAmount: 0,
+    investmentMode: "sip",
     expectedCagr: 0.12,
+    portfolioId: null,
   });
   const [dateConfig, setDateConfig] = useState<ReturnType<ArnSetSipDatePageRef["getDateConfig"]>>({
     sipDate: 10,
@@ -51,6 +143,57 @@ export default function ArnGoalSetupPage() {
     autoRenewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     sipFrequency: "monthly",
   });
+  const [reviewCta, setReviewCta] = useState<{ label: string; disabled: boolean; isLoading?: boolean }>({ label: "Activate SIP", disabled: false });
+
+  useEffect(() => {
+    if (!needsClientLookup(selectedClient, onboardedTarget)) return;
+
+    const phone = onboardedTarget?.phone || selectedClient?.mobileNumber || "";
+    let cancelled = false;
+
+    import("@/services/arnGoalSetupService")
+      .then(({ getGoalSetupClients }) =>
+        getGoalSetupClients({
+          page: 1,
+          limit: 10,
+          search: phone,
+        })
+      )
+      .then((response) => {
+        if (cancelled) return;
+
+        const normalizedPhone = phone.replace(/\D/g, "");
+        const match = response.users.find((client) => {
+          const clientPhone = client.mobileNumber.replace(/\D/g, "");
+          return (
+            clientPhone === normalizedPhone ||
+            clientPhone.endsWith(normalizedPhone) ||
+            normalizedPhone.endsWith(clientPhone)
+          );
+        });
+
+        if (match) {
+          setSelectedClient(match);
+          setStep(2);
+          return;
+        }
+
+        const fallbackName = onboardedTarget?.name?.trim();
+        if (selectedClient && fallbackName) {
+          setSelectedClient({ ...selectedClient, name: fallbackName });
+        }
+      })
+      .catch(() => {
+        const fallbackName = onboardedTarget?.name?.trim();
+        if (selectedClient && fallbackName) {
+          setSelectedClient({ ...selectedClient, name: fallbackName });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onboardedTarget, selectedClient]);
 
   const handleClientSelect = useCallback((client: GoalSetupClient) => {
     setSelectedClient(client);
@@ -68,46 +211,146 @@ export default function ArnGoalSetupPage() {
     setSelectedPath(path);
     setSelectedGoal(null);
     setSelectedProduct(null);
+    setPreselectedFund(null);
+    setFundSelectError(null);
   }, []);
 
   const handleProductSelect = useCallback((product: DirectProduct) => {
     setSelectedProduct(product);
+    setPreselectedFund(null);
+    setFundSelectError(null);
   }, []);
 
   const handleGoalSelect = useCallback((goal: GoalResponse) => {
     setSelectedGoal(goal);
+    setPreselectedFund(null);
+    setFundSelectError(null);
   }, []);
 
-  const handleContinue = useCallback(() => {
+  const handleSearchFundSelect = useCallback((fund: FundOption) => {
+    if (!fund.suggestedGoalName || !fund.suggestedGoalId) {
+      setFundSelectError("This fund does not have a valid goal configuration.");
+      return;
+    }
+
+    setFundSelectError(null);
+    setSelectedPath("goal");
+    setSelectedGoal(null);
+    setSelectedProduct(null);
+    setPreselectedFund(fund);
+  }, []);
+
+  const handleContinue = useCallback(async () => {
     if (selectedClient && step === 1) {
-      setStep(2);
+      if (isCheckingStage) return;
+
+      setIsCheckingStage(true);
+      try {
+        const stage = await getUserStage(selectedClient.userId, 0, "MUTUALFUND");
+
+        if (
+          stage.isRiskProfileComplete &&
+          stage.isEmail &&
+          stage.isKycCompliant &&
+          stage.isBank &&
+          stage.isNominee &&
+          !!stage.kycExtraData
+        ) {
+          setStep(2);
+          return;
+        }
+
+        setIncompleteClientName(selectedClient.name);
+        setIncompleteUserMobile(selectedClient.mobileNumber);
+        setShowIncompleteModal(true);
+      } catch {
+        setIncompleteClientName(selectedClient.name);
+        setIncompleteUserMobile(selectedClient.mobileNumber);
+        setShowIncompleteModal(true);
+      } finally {
+        setIsCheckingStage(false);
+      }
+      return;
     } else if (selectedPath === "direct" && selectedProduct && step === 2) {
+      setStep(3);
+    } else if (step === 2 && selectedPath === "goal" && !selectedGoal && preselectedFund) {
+      if (!preselectedFund.suggestedGoalName || !preselectedFund.suggestedGoalId) {
+        setFundSelectError("This fund does not have a valid goal configuration.");
+        return;
+      }
+
+      const syntheticGoal: GoalResponse = {
+        id: preselectedFund.suggestedGoalId,
+        name: preselectedFund.suggestedGoalName,
+        termId: 2,
+        termName: "Medium Term",
+        tenureMin: 36,
+        tenureMax: 360,
+        feePricing: 0,
+        goalAmountMin: 10000,
+        goalAmountMax: 10000000,
+        description: preselectedFund.suggestedGoalName,
+        items: [],
+        imageUrl: "",
+        iconUrl: "",
+      };
+
+      const syntheticProduct: DirectProduct = {
+        key: `fund-search-${preselectedFund.id ?? preselectedFund.isin}`,
+        name: preselectedFund.suggestedGoalName,
+        tagline: preselectedFund.suggestedGoalName,
+        goldLine: preselectedFund.suggestedGoalName,
+        description: preselectedFund.suggestedGoalName,
+        goalId: preselectedFund.suggestedGoalId,
+        stockType: preselectedFund.stockType || "IndianStock",
+        assumedCagr: "12%",
+        defAmt: 10000,
+        defTenure: 10,
+        tenures: [3, 5, 10, 20, 30],
+        defFund: preselectedFund.schemeName || preselectedFund.fundName || preselectedFund.stockName || preselectedFund.name || "",
+      };
+
+      setSelectedGoal(syntheticGoal);
+      setSelectedProduct(syntheticProduct);
+      setFundSelectError(null);
       setStep(3);
     } else if (selectedPath === "goal" && selectedGoal && step === 2) {
       setStep(3);
     } else if (step === 3) {
+      if (sipPageRef.current?.hasTenureError) return;
       if (sipPageRef.current) {
         try {
           sipPageRef.current.getConfig();
         } catch {}
       }
-      setStep(4);
-    } else if (step === 4) {
+      setPreselectedFund(null);
+      if (investmentMode === "lumpsum") {
+        setStep(5);
+      } else {
+        setStep(4);
+      }
+    } else if (step === 4 && investmentMode === "sip") {
       setStep(5);
     } else if (step === 5) {
       reviewPageRef.current?.handleCta();
     }
-  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step]);
+  }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step, preselectedFund, isCheckingStage, investmentMode]);
 
   const handleBack = useCallback(() => {
     if (step > 1) {
-      setStep(step - 1);
+      if (step === 3) setInvestmentMode("sip");
+
+      if (step === 5 && investmentMode === "lumpsum") {
+        setStep(3);
+      } else {
+        setStep(step - 1);
+      }
     }
-  }, [step]);
+  }, [step, investmentMode]);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 pb-32 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
-      <ArnGoalSetupStepper currentStep={step} />
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
+      <ArnGoalSetupStepper currentStep={step} investmentMode={investmentMode} />
 
       {step === 1 && (
         <>
@@ -138,7 +381,7 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 2 && selectedClient && (
-        <div className="pb-40">
+        <div>
           {selectedPath === "direct" ? (
             <ArnDirectProductSelector
               selectedClient={selectedClient!}
@@ -147,49 +390,95 @@ export default function ArnGoalSetupPage() {
               onBack={() => setSelectedPath(null)}
             />
           ) : selectedPath === "goal" ? (
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPath(null);
-                  setSelectedGoal(null);
-                }}
-                className="shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
-              >
-                ← Change path
-              </button>
-              <div className="mt-4">
-                <ArnGoalGrid
-                  selectedGoalId={selectedGoal?.id ?? null}
-                  onSelect={handleGoalSelect}
-                />
+            preselectedFund ? (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPath(null);
+                    setSelectedGoal(null);
+                    setPreselectedFund(null);
+                    setFundSelectError(null);
+                  }}
+                  className="shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
+                >
+                  ← Change path
+                </button>
+                <div className="mt-6">
+                  <ArnFundSearchBar onSelect={handleSearchFundSelect} />
+                  {preselectedFund && (
+                    <div className="mt-3 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
+                          ✓
+                        </span>
+                        <span className="text-sm font-semibold text-[var(--arn-txt)]">
+                          {preselectedFund.schemeName || preselectedFund.fundName || preselectedFund.stockName || preselectedFund.name}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {fundSelectError && (
+                    <p className="mt-2 text-xs text-[var(--arn-red)]">{fundSelectError}</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPath(null);
+                    setSelectedGoal(null);
+                  }}
+                  className="shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
+                >
+                  ← Change path
+                </button>
+                <div className="mt-4">
+                  <ArnGoalGrid
+                    selectedGoalId={selectedGoal?.id ?? null}
+                    onSelect={handleGoalSelect}
+                  />
+                </div>
+              </div>
+            )
           ) : (
-            <ArnGoalPathSelector
-              selectedClient={selectedClient!}
-              onSelect={handlePathSelect}
-            />
+              <div className="space-y-6">
+                <ArnGoalPathSelector
+                  selectedClient={selectedClient!}
+                  onSelect={handlePathSelect}
+                />
+                <div className="mt-6">
+                  <ArnFundSearchBar onSelect={handleSearchFundSelect} />
+                  {fundSelectError && (
+                    <p className="mt-2 text-xs text-[var(--arn-red)]">{fundSelectError}</p>
+                  )}
+                </div>
+              </div>
           )}
         </div>
       )}
 
       {step === 3 && (
-        <div className="pb-40">
+        <div>
           <ArnSetSipPage
             ref={sipPageRef}
             selectedClient={selectedClient!}
             selectedGoal={selectedPath === "goal" ? selectedGoal : null}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
             mode={selectedPath === "goal" ? "goal" : "direct"}
+            investmentMode={investmentMode}
+            onModeChange={setInvestmentMode}
             onBack={handleBack}
             onConfigChange={setSipConfig}
+            preselectedFund={preselectedFund}
           />
         </div>
       )}
 
-      {step === 4 && (
-        <div className="pb-40">
+      {step === 4 && investmentMode === "sip" && (
+        <div>
           <ArnSetSipDatePage
             ref={sipDatePageRef}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
@@ -201,7 +490,7 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 5 && (
-        <div className="pb-40">
+        <div>
           <ArnReviewConfirmPage
             ref={reviewPageRef}
             selectedClient={selectedClient!}
@@ -211,6 +500,7 @@ export default function ArnGoalSetupPage() {
             dateConfig={dateConfig}
             onBack={handleBack}
             onCtaChange={setReviewCta}
+            investmentMode={investmentMode}
           />
         </div>
       )}
@@ -218,6 +508,7 @@ export default function ArnGoalSetupPage() {
       <ArnGoalSetupBottomBar
         step={step}
         stepName={STEP_NAMES[step]}
+        investmentMode={investmentMode}
         onBack={handleBack}
         onContinue={handleContinue}
         canContinue={
@@ -226,16 +517,64 @@ export default function ArnGoalSetupPage() {
             : step === 2
               ? selectedPath === "direct"
                 ? !!selectedProduct
-                : !!selectedGoal
-              : step === 3 || step === 4
-                ? true
-                : step === 5
-                  ? !reviewCta.disabled
-                  : false
+                : selectedPath === "goal"
+                  ? !!selectedGoal || !!preselectedFund
+                  : !!preselectedFund
+              : step === 3
+                ? !sipPageRef.current?.hasTenureError
+                : step === 4 && investmentMode === "sip"
+                  ? true
+                  : step === 5
+                    ? !reviewCta.disabled
+                    : false
         }
         continueLabel={step === 5 ? reviewCta.label : "Continue →"}
         isLoading={step === 5 ? reviewCta.isLoading : false}
       />
+
+      {showIncompleteModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-[400px] rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--arn-red-bg)]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--arn-red)]">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-[var(--arn-txt)]">User Onboarding Incomplete</h3>
+                <p className="mt-1 text-sm text-[var(--arn-txt-2)]">
+                  <span className="font-semibold text-[var(--arn-txt)]">{incompleteClientName}</span> hasn&apos;t completed onboarding yet. Please complete their onboarding before setting up a goal or SIP.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowIncompleteModal(false)}
+                className="min-h-10 rounded-[10px] border border-[var(--arn-bdr)] px-4 py-2 text-xs font-semibold text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)] hover:text-[var(--arn-txt)] sm:text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowIncompleteModal(false);
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem("arn_onboard_mobile", incompleteUserMobile);
+                  }
+                  router.push(`/arn-onboard?mobile=${encodeURIComponent(incompleteUserMobile)}`);
+                }}
+                className="min-h-10 rounded-[10px] bg-[var(--arn-amber)] px-4 py-2 text-xs font-bold text-white shadow-[0_2px_8px_rgba(184,134,11,.2)] transition-colors hover:bg-[#A46512] hover:shadow-[0_4px_16px_rgba(184,134,11,.3)] active:scale-[0.99] sm:text-sm"
+              >
+                Complete Onboarding
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

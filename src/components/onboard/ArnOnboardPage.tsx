@@ -8,9 +8,97 @@ import type { RiskProfileQuestion, UserStage } from "@/services/arnOnboardServic
 
 type Phase = "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(payload);
+    const parsed = JSON.parse(decoded);
+    return typeof parsed === "object" && parsed !== null ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractOnboardUserId(
+  data: Record<string, unknown>,
+  token?: string
+): string | null {
+  const direct = data.userId ?? data.id ?? data.user_id;
+  if (direct !== undefined && direct !== null && String(direct).trim() !== "") {
+    return String(direct);
+  }
+
+  const nestedUser = data.user;
+  if (typeof nestedUser === "object" && nestedUser !== null) {
+    const nested = (nestedUser as Record<string, unknown>).userId
+      ?? (nestedUser as Record<string, unknown>).id
+      ?? (nestedUser as Record<string, unknown>).user_id;
+    if (nested !== undefined && nested !== null && String(nested).trim() !== "") {
+      return String(nested);
+    }
+  }
+
+  if (!token) return null;
+
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+
+  const fromJwt = payload.userId ?? payload.id ?? payload.user_id ?? payload.sub;
+  if (fromJwt !== undefined && fromJwt !== null && String(fromJwt).trim() !== "") {
+    return String(fromJwt);
+  }
+
+  return null;
+}
+
+function extractOnboardUserName(
+  data: Record<string, unknown>,
+  token?: string
+): string {
+  const direct = data.name ?? data.fullName ?? data.full_name ?? data.userName;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  const firstName = data.firstName ?? data.first_name;
+  const lastName = data.lastName ?? data.last_name;
+  if (typeof firstName === "string" || typeof lastName === "string") {
+    const combined = [firstName, lastName]
+      .filter((part) => typeof part === "string" && part.trim())
+      .join(" ")
+      .trim();
+    if (combined) return combined;
+  }
+
+  const nestedUser = data.user;
+  if (typeof nestedUser === "object" && nestedUser !== null) {
+    const nested = extractOnboardUserName(nestedUser as Record<string, unknown>);
+    if (nested) return nested;
+  }
+
+  if (!token) return "";
+
+  const payload = decodeJwtPayload(token);
+  if (!payload) return "";
+
+  const fromJwt = extractOnboardUserName(payload);
+  return fromJwt;
+}
+
 export default function ArnOnboardPage() {
   const [phase, setPhase] = useState<Phase>("mobile");
-  const [mobile, setMobile] = useState("");
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const sessionMobile = sessionStorage.getItem("arn_onboard_mobile");
+      if (sessionMobile) {
+        sessionStorage.removeItem("arn_onboard_mobile");
+        return sessionMobile.replace(/\D/g, '').slice(0, 10);
+      }
+      const params = new URLSearchParams(window.location.search);
+      return (params.get('mobile') || '').replace(/\D/g, '').slice(0, 10);
+    }
+    return '';
+  });
   const [otpValues, setOtpValues] = useState(["", "", "", "", "", ""]);
   const [onboardedToken, setOnboardedToken] = useState("");
   const [riskQuestions, setRiskQuestions] = useState<RiskProfileQuestion[]>([]);
@@ -35,7 +123,48 @@ export default function ArnOnboardPage() {
 
   const goToOtp = () => setPhase("otp");
   const goToMobile = () => setPhase("mobile");
-  const goToDashboard = () => router.push("/");
+  const goToDashboard = () => {
+    const raw = getCookie("onboardedUserData");
+    const token = getCookie("onboardedUserToken");
+
+    try {
+      const data = raw ? JSON.parse(raw as string) : {};
+      const userId = extractOnboardUserId(
+        data,
+        typeof token === "string" ? token : undefined
+      );
+      const phone =
+        mobile.replace(/\D/g, "") ||
+        String(data.phone ?? data.mobile ?? data.mobileNumber ?? "").replace(/\D/g, "");
+
+      sessionStorage.setItem(
+        "arn_onboard_target_user",
+        JSON.stringify({
+          userId: userId ?? "",
+          name: extractOnboardUserName(
+            data,
+            typeof token === "string" ? token : undefined
+          ),
+          phone,
+          email: String(data.email ?? ""),
+          skipClientStep: true,
+        })
+      );
+    } catch {
+      sessionStorage.setItem(
+        "arn_onboard_target_user",
+        JSON.stringify({
+          userId: "",
+          name: "",
+          phone: mobile.replace(/\D/g, ""),
+          email: "",
+          skipClientStep: true,
+        })
+      );
+    }
+
+    router.push("/arn-goal-setup");
+  };
 
   const goToKyc = () => {
     setKycError(null);
@@ -116,6 +245,10 @@ export default function ArnOnboardPage() {
           stage.isBank
         ) {
           setPhase("nominee");
+          return;
+        }
+        if (stage.isRiskProfileComplete && stage.isEmail && stage.isKycCompliant && !!stage.kycExtraData) {
+          setPhase("bank");
           return;
         }
         if (stage.isRiskProfileComplete && stage.isEmail && stage.isKycCompliant) {

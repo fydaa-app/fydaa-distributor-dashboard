@@ -24,6 +24,16 @@ import {
   type AccountType,
 } from "@/services/arnInvestmentSetupService";
 
+function mergeOnboardedUserData(updates: Record<string, unknown>) {
+  try {
+    const raw = getCookie("onboardedUserData");
+    const data = raw ? JSON.parse(raw as string) : {};
+    setCookie("onboardedUserData", JSON.stringify({ ...data, ...updates }), { path: "/" });
+  } catch {
+    setCookie("onboardedUserData", JSON.stringify(updates), { path: "/" });
+  }
+}
+
 interface ArnOnboardFormProps {
   phase: "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
   mobile: string;
@@ -423,6 +433,31 @@ export default function ArnOnboardForm({
     }
   };
 
+  const handleNomineeOptOut = async () => {
+    setIsSubmittingNominee(true);
+    setNomineeError(null);
+
+    try {
+      await createNominationDetails({ opt_out_nomination: true });
+
+      setCookie("nomineeVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
+      setNomineeVerified(true);
+      onGoToWelcome();
+    } catch (err) {
+      if (err && typeof err === "object" && "isConflict" in err && (err as { isConflict?: boolean }).isConflict) {
+        setCookie("nomineeVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
+        setNomineeVerified(true);
+        onGoToWelcome();
+        return;
+      }
+      setNomineeError(
+        err instanceof Error ? err.message : "Failed to process. Please try again."
+      );
+    } finally {
+      setIsSubmittingNominee(false);
+    }
+  };
+
   const [fullName, setFullName] = useState("");
   const [pan, setPan] = useState("");
   const [dob, setDob] = useState("");
@@ -445,15 +480,68 @@ export default function ArnOnboardForm({
   }, []);
 
   const [bankIfsc, setBankIfsc] = useState("");
+  const ifscInputRef = useRef<HTMLInputElement>(null);
   const [bankAccountType, setBankAccountType] = useState<AccountType | "">("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [bankConfirmNumber, setBankConfirmNumber] = useState("");
   const [bankStatus, setBankStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [bankError, setBankError] = useState<string | null>(null);
+  const [bankDetails, setBankDetails] = useState<{
+    BANK?: string; BRANCH?: string; ADDRESS?: string; CITY?: string; STATE?: string;
+  } | null>(null);
+  const [isFetchingBankDetails, setIsFetchingBankDetails] = useState(false);
+  const [bankDetailsError, setBankDetailsError] = useState<string | null>(null);
+  const [optOutNominee, setOptOutNominee] = useState(true);
+
+  useEffect(() => {
+    if (!bankIfsc || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc)) {
+      setBankDetails(null);
+      setBankDetailsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsFetchingBankDetails(true);
+    setBankDetailsError(null);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/ifsc-lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ifsc: bankIfsc }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Lookup failed");
+        }
+        const data = await res.json();
+        if (!cancelled) setBankDetails(data);
+      } catch {
+        if (!cancelled) {
+          setBankDetails(null);
+          setBankDetailsError("We couldn't find bank details for this IFSC code.");
+        }
+      } finally {
+        if (!cancelled) setIsFetchingBankDetails(false);
+      }
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+      cancelled = true;
+    };
+  }, [bankIfsc]);
+
+  useEffect(() => {
+    if (bankDetails || bankDetailsError) {
+      ifscInputRef.current?.blur();
+    }
+  }, [bankDetails, bankDetailsError]);
 
   const handleBankVerify = async () => {
-    if (!bankIfsc.trim()) {
-      setBankError("Please enter your IFSC code.");
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc.trim())) {
+      setBankError("Please enter a valid IFSC code (e.g., SBIN0001234).");
       return;
     }
     if (!bankAccountType) {
@@ -602,6 +690,11 @@ export default function ArnOnboardForm({
         pan: pan.trim().toUpperCase(),
         date_of_birth: dob,
         name: fullName.trim(),
+      });
+
+      mergeOnboardedUserData({
+        name: fullName.trim(),
+        fullName: fullName.trim(),
       });
 
       if (result.isKycCompliant) {
@@ -822,6 +915,7 @@ export default function ArnOnboardForm({
     try {
       const digits = emailOtpValues.join("");
       await verifyLinkEmail({ email: email.trim(), otp: digits });
+      mergeOnboardedUserData({ email: email.trim() });
       setCookie("emailVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
       setEmailVerified(true);
       onEmailVerified();
@@ -1390,7 +1484,7 @@ export default function ArnOnboardForm({
 
           <button
             type="button"
-            onClick={onGoToIdentity}
+            onClick={userStage?.kycExtraData ? onGoToBank : onGoToIdentity}
             className="btn-primary btn-wide"
             style={{ marginTop: 20 }}
           >
@@ -1516,11 +1610,12 @@ export default function ArnOnboardForm({
               onChange={(e) => setPepChecked(e.target.checked)}
             />
             <span>
-              I confirm I am not a politically exposed person (PEP). By continuing, you agree to our{" "}
+              I confirm I am not a politically exposed person (PEP).
+               {/* By continuing, you agree to our{" "}
               <a href="#" onClick={(e) => e.preventDefault()}>
                 Terms &amp; Conditions
               </a>
-              .
+              . */}
             </span>
           </label>
 
@@ -1579,9 +1674,25 @@ export default function ArnOnboardForm({
                 </div>
               </div>
 
+              <label className="onboard-check">
+                <input
+                  type="checkbox"
+                  checked={optOutNominee}
+                  onChange={(e) => setOptOutNominee(e.target.checked)}
+                />
+                <span>I want to opt out of adding a nominee</span>
+              </label>
+
               <button
                 type="button"
-                onClick={onBankVerified}
+                onClick={() => {
+                  if (optOutNominee) {
+                    handleNomineeOptOut();
+                    onGoToWelcome();
+                  } else {
+                    onBankVerified();
+                  }
+                }}
                 className="btn-primary btn-wide"
                 style={{ marginTop: 20 }}
               >
@@ -1599,12 +1710,59 @@ export default function ArnOnboardForm({
               <div className="field-group">
                 <label className="field-label">IFSC Code</label>
                 <input
+                  ref={ifscInputRef}
                   className="field-input"
                   placeholder="Enter your IFSC code"
+                  maxLength={11}
+                  spellCheck={false}
+                  autoComplete="off"
                   value={bankIfsc}
-                  onChange={(e) => setBankIfsc(e.target.value)}
+                  onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
                 />
               </div>
+
+              {bankIfsc && /^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc) && (
+                <div className="mt-3 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-4">
+                  {isFetchingBankDetails ? (
+                    <p className="text-xs text-[var(--arn-txt-3)]">Fetching bank details...</p>
+                  ) : bankDetailsError ? (
+                    <p className="text-xs text-[var(--arn-red)]">{bankDetailsError}</p>
+                  ) : bankDetails ? (
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      {bankDetails.BANK && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-[var(--arn-txt-3)]">Bank</span>
+                          <span className="font-semibold text-[var(--arn-txt)] text-right">{bankDetails.BANK}</span>
+                        </div>
+                      )}
+                      {bankDetails.BRANCH && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-[var(--arn-txt-3)]">Branch</span>
+                          <span className="font-semibold text-[var(--arn-txt)] text-right">{bankDetails.BRANCH}</span>
+                        </div>
+                      )}
+                      {bankDetails.ADDRESS && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-[var(--arn-txt-3)]">Address</span>
+                          <span className="font-semibold text-[var(--arn-txt)] text-right">{bankDetails.ADDRESS}</span>
+                        </div>
+                      )}
+                      {bankDetails.CITY && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-[var(--arn-txt-3)]">City</span>
+                          <span className="font-semibold text-[var(--arn-txt)] text-right">{bankDetails.CITY}</span>
+                        </div>
+                      )}
+                      {bankDetails.STATE && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-[var(--arn-txt-3)]">State</span>
+                          <span className="font-semibold text-[var(--arn-txt)] text-right">{bankDetails.STATE}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              )}
 
               <div className="field-group">
                 <label className="field-label">Account Type</label>
@@ -2017,6 +2175,16 @@ export default function ArnOnboardForm({
 
           <button
             type="button"
+            onClick={handleNomineeOptOut}
+            disabled={isSubmittingNominee}
+            className="btn-ghost btn-wide"
+            style={{ marginTop: 8 }}
+          >
+            {isSubmittingNominee ? "Processing..." : "Opt out of nominee"}
+          </button>
+
+          <button
+            type="button"
             onClick={handleNomineeSubmit}
             disabled={!isNomineeValid || isSubmittingNominee}
             className="btn-primary btn-wide"
@@ -2091,7 +2259,7 @@ export default function ArnOnboardForm({
             onClick={onReset}
             className="btn-primary btn-wide"
           >
-            Go to Dashboard <i className="ti ti-arrow-right" aria-hidden="true" />
+            Start Investment <i className="ti ti-arrow-right" aria-hidden="true" />
           </button>
         </div>
       )}

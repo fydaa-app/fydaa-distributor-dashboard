@@ -43,7 +43,7 @@ export default function ArnReportCard({
       className={cn(
         "w-full rounded-xl border p-3 text-left transition-all duration-100",
         isActive
-          ? "border-[var(--arn-amber)] bg-[var(--arn-amber-bg)]"
+          ? "border border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)]"
           : "border-[var(--arn-bdr-2)] bg-[var(--arn-bg-2)] hover:border-[var(--arn-bdr)] hover:bg-[var(--arn-bg)]"
       )}
     >
@@ -55,7 +55,7 @@ export default function ArnReportCard({
       >
         <i aria-hidden="true" className={iconClasses[reportType]} />
       </div>
-      <div className={cn("text-xs font-bold", isActive ? "text-[var(--arn-amber-txt)]" : "text-[var(--arn-txt)]")}>
+      <div className={cn("text-xs font-bold", isActive ? "text-[var(--arn-txt)]" : "text-[var(--arn-txt-2)]")}>
         {title}
       </div>
       <div className="mt-0.5 text-[10px] text-[var(--arn-txt-3)]">{description}</div>

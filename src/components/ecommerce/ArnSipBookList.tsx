@@ -55,7 +55,7 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
       <ArnCardHeader
         title="SIP book"
         action={
-          <Link href="/arn-sipbook" className="text-xs font-bold text-[#BA7517] sm:text-sm">
+          <Link href="/arn-sipbook" className="text-xs font-bold text-[var(--arn-amber)] sm:text-sm">
             All →
           </Link>
         }
@@ -86,7 +86,7 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className="mt-3 flex w-full items-center justify-center gap-1 rounded-[12px] py-2 text-xs font-bold text-[#BA7517] sm:text-sm"
+          className="mt-3 flex w-full items-center justify-center gap-1 rounded-[12px] py-2 text-xs font-bold text-[var(--arn-amber)] sm:text-sm"
         >
           {expanded ? "View less" : "View more"}
           <svg
