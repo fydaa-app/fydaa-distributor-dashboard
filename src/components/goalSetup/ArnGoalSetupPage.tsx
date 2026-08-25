@@ -328,7 +328,7 @@ export default function ArnGoalSetupPage() {
   }, [step]);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 pb-32 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
       <ArnGoalSetupStepper currentStep={step} />
 
       {step === 1 && (
@@ -360,7 +360,7 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 2 && selectedClient && (
-        <div className="pb-40">
+        <div>
           {selectedPath === "direct" ? (
             <ArnDirectProductSelector
               selectedClient={selectedClient!}
@@ -440,7 +440,7 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 3 && (
-        <div className="pb-40">
+        <div>
           <ArnSetSipPage
             ref={sipPageRef}
             selectedClient={selectedClient!}
@@ -455,7 +455,7 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 4 && (
-        <div className="pb-40">
+        <div>
           <ArnSetSipDatePage
             ref={sipDatePageRef}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
@@ -467,7 +467,7 @@ export default function ArnGoalSetupPage() {
       )}
 
       {step === 5 && (
-        <div className="pb-40">
+        <div>
           <ArnReviewConfirmPage
             ref={reviewPageRef}
             selectedClient={selectedClient!}

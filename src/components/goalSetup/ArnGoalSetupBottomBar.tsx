@@ -30,7 +30,7 @@ export default function ArnGoalSetupBottomBar({
   const displayName = stepName || STEP_NAMES[step] || "";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 lg:left-[220px]">
+    <div className="pointer-events-none sticky bottom-0 z-40">
       <div
         className="
           pointer-events-auto
@@ -38,14 +38,14 @@ export default function ArnGoalSetupBottomBar({
           w-full
           max-w-[1100px]
           px-3
-          pb-[max(1rem,env(safe-area-inset-bottom))]
+          pb-[max(0.5rem,env(safe-area-inset-bottom))]
           sm:px-4
-          sm:pb-5
+          sm:pb-3
           md:px-6
-          md:pb-7
+          md:pb-3.5
           lg:px-8
-          lg:pb-10
-          xl:pb-12
+          lg:pb-4
+          xl:pb-5
         "
       >
         <div
@@ -53,22 +53,22 @@ export default function ArnGoalSetupBottomBar({
             flex
             w-full
             flex-col
-            gap-3
+            gap-2
             rounded-2xl
             border
             border-[var(--arn-bdr)]
             bg-[var(--arn-bg)]
-            p-3
+            p-2.5
             shadow-[0_-4px_24px_rgba(0,0,0,.06)]
             
-            sm:p-4
+            sm:p-3
             md:flex-row
             md:items-center
             md:justify-between
-            md:gap-4
-            md:p-5
+            md:gap-3
+            md:p-3.5
             
-            lg:p-6
+            lg:p-4
           "
         >
           {/* Step information */}
@@ -116,13 +116,13 @@ export default function ArnGoalSetupBottomBar({
                 type="button"
                 onClick={onBack}
                 className="
-                  min-h-11
+                  min-h-10
                   w-full
                   rounded-[10px]
                   border
                   border-[var(--arn-bdr)]
                   px-4
-                  py-2.5
+                  py-2
                   text-xs
                   font-semibold
                   text-[var(--arn-txt-2)]
@@ -130,7 +130,7 @@ export default function ArnGoalSetupBottomBar({
                   hover:bg-[var(--arn-bg-2)]
                   hover:text-[var(--arn-txt)]
                   
-                  sm:min-h-12
+                  sm:min-h-11
                   sm:px-5
                   sm:text-sm
                   
@@ -148,16 +148,16 @@ export default function ArnGoalSetupBottomBar({
               disabled={!canContinue}
               className={cn(
                 `
-                  min-h-11
+                  min-h-10
                   w-full
                   rounded-[10px]
                   px-5
-                  py-2.5
+                  py-2
                   text-xs
                   font-bold
                   transition-all
                   
-                  sm:min-h-12
+                  sm:min-h-11
                   sm:px-6
                   sm:text-sm
                   
