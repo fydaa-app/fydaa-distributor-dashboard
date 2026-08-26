@@ -66,8 +66,8 @@ export default function ArnOrdersTable({
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
       {view === "table" ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm">
+        <div className="-mx-5 overflow-x-auto">
+          <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)]">
             <thead>
               <tr>
                 <th className="w-[15%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Date</th>
@@ -82,7 +82,7 @@ export default function ArnOrdersTable({
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id} className="group hover:[&_td]:bg-[var(--arn-bg-2)]">
+                <tr key={order.id} className="hover:[&_td]:bg-[var(--arn-bg-2)]">
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[10px] font-semibold text-[var(--arn-txt-3)] sm:text-xs">{order.dateLabel}</td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                     <button

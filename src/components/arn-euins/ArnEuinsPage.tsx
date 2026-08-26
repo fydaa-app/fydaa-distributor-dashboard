@@ -186,8 +186,8 @@ export default function ArnEuinsPage() {
 
   return (
     <ComponentCard title="EUINs" desc="Manage EUIN details and contact information">
-      <div className="overflow-x-auto">
-        <table className="hidden sm:table w-full text-left text-sm">
+      <div className="-mx-5 overflow-x-auto">
+        <table className="hidden sm:table w-full text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)]">
           <thead>
             <tr className="border-b border-[var(--arn-bdr)]">
               <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">EUIN</th>

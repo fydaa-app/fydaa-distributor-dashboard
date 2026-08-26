@@ -58,8 +58,8 @@ export default function ArnSipBookTable({
 
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
-      <div className="overflow-x-auto">
-        <table className="min-w-[860px] w-full table-fixed border-collapse text-left text-sm">
+      <div className="-mx-5 overflow-x-auto">
+        <table className="min-w-[860px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)] [&_tbody_tr:nth-child(odd):hover]:bg-[var(--arn-amber-sel-bg)] [&_tbody_tr:nth-child(even):hover]:bg-[var(--arn-amber-sel-bg)]">
           <thead>
             <tr>
               <th className="w-[18%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Client</th>
@@ -85,7 +85,7 @@ export default function ArnSipBookTable({
                     goToClient(sip.clientId);
                   }
                 }}
-                className="cursor-pointer transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]"
+                 className="cursor-pointer transition-colors"
               >
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                   <div className="flex min-w-0 items-center gap-3">

@@ -30,7 +30,7 @@ export default function ArnPortfolioSummaryTable({
   isLoading = false,
 }: ArnPortfolioSummaryTableProps) {
   return (
-    <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
+    <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
       <ArnCardHeader
         title="Portfolio summary — all clients"
         action={
@@ -61,8 +61,8 @@ export default function ArnPortfolioSummaryTable({
         />
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm">
+          <div className="-mx-5 overflow-x-auto">
+            <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)]">
               <thead>
                 <tr>
                   <th className="w-[20%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Client</th>
@@ -76,7 +76,7 @@ export default function ArnPortfolioSummaryTable({
               </thead>
               <tbody>
                 {clients.map((client) => (
-                  <tr key={client.id} className="transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]">
+                  <tr key={client.id} className="transition-colors">
                     <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                       <div className="flex items-center gap-3">
                           <ArnClientAvatar initials={client.initials} size="sm" />
