@@ -35,7 +35,7 @@ export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps
   }));
 
   return (
-    <div className="rounded-[16px] border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1c1a] sm:p-6">
+    <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 dark:border-[var(--arn-bdr)] dark:bg-[var(--arn-bg)] sm:p-6">
       <ArnCardHeader
         title="Top clients by AUM"
         action={
@@ -49,15 +49,15 @@ export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps
           <div
             key={`${client.userId}-${client.initials}-${index}`}
             className={`flex items-center gap-3 py-3 sm:py-4 ${
-              index !== clients.length - 1 ? "border-b border-black/10 dark:border-white/10" : ""
+              index !== clients.length - 1 ? "border-b border-[var(--arn-bdr)]" : ""
             }`}
           >
             <ArnClientAvatar initials={client.initials} size="md" />
-            <div className="flex-1 text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
+            <div className="flex-1 text-sm font-black text-[var(--arn-txt)] sm:text-base">
               {client.name}
             </div>
             <div className="text-right">
-              <div className="text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
+              <div className="text-sm font-black text-[var(--arn-txt)] sm:text-base">
                 {client.aum}
               </div>
             </div>

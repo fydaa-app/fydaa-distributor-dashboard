@@ -43,7 +43,7 @@ export default function ArnDashboard() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="h-24 animate-pulse rounded-[12px] bg-[#f6f5f2] dark:bg-[#252522]" />
+            <div key={idx} className="h-24 animate-pulse rounded-[12px] bg-[var(--arn-bg-2)]" />
           ))}
         </div>
       ) : error ? (
@@ -57,8 +57,8 @@ export default function ArnDashboard() {
       <div className="grid grid-cols-1 gap-5 sm:gap-6 xl:grid-cols-[1.4fr_1fr]">
         {isLoading ? (
           <>
-            <div className="h-[300px] animate-pulse rounded-[16px] bg-[#f6f5f2] dark:bg-[#252522]" />
-            <div className="h-[300px] animate-pulse rounded-[16px] bg-[#f6f5f2] dark:bg-[#252522]" />
+            <div className="h-[300px] animate-pulse rounded-[16px] bg-[var(--arn-bg-2)]" />
+            <div className="h-[300px] animate-pulse rounded-[16px] bg-[var(--arn-bg-2)]" />
           </>
         ) : error ? null : (
           <>
@@ -71,8 +71,8 @@ export default function ArnDashboard() {
       <div className="grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-2">
         {isLoading ? (
           <>
-            <div className="h-[200px] animate-pulse rounded-[16px] bg-[#f6f5f2] dark:bg-[#252522]" />
-            <div className="h-[200px] animate-pulse rounded-[16px] bg-[#f6f5f2] dark:bg-[#252522]" />
+            <div className="h-[200px] animate-pulse rounded-[16px] bg-[var(--arn-bg-2)]" />
+            <div className="h-[200px] animate-pulse rounded-[16px] bg-[var(--arn-bg-2)]" />
           </>
         ) : error ? null : (
           <>

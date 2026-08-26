@@ -3,13 +3,10 @@
 import ArnKpiCard from "@/components/common/ArnKpiCard";
 import type { ArnSipBookKpis as ArnSipBookKpisData } from "@/types/arnSipBook";
 
-type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
-
 interface KpiConfig {
   label: string;
   value: string;
   trendText: string;
-  tone: ArnTone;
   trend: "up" | "down" | "neutral";
   icon?: string;
 }
@@ -23,28 +20,24 @@ const kpiConfigs: KpiConfig[] = [
     label: "Total SIP book",
     value: "totalSipBook",
     trendText: "+12 SIPs this month",
-    tone: "amber",
     trend: "up",
   },
   {
     label: "Active SIPs",
     value: "activeSips",
     trendText: "across 38 clients",
-    tone: "green",
     trend: "up",
   },
   {
     label: "At-risk SIPs",
     value: "atRiskSips",
     trendText: "NACH failure",
-    tone: "red",
     trend: "down",
   },
   {
     label: "Cancelled SIPs",
     value: "cancelledSips",
     trendText: "needs reactivation",
-    tone: "blue",
     trend: "neutral",
     icon: "ti ti-player-pause",
   },
@@ -113,7 +106,6 @@ export default function ArnSipBookKpis({ summary }: ArnSipBookKpisProps) {
           label={config.label}
           value={config.value}
           trendText={config.trendText}
-          tone={config.tone}
           trend={config.trend}
           icon={config.icon}
         />

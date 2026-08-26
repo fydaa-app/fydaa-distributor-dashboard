@@ -60,7 +60,6 @@ export default function ArnShareKpis() {
         label="Reports shared (Jun)"
         value={String(data.reportsShared)}
         trendText={data.reportsSharedTrend}
-        tone="amber"
         trend="up"
         icon="ti ti-trending-up"
       />
@@ -68,7 +67,6 @@ export default function ArnShareKpis() {
         label="Viewed by clients"
         value={String(data.viewedByClients)}
         trendText={data.viewedRate}
-        tone="green"
         trend="up"
         icon="ti ti-eye"
       />
@@ -76,7 +74,6 @@ export default function ArnShareKpis() {
         label="WhatsApp sends"
         value={String(data.whatsappSends)}
         trendText={data.whatsappLabel}
-        tone="blue"
         trend="neutral"
         icon="ti ti-message"
       />
