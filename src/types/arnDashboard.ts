@@ -30,6 +30,7 @@ export interface ArnDashboardSipBookItem {
   status: string;
   statusLabel?: string;
   userId?: number | string;
+  sipName?: string;
 }
 
 export interface ArnDashboardTopClient {
@@ -56,8 +57,9 @@ export interface HierarchyOption {
   phone: string;
   level: string;
   status?: string;
-  rejectionReason?: string;
-  children?: HierarchyOption[];
+  statusLabel?: string;
+  userId?: number | string;
+  sipName?: string;
 }
 
 export interface HierarchyResponse {

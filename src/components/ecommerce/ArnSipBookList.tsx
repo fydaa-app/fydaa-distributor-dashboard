@@ -2,7 +2,6 @@
 
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
-import ArnStatusTag from "@/components/common/ArnStatusTag";
 import Link from "next/link";
 import { useState } from "react";
 import type { ArnDashboardSipBookItem } from "@/types/arnDashboard";
@@ -35,18 +34,11 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
   const items = sipBook.map((item, index) => ({
     initials: getInitials(item.clientName),
     name: item.clientName,
-    sipDate: item.sipDay,
+    sipName: item.sipName,
     amount: item.amount,
-    status: item.statusLabel || item.status || "Active",
     tone: toneOrder[index % toneOrder.length],
     userId: item.userId,
   }));
-
-  const statusVariant: Record<string, "active" | "due" | "paused"> = {
-    Active: "active",
-    "Due today": "due",
-    Cancelled: "paused",
-  };
 
   const visibleItems = expanded ? items : items.slice(0, 4);
 
@@ -71,13 +63,14 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
               <div className="truncate text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
                 {sip.name}
               </div>
-              <div className="text-xs text-[#a8a8a3] sm:text-sm">{sip.sipDate}</div>
+              <div className="text-xs text-[var(--arn-green)] dark:text-[#C0DD97] sm:text-sm">
+                {sip.sipName}
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
+            <div>
+              <div className="text-sm font-black text-[var(--arn-green)] dark:text-[#C0DD97] sm:text-base">
                 {sip.amount}
               </div>
-              <ArnStatusTag label={sip.status} variant={statusVariant[sip.status] || "active"} />
             </div>
           </div>
         ))}

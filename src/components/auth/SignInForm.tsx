@@ -154,7 +154,7 @@ export default function SignInForm() {
                   <button
                     onClick={submitForm}
                     disabled={isLoading}
-                    className="w-full inline-flex items-center justify-center bg-[var(--arn-amber)] text-[var(--arn-white)] hover:bg-[#a46512] transition-colors duration-160
+                    className="w-full inline-flex items-center justify-center bg-[var(--arn-amber)] text-[var(--arn-white)] hover:bg-[var(--arn-amber-hover)] transition-colors duration-160
                               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--arn-amber)] px-4 py-2 
                               rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed"
                     type="button"

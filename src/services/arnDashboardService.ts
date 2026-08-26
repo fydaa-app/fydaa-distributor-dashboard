@@ -93,6 +93,7 @@ function normalizeSipBook(source: JsonObject): ArnDashboardSipBookItem[] {
         record.statusLabel || record.status_label || record.statusText
       ),
       userId: getNumber(record.userId || record.user_id) || undefined,
+      sipName: getString(record.sipName),
     };
   });
 }
