@@ -58,12 +58,12 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
               <div className="truncate text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
                 {sip.name}
               </div>
-              <div className="text-xs text-[var(--arn-green)] dark:text-[#C0DD97] sm:text-sm">
+              <div className="text-xs text-[var(--arn-amber)] dark:text-[var(--arn-amber-txt)] sm:text-sm">
                 {sip.sipName}
               </div>
             </div>
             <div>
-              <div className="text-sm font-black text-[var(--arn-green)] dark:text-[#C0DD97] sm:text-base">
+              <div className="text-sm font-black text-[var(--arn-amber)] dark:text-[var(--arn-amber-txt)] sm:text-base">
                 {sip.amount}
               </div>
             </div>

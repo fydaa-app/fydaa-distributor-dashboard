@@ -2,19 +2,21 @@
 
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
+import { useEffect, useMemo, useState } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import type { ArnOrderTypeSplit } from "@/types/arnOrders";
+import { getBrandColor } from "@/lib/utils";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 const chartColors = ["#BA7517", "#185FA5", "#3B6D11", "#534AB7"];
 
-function getToneColor(tone: ArnOrderTypeSplit["tone"]): string {
+function getToneColor(tone: ArnOrderTypeSplit["tone"], brandColor: string): string {
   if (tone === "green") return "#3B6D11";
   if (tone === "blue") return "#185FA5";
   if (tone === "purple") return "#534AB7";
-  return "#BA7517";
+  return brandColor;
 }
 
 interface ArnOrderTypeSplitChartProps {
@@ -26,7 +28,13 @@ interface ArnOrderTypeSplitChartProps {
 }
 
 export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry, totalOrders }: ArnOrderTypeSplitChartProps) {
-  const options: ApexOptions = {
+  const [brandColor, setBrandColor] = useState("#BA7517");
+
+  useEffect(() => {
+    setBrandColor(getBrandColor());
+  }, []);
+
+  const options = useMemo<ApexOptions>(() => ({
     chart: {
       type: "donut",
       height: "100%",
@@ -35,7 +43,7 @@ export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry
       background: "transparent",
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     },
-    colors: splits.length ? splits.map((item) => getToneColor(item.tone)) : chartColors,
+    colors: splits.length ? splits.map((item) => getToneColor(item.tone, brandColor)) : chartColors,
     labels: splits.length ? splits.map((item) => item.label) : ["SIP", "Lumpsum", "Redemption", "Switch"],
     stroke: { show: false },
     dataLabels: { enabled: false },
@@ -77,7 +85,7 @@ export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry
         formatter: (value) => `${Number(value).toFixed(0)}%`,
       },
     },
-  };
+  }), [brandColor, splits, totalOrders]);
 
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
@@ -104,7 +112,7 @@ export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-medium text-[var(--arn-txt-2)] sm:text-xs">
             {(splits.length ? splits : []).map((item) => (
               <span key={item.type} className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-[2px]" style={{ background: getToneColor(item.tone) }} />
+                <span className="size-2 rounded-[2px]" style={{ background: getToneColor(item.tone, brandColor) }} />
                 {item.label} {item.percentage}%
               </span>
             ))}

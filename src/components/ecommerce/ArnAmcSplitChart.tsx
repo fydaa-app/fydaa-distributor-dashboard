@@ -7,22 +7,24 @@ import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import { getArnCommissionAmcSplit } from "@/services/arnCommissionService";
 import type { ArnAmcSplit } from "@/types/arnCommission";
+import { getBrandColor } from "@/lib/utils";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 const chartColors = ["#BA7517", "#185FA5", "#3B6D11", "#534AB7"];
 
-function getToneColor(tone: ArnAmcSplit["tone"]): string {
+function getToneColor(tone: ArnAmcSplit["tone"], brandColor: string): string {
   if (tone === "green") return "#3B6D11";
   if (tone === "blue") return "#185FA5";
   if (tone === "purple") return "#534AB7";
-  return "#BA7517";
+  return brandColor;
 }
 
 export default function ArnAmcSplitChart() {
   const [splits, setSplits] = useState<ArnAmcSplit[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [brandColor, setBrandColor] = useState("#BA7517");
 
   const loadSplit = useCallback(async () => {
     setIsLoading(true);
@@ -41,6 +43,10 @@ export default function ArnAmcSplitChart() {
     loadSplit();
   }, [loadSplit]);
 
+  useEffect(() => {
+    setBrandColor(getBrandColor());
+  }, []);
+
   const options: ApexOptions = {
     chart: {
       type: "donut",
@@ -50,7 +56,7 @@ export default function ArnAmcSplitChart() {
       background: "transparent",
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     },
-    colors: splits.length ? splits.map((item) => getToneColor(item.tone)) : chartColors,
+    colors: splits.length ? splits.map((item) => getToneColor(item.tone, brandColor)) : chartColors,
     labels: splits.length ? splits.map((item) => item.label) : ["Mirae", "P.Parikh", "HDFC", "ICICI"],
     stroke: { show: false },
     dataLabels: { enabled: false },
@@ -119,7 +125,7 @@ export default function ArnAmcSplitChart() {
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-medium text-[var(--arn-txt-2)] sm:text-xs">
             {(splits.length ? splits : []).map((item) => (
               <span key={item.amc} className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-[2px]" style={{ background: getToneColor(item.tone) }} />
+                <span className="size-2 rounded-[2px]" style={{ background: getToneColor(item.tone, brandColor) }} />
                 {item.label} {item.percentage}%
               </span>
             ))}

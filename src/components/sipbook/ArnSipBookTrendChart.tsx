@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnChartPeriodTabs from "@/components/common/ArnChartPeriodTabs";
 import type { ArnSipBookTrendPoint } from "@/types/arnSipBook";
+import { getBrandColor } from "@/lib/utils";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -28,10 +29,15 @@ export default function ArnSipBookTrendChart({
   onPeriodChange,
 }: ArnSipBookTrendChartProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [brandColor, setBrandColor] = useState("#BA7517");
 
   useEffect(() => {
     setIsLoading(false);
   }, [inflowTrend]);
+
+  useEffect(() => {
+    setBrandColor(getBrandColor());
+  }, []);
 
   const categories =
     inflowTrend.length > 0
@@ -47,7 +53,7 @@ export default function ArnSipBookTrendChart({
       background: "transparent",
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     },
-    colors: ["#BA7517"],
+    colors: [brandColor],
     dataLabels: { enabled: false },
     plotOptions: {
       bar: {

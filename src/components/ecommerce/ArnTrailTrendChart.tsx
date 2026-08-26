@@ -7,6 +7,7 @@ import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import { getArnCommissionTrend } from "@/services/arnCommissionService";
 import type { ArnCommissionTrendPoint } from "@/types/arnCommission";
+import { getBrandColor } from "@/lib/utils";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -14,6 +15,7 @@ export default function ArnTrailTrendChart() {
   const [trend, setTrend] = useState<ArnCommissionTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [brandColor, setBrandColor] = useState("#BA7517");
 
   const loadTrend = useCallback(async () => {
     setIsLoading(true);
@@ -32,6 +34,10 @@ export default function ArnTrailTrendChart() {
     loadTrend();
   }, [loadTrend]);
 
+  useEffect(() => {
+    setBrandColor(getBrandColor());
+  }, []);
+
   const options: ApexOptions = {
     chart: {
       type: "bar",
@@ -41,7 +47,7 @@ export default function ArnTrailTrendChart() {
       background: "transparent",
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     },
-    colors: ["#BA7517"],
+    colors: [brandColor],
     dataLabels: { enabled: false },
     plotOptions: {
       bar: {
