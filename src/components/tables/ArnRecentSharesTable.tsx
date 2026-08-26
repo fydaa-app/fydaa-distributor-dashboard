@@ -65,7 +65,7 @@ export default function ArnRecentSharesTable({
               <tr key={share.id} className="transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]">
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                   <div className="flex items-center gap-3">
-                    <ArnClientAvatar initials={share.initials} tone={share.tone} size="sm" />
+                      <ArnClientAvatar initials={share.initials} size="sm" />
                     <span className="truncate font-bold">{share.clientShortName}</span>
                   </div>
                 </td>

@@ -22,7 +22,7 @@ export default function ArnClientDetailHeader({
 
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          <ArnClientAvatar initials={client.initials} tone={client.tone} size="lg" />
+          <ArnClientAvatar initials={client.initials} size="lg" />
           <div className="min-w-0">
             <div className="text-lg font-black text-[var(--arn-txt)] sm:text-xl">{client.name}</div>
             <div className="text-sm text-[var(--arn-txt-3)]">

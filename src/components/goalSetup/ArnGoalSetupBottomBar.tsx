@@ -181,9 +181,9 @@ export default function ArnGoalSetupBottomBar({
                   ? `
                     bg-[var(--arn-amber)]
                     text-white
-                    shadow-[0_2px_8px_rgba(184,134,11,.2)]
-                    hover:bg-[#A46512]
-                    hover:shadow-[0_4px_16px_rgba(184,134,11,.3)]
+                    shadow-[0_2px_8px_var(--arn-login-shadow)]
+                    hover:bg-[var(--arn-amber-hover)]
+                    hover:shadow-[0_4px_16px_var(--arn-login-shadow-hover)]
                     active:scale-[0.99]
                   `
                   : `

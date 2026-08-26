@@ -38,7 +38,7 @@ export default function ArnGoalSetupStepper({ currentStep, investmentMode }: Arn
                 <div
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors sm:h-8 sm:w-8 sm:text-sm",
-                    isActive && "bg-[var(--arn-amber)] text-white shadow-[0_0_0_3px_rgba(184,134,11,.15)]",
+                    isActive && "bg-[var(--arn-amber)] text-white shadow-[0_0_0_3px_var(--arn-input-ring)]",
                     isDone && "bg-[var(--arn-green)] text-white",
                     isFuture && "bg-[var(--arn-bdr)] text-[var(--arn-txt-3)]"
                   )}

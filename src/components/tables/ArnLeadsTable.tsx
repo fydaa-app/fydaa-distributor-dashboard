@@ -58,7 +58,7 @@ export default function ArnLeadsTable({
               <tr key={lead.userId} className="transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]">
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                   <div className="flex items-center gap-3">
-                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--arn-amber)]/10 text-xs font-black text-[var(--arn-amber)]">
+                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--arn-avatar-bg)] text-xs font-black text-[var(--arn-avatar-txt)]">
                       {lead.userName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?"}
                     </div>
                     <span className="truncate font-bold">{lead.userName}</span>

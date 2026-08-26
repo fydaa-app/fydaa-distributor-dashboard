@@ -407,9 +407,9 @@ export default function ArnGoalSetupPage() {
                 <div className="mt-6">
                   <ArnFundSearchBar onSelect={handleSearchFundSelect} />
                   {preselectedFund && (
-                    <div className="mt-3 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                    <div className="mt-3 rounded-[12px] border border-[var(--arn-input-ring)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--arn-input-ring)] text-[10px] font-bold text-[var(--arn-amber)]">
                           ✓
                         </span>
                         <span className="text-sm font-semibold text-[var(--arn-txt)]">
@@ -536,7 +536,7 @@ export default function ArnGoalSetupPage() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-[400px] rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-6 shadow-xl">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--arn-red-bg)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--arn-avatar-bg)]">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--arn-red)]">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
@@ -567,7 +567,7 @@ export default function ArnGoalSetupPage() {
                   }
                   router.push(`/arn-onboard?mobile=${encodeURIComponent(incompleteUserMobile)}`);
                 }}
-                className="min-h-10 rounded-[10px] bg-[var(--arn-amber)] px-4 py-2 text-xs font-bold text-white shadow-[0_2px_8px_rgba(184,134,11,.2)] transition-colors hover:bg-[#A46512] hover:shadow-[0_4px_16px_rgba(184,134,11,.3)] active:scale-[0.99] sm:text-sm"
+                className="min-h-10 rounded-[10px] bg-[var(--arn-amber)] px-4 py-2 text-xs font-bold text-white shadow-[0_2px_8px_var(--arn-login-shadow)] transition-colors hover:bg-[var(--arn-amber-hover)] hover:shadow-[0_4px_16px_var(--arn-login-shadow-hover)] active:scale-[0.99] sm:text-sm"
               >
                 Complete Onboarding
               </button>

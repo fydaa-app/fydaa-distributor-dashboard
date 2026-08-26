@@ -5,10 +5,6 @@ import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import Link from "next/link";
 import type { ArnDashboardTopClient } from "@/types/arnDashboard";
 
-type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
-
-const toneOrder: ArnTone[] = ["amber", "blue", "green", "teal", "purple", "red"];
-
 function getInitials(name: string): string {
   const parts = name.trim().split(" ").filter(Boolean);
   if (parts.length === 0) return "?";
@@ -31,12 +27,11 @@ interface ArnTopClientsCardProps {
 }
 
 export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps) {
-  const clients = topClients.map((client, index) => ({
+  const clients = topClients.map((client) => ({
     userId: client.userId,
     initials: getInitials(client.clientName),
     name: client.clientName,
     aum: formatIndianCurrency(client.aum),
-    tone: toneOrder[index % toneOrder.length],
   }));
 
   return (
@@ -57,7 +52,7 @@ export default function ArnTopClientsCard({ topClients }: ArnTopClientsCardProps
               index !== clients.length - 1 ? "border-b border-black/10 dark:border-white/10" : ""
             }`}
           >
-            <ArnClientAvatar initials={client.initials} tone={client.tone} size="md" />
+            <ArnClientAvatar initials={client.initials} size="md" />
             <div className="flex-1 text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
               {client.name}
             </div>

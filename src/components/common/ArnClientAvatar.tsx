@@ -1,19 +1,7 @@
 import { cn } from "@/lib/utils";
 
-type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
-
-const toneClasses: Record<ArnTone, string> = {
-  amber: "bg-[#FAEEDA] text-[#854F0B]",
-  green: "bg-[#EAF3DE] text-[#3B6D11]",
-  blue: "bg-[#E6F1FB] text-[#185FA5]",
-  red: "bg-[#FCEBEB] text-[#A32D2D]",
-  purple: "bg-[#EEEDFE] text-[#534AB7]",
-  teal: "bg-[#E1F5EE] text-[#0F6E56]",
-};
-
 interface ArnClientAvatarProps {
   initials: string;
-  tone?: ArnTone;
   size?: "xs" | "sm" | "md" | "lg" | "detail";
 }
 
@@ -27,14 +15,13 @@ const sizeClasses: Record<"xs" | "sm" | "md" | "lg" | "detail", string> = {
 
 export default function ArnClientAvatar({
   initials,
-  tone = "amber",
   size = "md",
 }: ArnClientAvatarProps) {
   return (
     <div
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full font-bold",
-        toneClasses[tone],
+        "bg-[var(--arn-avatar-bg)] text-[var(--arn-avatar-txt)]",
         sizeClasses[size]
       )}
     >

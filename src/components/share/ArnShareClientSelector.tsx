@@ -52,7 +52,7 @@ export default function ArnShareClientSelector({
                     : "border-transparent bg-[var(--arn-bg-2)] hover:border-[var(--arn-bdr)] hover:bg-[var(--arn-bg)]"
                 )}
               >
-                <ArnClientAvatar initials={client.initials} tone={client.tone} size="md" />
+                <ArnClientAvatar initials={client.initials} size="md" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-bold text-[var(--arn-txt)]">{client.name}</div>
                   <div className="text-[10px] text-[var(--arn-txt-3)]">

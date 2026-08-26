@@ -90,7 +90,7 @@ export default function ArnOrdersTable({
                       onClick={() => goToClient(order.clientId)}
                       className="flex min-w-0 items-center gap-3 text-left"
                     >
-                      <ArnClientAvatar initials={order.initials} tone={order.tone} size="sm" />
+                      <ArnClientAvatar initials={order.initials} size="sm" />
                       <span className="truncate font-bold">{order.clientShortName}</span>
                     </button>
                   </td>
@@ -115,7 +115,7 @@ export default function ArnOrdersTable({
             <div key={order.id} className="rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <ArnClientAvatar initials={order.initials} tone={order.tone} size="md" />
+                  <ArnClientAvatar initials={order.initials} size="md" />
                   <div className="min-w-0">
                     <button
                       type="button"

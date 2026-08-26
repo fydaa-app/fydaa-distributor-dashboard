@@ -89,7 +89,7 @@ export default function ArnSipBookTable({
               >
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                   <div className="flex min-w-0 items-center gap-3">
-                    <ArnClientAvatar initials={sip.initials} tone={sip.tone} size="sm" />
+                      <ArnClientAvatar initials={sip.initials} size="sm" />
                     <span className="truncate font-bold">{sip.clientName}</span>
                   </div>
                 </td>

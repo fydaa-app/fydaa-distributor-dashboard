@@ -20,10 +20,6 @@ function getKycVariant(status: ArnKycStatus) {
   return "paused";
 }
 
-function getRowVariant(client: ArnClient) {
-  return client.tone;
-}
-
 export default function ArnClientTable({
   clients,
   total,
@@ -86,7 +82,7 @@ export default function ArnClientTable({
               >
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                   <div className="flex items-center gap-3">
-                    <ArnClientAvatar initials={client.initials} tone={getRowVariant(client)} size="md" />
+                    <ArnClientAvatar initials={client.initials} size="md" />
                     <span className="truncate font-bold">{client.name}</span>
                   </div>
                 </td>

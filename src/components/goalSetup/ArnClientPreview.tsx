@@ -44,7 +44,7 @@ export default function ArnClientPreview({ client }: ArnClientPreviewProps) {
   return (
     <div className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
       <div className="flex items-center gap-3 mb-5">
-        <ArnClientAvatar initials={client.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()} tone="amber" size="lg" />
+        <ArnClientAvatar initials={client.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()} size="lg" />
         <div className="min-w-0">
           <div className="text-base font-bold text-[var(--arn-txt)] truncate">{client.name}</div>
           <div className="text-xs text-[var(--arn-txt-3)] mt-0.5">{client.email}</div>

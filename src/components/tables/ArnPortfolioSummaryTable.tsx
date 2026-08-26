@@ -79,7 +79,7 @@ export default function ArnPortfolioSummaryTable({
                   <tr key={client.id} className="transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]">
                     <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                       <div className="flex items-center gap-3">
-                        <ArnClientAvatar initials={client.initials} tone={client.tone} size="sm" />
+                          <ArnClientAvatar initials={client.initials} size="sm" />
                         <span className="truncate font-bold">{client.name}</span>
                       </div>
                     </td>

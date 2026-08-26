@@ -6,10 +6,6 @@ import Link from "next/link";
 import { useState } from "react";
 import type { ArnDashboardSipBookItem } from "@/types/arnDashboard";
 
-type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal";
-
-const toneOrder: ArnTone[] = ["amber", "blue", "green", "teal", "purple", "red"];
-
 function getInitials(name: string): string {
   const parts = name.trim().split(" ").filter(Boolean);
   if (parts.length === 0) return "?";
@@ -31,12 +27,11 @@ interface ArnSipBookListProps {
 export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const items = sipBook.map((item, index) => ({
+  const items = sipBook.map((item) => ({
     initials: getInitials(item.clientName),
     name: item.clientName,
     sipName: item.sipName,
     amount: item.amount,
-    tone: toneOrder[index % toneOrder.length],
     userId: item.userId,
   }));
 
@@ -58,7 +53,7 @@ export default function ArnSipBookList({ sipBook }: ArnSipBookListProps) {
             key={`${sip.userId ?? "x"}-${sip.initials}-${index}`}
             className="flex items-center gap-3 rounded-[12px] bg-[#f6f5f2] p-3 dark:bg-[#252522] sm:p-4"
           >
-            <ArnClientAvatar initials={sip.initials} tone={sip.tone} size="md" />
+            <ArnClientAvatar initials={sip.initials} size="md" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-black text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
                 {sip.name}
