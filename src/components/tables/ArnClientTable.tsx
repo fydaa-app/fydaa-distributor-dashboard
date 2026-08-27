@@ -17,6 +17,7 @@ interface ArnClientTableProps {
   total: number;
   page: number;
   pageSize: number;
+  view: "table" | "list";
   onPageChange: (page: number) => void;
 }
 
@@ -25,6 +26,7 @@ export default function ArnClientTable({
   total,
   page,
   pageSize,
+  view,
   onPageChange,
 }: ArnClientTableProps) {
   const router = useRouter();
@@ -52,116 +54,159 @@ export default function ArnClientTable({
 
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
-      {/* 
-        Break the table wrapper out of the card's horizontal padding.
-        This allows the table, row borders and hover backgrounds to
-        reach the card's inner left/right edges.
-
-        The table cells keep their own px-4 padding, so the actual
-        content still has the intended spacing.
-      */}
-      <div className="-mx-5 overflow-x-auto">
-        <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)] [&_tbody_tr:nth-child(odd):hover]:bg-[var(--arn-amber-sel-bg)] [&_tbody_tr:nth-child(even):hover]:bg-[var(--arn-amber-sel-bg)]">
-          <thead>
-            <tr>
-              <th className="w-[24%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                Client
-              </th>
-              <th className="w-[18%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                Mobile
-              </th>
-              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                AUM
-              </th>
-              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                SIP/mo
-              </th>
-              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                XIRR
-              </th>
-              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                KYC
-              </th>
-              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                Last tx
-              </th>
-              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                Action
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {clients.map((client) => (
-              <tr
-                key={client.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => goToClient(client.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    goToClient(client.id);
-                  }
-                }}
-                 className="cursor-pointer transition-colors"
-              >
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
-                  <div className="flex items-center gap-3">
-                    <ArnClientAvatar initials={client.initials} size="md" />
-                    <span className="truncate font-bold">{client.name}</span>
-                  </div>
-                </td>
-
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
-                  {client.mobileNumber}
-                </td>
-
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
-                  {client.aum}
-                </td>
-
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
-                  {client.sipMonthly}
-                </td>
-
-                <td
-                  className="border-b border-[var(--arn-bdr)] px-4 py-3"
-                  style={{
-                    color:
-                      client.xirr < 0
-                        ? "var(--arn-red)"
-                        : "var(--arn-green)",
-                  }}
-                >
-                  {client.xirr.toFixed(1)}%
-                </td>
-
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
-                  <ArnStatusTag
-                    label={client.kycLabel}
-                    variant={getKycVariant(client.kycStatus)}
-                  />
-                </td>
-
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">
-                  {client.lastTransactionLabel}
-                </td>
-
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
-                  <Link
-                    href={`/arn-share?clientId=${client.id}`}
-                    onClick={(event) => event.stopPropagation()}
-                    className="grid size-9 place-items-center rounded-[8px] border border-[var(--arn-bdr)] text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)]"
-                  >
-                    <i aria-hidden="true" className="ti ti-send" />
-                  </Link>
-                </td>
+      {view === "table" ? (
+        <div className="-mx-5 overflow-x-auto">
+          <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)] [&_tbody_tr:nth-child(odd):hover]:bg-[var(--arn-amber-sel-bg)] [&_tbody_tr:nth-child(even):hover]:bg-[var(--arn-amber-sel-bg)]">
+            <thead>
+              <tr>
+                <th className="w-[24%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  Client
+                </th>
+                <th className="w-[18%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  Mobile
+                </th>
+                <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  AUM
+                </th>
+                <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  SIP/mo
+                </th>
+                <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  XIRR
+                </th>
+                <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  KYC
+                </th>
+                <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  Last tx
+                </th>
+                <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  Action
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+
+            <tbody>
+              {clients.map((client) => (
+                <tr
+                  key={client.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => goToClient(client.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      goToClient(client.id);
+                    }
+                  }}
+                   className="cursor-pointer transition-colors"
+                >
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
+                    <div className="flex items-center gap-3">
+                      <ArnClientAvatar initials={client.initials} size="md" />
+                      <span className="truncate font-bold">{client.name}</span>
+                    </div>
+                  </td>
+
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
+                    {client.mobileNumber}
+                  </td>
+
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
+                    {client.aum}
+                  </td>
+
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
+                    {client.sipMonthly}
+                  </td>
+
+                  <td
+                    className="border-b border-[var(--arn-bdr)] px-4 py-3"
+                    style={{
+                      color:
+                        client.xirr < 0
+                          ? "var(--arn-red)"
+                          : "var(--arn-green)",
+                    }}
+                  >
+                    {client.xirr.toFixed(1)}%
+                  </td>
+
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
+                    <ArnStatusTag
+                      label={client.kycLabel}
+                      variant={getKycVariant(client.kycStatus)}
+                    />
+                  </td>
+
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">
+                    {client.lastTransactionLabel}
+                  </td>
+
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
+                    <Link
+                      href={`/arn-share?clientId=${client.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="grid size-9 place-items-center rounded-[8px] border border-[var(--arn-bdr)] text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)]"
+                    >
+                      <i aria-hidden="true" className="ti ti-send" />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {clients.map((client) => (
+            <div
+              key={client.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => goToClient(client.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  goToClient(client.id);
+                }
+              }}
+              className="rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-4 text-left transition-colors hover:bg-[var(--arn-bg)] sm:p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <ArnClientAvatar initials={client.initials} size="md" />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-[var(--arn-txt)]">{client.name}</div>
+                    <div className="mt-1 text-xs text-[var(--arn-txt-3)]">{client.mobileNumber}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ArnStatusTag label={client.kycLabel} variant={getKycVariant(client.kycStatus)} size="task" />
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--arn-txt-3)] sm:grid-cols-4 sm:text-sm">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">AUM</div>
+                  <div className="mt-1 font-bold text-[var(--arn-txt)]">{client.aum}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">SIP/mo</div>
+                  <div className="mt-1 font-bold text-[var(--arn-txt)]">{client.sipMonthly}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">XIRR</div>
+                  <div className="mt-1 font-bold" style={{ color: client.xirr < 0 ? "var(--arn-red)" : "var(--arn-green)" }}>{client.xirr.toFixed(1)}%</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Last tx</div>
+                  <div className="mt-1 font-bold text-[var(--arn-txt)]">{client.lastTransactionLabel}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mt-4 flex items-center gap-1 text-xs text-[var(--arn-txt-3)]">
         <button

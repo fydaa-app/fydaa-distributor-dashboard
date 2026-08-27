@@ -22,10 +22,16 @@ import type {
 
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
+const MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 export default function ArnOrdersPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const currentMonth = MONTH_LABELS[new Date().getMonth()];
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const filter = (searchParams.get("filter") as ArnOrderFilter) || "all";
@@ -141,7 +147,7 @@ export default function ArnOrdersPage() {
 
       <div className="grid grid-cols-1 gap-5 sm:gap-6 xl:grid-cols-[1.4fr_1fr]">
         <ArnOrderActivityTimeline activities={activities} isLoading={isLoading} error={error} retry={loadOrders} />
-        <ArnOrderTypeSplitChart splits={typeSplit} isLoading={isLoading} error={error} retry={loadOrders} totalOrders={kpis?.processedJune ?? 0} />
+        <ArnOrderTypeSplitChart splits={typeSplit} isLoading={isLoading} error={error} retry={loadOrders} totalOrders={kpis?.processedJune ?? 0} monthLabel={currentMonth} />
       </div>
 
       <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">

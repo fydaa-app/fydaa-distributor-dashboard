@@ -83,15 +83,17 @@ export default function ArnOrdersTable({
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id} className="hover:[&_td]:bg-[var(--arn-bg-2)]">
-                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[10px] font-semibold text-[var(--arn-txt-3)] sm:text-xs">{order.dateLabel}</td>
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
+                    <div className="text-[10px] font-semibold text-[var(--arn-txt-3)] sm:text-xs">{order.dateLabel}</div>
+                    <div className="text-[10px] text-[var(--arn-txt-3)] sm:text-xs">{order.timeLabel}</div>
+                  </td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                     <button
                       type="button"
                       onClick={() => goToClient(order.clientId)}
-                      className="flex min-w-0 items-center gap-3 text-left"
+                      className="truncate text-left font-bold"
                     >
-                      <ArnClientAvatar initials={order.initials} size="sm" />
-                      <span className="truncate font-bold">{order.clientShortName}</span>
+                      {order.clientShortName}
                     </button>
                   </td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-xs text-[var(--arn-txt-3)] sm:text-sm">{order.fundName}</td>
@@ -125,6 +127,7 @@ export default function ArnOrdersTable({
                       {order.clientName}
                     </button>
                     <div className="mt-1 text-xs text-[var(--arn-txt-3)]">{order.dateLabel}</div>
+                    <div className="text-[10px] text-[var(--arn-txt-3)] sm:text-xs">{order.timeLabel}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -132,7 +135,7 @@ export default function ArnOrdersTable({
                   <ArnStatusTag label={order.statusLabel} variant={getStatusVariant(order.status)} size="task" />
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--arn-txt-3)] sm:grid-cols-3 sm:text-sm">
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--arn-txt-3)] sm:grid-cols-4 sm:text-sm">
                 <div>
                     <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Fund</div>
                   <div className="mt-1 font-bold text-[var(--arn-txt)]">{order.fundName}</div>
@@ -140,6 +143,10 @@ export default function ArnOrdersTable({
                 <div>
                     <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Order Amount</div>
                   <div className="mt-1 font-bold text-[var(--arn-txt)]">{order.orderAmount}</div>
+                </div>
+                <div>
+                    <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Processed Amount</div>
+                  <div className="mt-1 font-bold text-[var(--arn-txt)]">{order.processedAmount}</div>
                 </div>
                 <div>
                     <div className="text-xs uppercase tracking-wide text-[var(--arn-txt-3)] sm:text-sm">Units</div>

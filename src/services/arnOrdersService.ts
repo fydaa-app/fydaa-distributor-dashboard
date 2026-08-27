@@ -75,6 +75,17 @@ function formatOrderDate(value: unknown): string {
   });
 }
 
+function formatOrderTime(value: unknown): string {
+  if (value == null || value === "") return "—";
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function normalizeOrderType(value: unknown): ArnOrderType {
   const type = getString(value).toLowerCase();
   if (type === "sip") return "sip";
@@ -143,6 +154,7 @@ function normalizeOrder(value: unknown, index: number): ArnOrderItem {
     id: getString(source.id || source.orderId || source._id, `order-${index + 1}`),
     date: rawDate,
     dateLabel: formatOrderDate(rawDate),
+    timeLabel: formatOrderTime(rawDate),
     clientName,
     clientShortName,
     clientId:

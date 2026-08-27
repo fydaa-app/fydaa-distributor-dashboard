@@ -102,6 +102,15 @@ function normalizeKycStatus(status: string): ArnKycStatus {
   return "pending";
 }
 
+function formatKycLabel(raw: string): string {
+  const normalized = raw.toLowerCase().replace(/[_-]/g, " ");
+  if (normalized === "done") return "KYC Done";
+  if (normalized === "pending") return "KYC Pending";
+  if (normalized === "expired") return "KYC Expired";
+  if (normalized === "not-started" || normalized === "not started") return "KYC Not Started";
+  return `KYC ${raw}`;
+}
+
 function normalizeSummary(summary: ArnClientsSummary | undefined): ArnClientsKpis {
   if (!summary) {
     return {
@@ -143,7 +152,7 @@ function normalizeClient(row: ArnClientsBackendClient): ArnClient {
     sipMonthlyInPaise,
     xirr: row.xirr ?? 0,
     kycStatus,
-    kycLabel: row.kycStatus,
+    kycLabel: formatKycLabel(row.kycStatus),
     sipStatus,
     lastTransactionAt: row.lastTransactionDate ?? "—",
     lastTransactionLabel: formatDateLabel(row.lastTransactionDate),
@@ -208,7 +217,7 @@ function normalizeClientDetailPayload(payload: unknown): ArnClientDetail {
     sipMonthlyInPaise: Math.round(monthlySipRaw * 100),
     xirr: getNumber(summary.xirr, 0),
     kycStatus,
-    kycLabel: kycStatusRaw,
+    kycLabel: formatKycLabel(kycStatusRaw),
     sipStatus,
     lastTransactionAt: "—",
     lastTransactionLabel: "—",

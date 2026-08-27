@@ -29,6 +29,7 @@ export default function ArnSipBookPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [trendPeriod, setTrendPeriod] = useState<"6M" | "1Y">("6M");
+  const [view, setView] = useState<"table" | "list">("table");
   const status = (searchParams.get("status") as ArnSipBookFilter) || "all";
   const page = Number(searchParams.get("page")) || 1;
   const lastResetKey = useRef(`${debouncedSearch}|${trendPeriod}`);
@@ -132,7 +133,7 @@ export default function ArnSipBookPage() {
         </ArnCardHeader>
 
         <div className="mb-5">
-          <ArnSipBookToolbar search={search} onSearchChange={setSearch} />
+          <ArnSipBookToolbar search={search} onSearchChange={setSearch} view={view} onViewChange={setView} />
         </div>
 
         {error ? (
@@ -166,6 +167,7 @@ export default function ArnSipBookPage() {
             page={page}
             pageSize={5}
             status={status}
+            view={view}
             onPageChange={setPage}
           />
         )}
