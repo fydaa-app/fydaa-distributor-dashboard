@@ -8,6 +8,7 @@ export interface ArnClient {
   id: string;
   name: string;
   initials: string;
+  mobileNumber: string;
   tone: ArnTone;
   aum: string;
   aumInPaise: number;

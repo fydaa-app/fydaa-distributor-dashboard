@@ -41,10 +41,6 @@
   --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.10);
   --arn-amber-sel-bg: #faeeda;
 
-  /* ========== AVATAR COLORS (swapped) ========== */
-  --arn-avatar-bg: #854f0b;
-  --arn-avatar-txt: #faeeda;
-
   /* ========== TAG COLORS ========== */
 /* Light mode */
 --arn-sip-bg: #FEF3C7;
@@ -144,9 +140,9 @@
   --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.25);
   --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.10);
   --arn-amber-sel-bg: #faeeda;
-  --arn-avatar-bg: #854f0b;
-  --arn-avatar-txt: #faeeda;
   --arn-amber-card-dark: #3d2e06;
+  --arn-avatar-bg: #fac775;
+  --arn-avatar-txt: #412402;
 }
 
 .tone-green {
@@ -161,9 +157,9 @@
   --arn-amber-bg-grad-1: rgba(59, 109, 17, 0.25);
   --arn-amber-bg-grad-2: rgba(59, 109, 17, 0.10);
   --arn-amber-sel-bg: #eaf3de;
-  --arn-avatar-bg: #1a1a18;
-  --arn-avatar-txt: #eaf3de;
   --arn-amber-card-dark: #2e3d06;
+  --arn-avatar-bg: #9fe1cb;
+  --arn-avatar-txt: #173404;
 }
 
 .tone-blue {
@@ -178,9 +174,9 @@
   --arn-amber-bg-grad-1: rgba(24, 95, 165, 0.25);
   --arn-amber-bg-grad-2: rgba(24, 95, 165, 0.10);
   --arn-amber-sel-bg: #e6f1fb;
-  --arn-avatar-bg: #1a1a18;
-  --arn-avatar-txt: #e6f1fb;
   --arn-amber-card-dark: #062e3d;
+  --arn-avatar-bg: #b5d4f4;
+  --arn-avatar-txt: #042c53;
 }
 
 .tone-red {
@@ -195,9 +191,9 @@
   --arn-amber-bg-grad-1: rgba(163, 45, 45, 0.25);
   --arn-amber-bg-grad-2: rgba(163, 45, 45, 0.10);
   --arn-amber-sel-bg: #fcebeb;
-  --arn-avatar-bg: #1a1a18;
-  --arn-avatar-txt: #fcebeb;
   --arn-amber-card-dark: #3d0614;
+  --arn-avatar-bg: #f09595;
+  --arn-avatar-txt: #501313;
 }
 
 .tone-purple {
@@ -212,9 +208,9 @@
   --arn-amber-bg-grad-1: rgba(83, 74, 183, 0.25);
   --arn-amber-bg-grad-2: rgba(83, 74, 183, 0.10);
   --arn-amber-sel-bg: #eeedfe;
-  --arn-avatar-bg: #1a1a18;
-  --arn-avatar-txt: #eeedfe;
   --arn-amber-card-dark: #2a063d;
+  --arn-avatar-bg: #cecbf6;
+  --arn-avatar-txt: #26215c;
 }
 
 .tone-teal {
@@ -229,9 +225,9 @@
   --arn-amber-bg-grad-1: rgba(15, 110, 86, 0.25);
   --arn-amber-bg-grad-2: rgba(15, 110, 86, 0.10);
   --arn-amber-sel-bg: #e1f5ee;
-  --arn-avatar-bg: #1a1a18;
-  --arn-avatar-txt: #e1f5ee;
   --arn-amber-card-dark: #063d2e;
+  --arn-avatar-bg: #9fe1cb;
+  --arn-avatar-txt: #04342c;
 }
 
 .tone-jade {
@@ -246,9 +242,9 @@
   --arn-amber-bg-grad-1: rgba(12, 74, 62, 0.25);
   --arn-amber-bg-grad-2: rgba(12, 74, 62, 0.10);
   --arn-amber-sel-bg: #e8f5f1;
-  --arn-avatar-bg: #0E6B55;
-  --arn-avatar-txt: #e8f5f1;
   --arn-amber-card-dark: #063d2e;
+  --arn-avatar-bg: #9fe1cb;
+  --arn-avatar-txt: #042821;
 }
 
 .dark .tone-amber {

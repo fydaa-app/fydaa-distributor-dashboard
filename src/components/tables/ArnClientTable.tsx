@@ -2,8 +2,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
-import ArnStatusTag from "@/components/common/ArnStatusTag";
-import type { ArnClient, ArnKycStatus } from "@/types/arnClient";
+import type { ArnClient } from "@/types/arnClient";
 
 interface ArnClientTableProps {
   clients: ArnClient[];
@@ -11,13 +10,6 @@ interface ArnClientTableProps {
   page: number;
   pageSize: number;
   onPageChange: (page: number) => void;
-}
-
-function getKycVariant(status: ArnKycStatus) {
-  if (status === "done") return "active";
-  if (status === "pending") return "due";
-  if (status === "expired") return "failed";
-  return "paused";
 }
 
 export default function ArnClientTable({
@@ -67,6 +59,9 @@ export default function ArnClientTable({
               <th className="w-[24%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
                 Client
               </th>
+              <th className="w-[18%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                Mobile
+              </th>
               <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
                 AUM
               </th>
@@ -75,9 +70,6 @@ export default function ArnClientTable({
               </th>
               <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
                 XIRR
-              </th>
-              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                KYC
               </th>
               <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
                 Last tx
@@ -111,6 +103,10 @@ export default function ArnClientTable({
                 </td>
 
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
+                  {client.mobileNumber}
+                </td>
+
+                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                   {client.aum}
                 </td>
 
@@ -128,13 +124,6 @@ export default function ArnClientTable({
                   }}
                 >
                   {client.xirr.toFixed(1)}%
-                </td>
-
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
-                  <ArnStatusTag
-                    label={client.kycLabel}
-                    variant={getKycVariant(client.kycStatus)}
-                  />
                 </td>
 
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">
