@@ -2,7 +2,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
-import type { ArnClient } from "@/types/arnClient";
+import ArnStatusTag from "@/components/common/ArnStatusTag";
+import type { ArnClient, ArnKycStatus } from "@/types/arnClient";
+
+function getKycVariant(status: ArnKycStatus) {
+  if (status === "done") return "active";
+  if (status === "pending") return "due";
+  if (status === "expired") return "failed";
+  return "paused";
+}
 
 interface ArnClientTableProps {
   clients: ArnClient[];
@@ -72,6 +80,9 @@ export default function ArnClientTable({
                 XIRR
               </th>
               <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                KYC
+              </th>
+              <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
                 Last tx
               </th>
               <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
@@ -124,6 +135,13 @@ export default function ArnClientTable({
                   }}
                 >
                   {client.xirr.toFixed(1)}%
+                </td>
+
+                <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
+                  <ArnStatusTag
+                    label={client.kycLabel}
+                    variant={getKycVariant(client.kycStatus)}
+                  />
                 </td>
 
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">

@@ -1,5 +1,4 @@
 import { usePathname, useRouter } from "next/navigation";
-import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnPagination from "@/components/common/ArnPagination";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
@@ -62,14 +61,13 @@ export default function ArnSipBookTable({
         <table className="min-w-[860px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)] [&_tbody_tr:nth-child(odd):hover]:bg-[var(--arn-amber-sel-bg)] [&_tbody_tr:nth-child(even):hover]:bg-[var(--arn-amber-sel-bg)]">
           <thead>
             <tr>
-              <th className="w-[18%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Client</th>
-              <th className="w-[22%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Fund</th>
-              <th className="w-[10%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Amount</th>
-              <th className="w-[10%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Goal Amount</th>
-              <th className="w-[10%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Date</th>
-              <th className="w-[12%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Next SIP</th>
+              <th className="w-[22%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Client</th>
+              <th className="w-[28%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Fund</th>
+              <th className="w-[12%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Sip Amount</th>
+              <th className="w-[12%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Date</th>
+              <th className="w-[14%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Next SIP</th>
               <th className="w-[8%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">XIRR</th>
-              <th className="w-[12%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Status</th>
+              <th className="w-[14%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -88,14 +86,10 @@ export default function ArnSipBookTable({
                  className="cursor-pointer transition-colors"
               >
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
-                  <div className="flex min-w-0 items-center gap-3">
-                      <ArnClientAvatar initials={sip.initials} size="sm" />
-                    <span className="truncate font-bold">{sip.clientName}</span>
-                  </div>
+                  <span className="truncate font-bold">{sip.clientName}</span>
                 </td>
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-sm text-[var(--arn-txt-3)]">{sip.fundName}</td>
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-sm font-semibold text-[var(--arn-txt)]">{sip.amount}</td>
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-sm font-semibold text-[var(--arn-txt)]">{sip.goalAmount}</td>
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-sm text-[var(--arn-txt-3)]">{sip.sipDayLabel}</td>
                 <td className={`border-b border-[var(--arn-bdr)] px-4 py-3 text-sm ${getNextSipClass(sip.status)}`}>
                   {sip.nextSipLabel}

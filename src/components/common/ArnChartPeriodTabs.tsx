@@ -16,7 +16,7 @@ export default function ArnChartPeriodTabs({
           key={option}
           type="button"
           onClick={() => onChange(option)}
-          className={`min-h-9 rounded-[6px] px-3 py-1.5 text-xs font-bold ${
+          className={`rounded-[6px] px-3 py-1.5 text-xs font-bold ${
             active === option
               ? "bg-white text-[#1a1a18] shadow-sm dark:bg-[#1c1c1a] dark:text-[#f0efe8]"
               : "text-[#6b6b67] dark:text-[#9a9a93]"
