@@ -171,7 +171,7 @@ export default function ArnClientTable({
                   goToClient(client.id);
                 }
               }}
-              className="rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-4 text-left transition-colors hover:bg-[var(--arn-bg)] sm:p-5"
+               className="rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-4 text-left transition-colors hover:bg-[var(--arn-amber-sel-bg)] cursor-pointer sm:p-5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">

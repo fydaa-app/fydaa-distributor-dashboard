@@ -39,7 +39,7 @@ export default function ArnGoalSetupStepper({ currentStep, investmentMode }: Arn
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors sm:h-8 sm:w-8 sm:text-sm",
                     isActive && "bg-[var(--arn-amber)] text-white shadow-[0_0_0_3px_var(--arn-input-ring)]",
-                    isDone && "bg-[var(--arn-green)] text-white",
+                    isDone && "bg-[var(--arn-amber)] text-white",
                     isFuture && "bg-[var(--arn-bdr)] text-[var(--arn-txt-3)]"
                   )}
                 >
@@ -54,9 +54,9 @@ export default function ArnGoalSetupStepper({ currentStep, investmentMode }: Arn
                 <span
                   className={cn(
                     "truncate text-center text-[10px] font-semibold leading-tight transition-colors sm:text-xs",
-                    isActive && "text-[var(--arn-amber)]",
-                    isDone && "text-[var(--arn-green)]",
-                    isFuture && "text-[var(--arn-txt-3)]"
+                     isActive && "text-[var(--arn-amber)]",
+                     isDone && "text-[var(--arn-amber)]",
+                     isFuture && "text-[var(--arn-txt-3)]"
                   )}
                 >
                   {step.label}
@@ -67,7 +67,7 @@ export default function ArnGoalSetupStepper({ currentStep, investmentMode }: Arn
                 <div
                   className={cn(
                     "mx-1 mt-[13px] h-[2px] min-w-3 flex-1 self-start sm:mx-3 sm:mt-[15px] sm:min-w-6",
-                    index < currentStep - 1 ? "bg-[var(--arn-green)]" : "bg-[var(--arn-bdr)]"
+                    index < currentStep - 1 ? "bg-[var(--arn-amber)]" : "bg-[var(--arn-bdr)]"
                   )}
                   aria-hidden
                 />

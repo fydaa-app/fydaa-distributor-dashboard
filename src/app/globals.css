@@ -1289,3 +1289,24 @@ body {
   color: var(--arn-txt-2);
   margin-top: 4px;
 }
+
+.arn-sip-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--arn-amber);
+  cursor: pointer;
+  border: 2px solid var(--arn-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.arn-sip-slider::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--arn-amber);
+  cursor: pointer;
+  border: 2px solid var(--arn-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}

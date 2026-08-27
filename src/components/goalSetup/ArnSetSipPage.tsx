@@ -584,17 +584,17 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                 {investmentMode === "lumpsum" ? "Edit your investment amount" : "Edit your investment amount"}
               </div>
               <input
-               type="range"
-               min={investmentMode === "lumpsum" ? lumpsumAmountLimits.min : amountLimits.min}
-               max={investmentMode === "lumpsum" ? lumpsumAmountLimits.max : amountLimits.max}
-               step={investmentMode === "lumpsum" ? lumpsumAmountLimits.step : amountLimits.step}
-               value={sipAmount}
-               onChange={handleSliderChange}
-               className="mt-4 w-full h-1 cursor-pointer appearance-none rounded-full"
-               style={{
-                 background: `linear-gradient(to right, var(--arn-amber) ${sliderPct}%, var(--arn-bdr) ${sliderPct}%)`,
-               }}
-             />
+                type="range"
+                min={investmentMode === "lumpsum" ? lumpsumAmountLimits.min : amountLimits.min}
+                max={investmentMode === "lumpsum" ? lumpsumAmountLimits.max : amountLimits.max}
+                step={investmentMode === "lumpsum" ? lumpsumAmountLimits.step : amountLimits.step}
+                value={sipAmount}
+                onChange={handleSliderChange}
+                className="arn-sip-slider mt-4 w-full h-1 cursor-pointer appearance-none rounded-full"
+                style={{
+                  background: `linear-gradient(to right, var(--arn-amber) ${sliderPct}%, var(--arn-bdr) ${sliderPct}%)`,
+                }}
+              />
 
               {/* Quick Picks */}
               <div className="mt-3 flex flex-wrap gap-2">

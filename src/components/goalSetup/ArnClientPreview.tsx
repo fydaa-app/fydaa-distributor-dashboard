@@ -13,17 +13,6 @@ function getMandateVariant(status: string): "active" | "cancelled" | "pending" {
   return "pending";
 }
 
-function formatPanStatus(panStatus?: string): string {
-  if (!panStatus) return "unknown";
-  const map: Record<string, string> = {
-    KYC_SUCCESS: "KYC Success",
-    KYC_FAILED: "KYC Failed",
-    KYC_UPLOAD_REQ: "KYC Upload Req",
-    KYC_VERIFICATION_PENDING: "KYC Verification Pending",
-  };
-  return map[panStatus] || panStatus;
-}
-
 export default function ArnClientPreview({ client }: ArnClientPreviewProps) {
   if (!client) {
     return (
@@ -51,7 +40,7 @@ export default function ArnClientPreview({ client }: ArnClientPreviewProps) {
         </div>
       </div>
 
-      <div className="space-y-3">
+        <div className="space-y-3">
         <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
           <span className="text-xs font-medium text-[var(--arn-txt-2)]">Mobile</span>
           <span className="text-xs font-semibold text-[var(--arn-txt)]">{client.mobileNumber}</span>
@@ -59,10 +48,6 @@ export default function ArnClientPreview({ client }: ArnClientPreviewProps) {
         <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
           <span className="text-xs font-medium text-[var(--arn-txt-2)]">Email</span>
           <span className="text-xs font-semibold text-[var(--arn-txt)] truncate ml-2 text-right">{client.email}</span>
-        </div>
-        <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
-          <span className="text-xs font-medium text-[var(--arn-txt-2)]">PAN Status</span>
-          <span className="text-xs font-semibold text-[var(--arn-txt)]">{formatPanStatus(client.panStatus)}</span>
         </div>
         <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
           <span className="text-xs font-medium text-[var(--arn-txt-2)]">Mandate Status</span>
