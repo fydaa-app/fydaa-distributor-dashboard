@@ -34,6 +34,15 @@ const STEP_NAMES_LUMPSUM: Record<number, string> = {
   4: "Review & confirm",
 };
 
+function normalizeFundGoal(fund: FundOption): FundOption {
+  if (fund.suggestedGoalId && fund.suggestedGoalName) return fund;
+  return {
+    ...fund,
+    suggestedGoalId: fund.suggestedGoalId ?? 42,
+    suggestedGoalName: fund.suggestedGoalName ?? "Custom",
+  };
+}
+
 interface OnboardedTarget {
   userId: string;
   name: string;
@@ -229,16 +238,12 @@ export default function ArnGoalSetupPage() {
   }, []);
 
   const handleSearchFundSelect = useCallback((fund: FundOption) => {
-    if (!fund.suggestedGoalName || !fund.suggestedGoalId) {
-      setFundSelectError("This fund does not have a valid goal configuration.");
-      return;
-    }
-
+    const normalized = normalizeFundGoal(fund);
     setFundSelectError(null);
     setSelectedPath("goal");
     setSelectedGoal(null);
     setSelectedProduct(null);
-    setPreselectedFund(fund);
+    setPreselectedFund(normalized);
   }, []);
 
   const handleContinue = useCallback(async () => {
@@ -275,14 +280,11 @@ export default function ArnGoalSetupPage() {
     } else if (selectedPath === "direct" && selectedProduct && step === 2) {
       setStep(3);
     } else if (step === 2 && selectedPath === "goal" && !selectedGoal && preselectedFund) {
-      if (!preselectedFund.suggestedGoalName || !preselectedFund.suggestedGoalId) {
-        setFundSelectError("This fund does not have a valid goal configuration.");
-        return;
-      }
+      const normalized = normalizeFundGoal(preselectedFund);
 
       const syntheticGoal: GoalResponse = {
-        id: preselectedFund.suggestedGoalId,
-        name: preselectedFund.suggestedGoalName,
+        id: normalized.suggestedGoalId,
+        name: normalized.suggestedGoalName,
         termId: 2,
         termName: "Medium Term",
         tenureMin: 36,
@@ -290,7 +292,7 @@ export default function ArnGoalSetupPage() {
         feePricing: 0,
         goalAmountMin: 10000,
         goalAmountMax: 10000000,
-        description: preselectedFund.suggestedGoalName,
+        description: normalized.suggestedGoalName,
         items: [],
         imageUrl: "",
         iconUrl: "",
@@ -298,11 +300,11 @@ export default function ArnGoalSetupPage() {
 
       const syntheticProduct: DirectProduct = {
         key: `fund-search-${preselectedFund.id ?? preselectedFund.isin}`,
-        name: preselectedFund.suggestedGoalName,
-        tagline: preselectedFund.suggestedGoalName,
-        goldLine: preselectedFund.suggestedGoalName,
-        description: preselectedFund.suggestedGoalName,
-        goalId: preselectedFund.suggestedGoalId,
+        name: normalized.suggestedGoalName,
+        tagline: normalized.suggestedGoalName,
+        goldLine: normalized.suggestedGoalName,
+        description: normalized.suggestedGoalName,
+        goalId: normalized.suggestedGoalId,
         stockType: preselectedFund.stockType || "IndianStock",
         assumedCagr: "12%",
         defAmt: 10000,
@@ -324,7 +326,6 @@ export default function ArnGoalSetupPage() {
           sipPageRef.current.getConfig();
         } catch {}
       }
-      setPreselectedFund(null);
       if (investmentMode === "lumpsum") {
         setStep(5);
       } else {
