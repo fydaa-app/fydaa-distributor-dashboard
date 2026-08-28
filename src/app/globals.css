@@ -874,6 +874,14 @@ body {
   pointer-events: none;
 }
 
+.field-prefix-fixed {
+  padding-right: 14px;
+  cursor: default;
+}
+.field-prefix-fixed::after {
+  display: none;
+}
+
 .aadhaar-prefix {
   display: inline-flex;
   align-items: center;
@@ -1024,6 +1032,12 @@ body {
   font-size: 28px;
   color: var(--arn-green);
   margin: 0 auto 18px;
+}
+
+.success-ring.brand {
+  background: var(--arn-amber-bg);
+  border-color: var(--arn-amber);
+  color: var(--arn-amber);
 }
 
 .summary-list {

@@ -283,8 +283,8 @@ export default function ArnGoalSetupPage() {
       const normalized = normalizeFundGoal(preselectedFund);
 
       const syntheticGoal: GoalResponse = {
-        id: normalized.suggestedGoalId,
-        name: normalized.suggestedGoalName,
+        id: normalized.suggestedGoalId!,
+        name: normalized.suggestedGoalName!,
         termId: 2,
         termName: "Medium Term",
         tenureMin: 36,
@@ -292,7 +292,7 @@ export default function ArnGoalSetupPage() {
         feePricing: 0,
         goalAmountMin: 10000,
         goalAmountMax: 10000000,
-        description: normalized.suggestedGoalName,
+        description: normalized.suggestedGoalName!,
         items: [],
         imageUrl: "",
         iconUrl: "",
@@ -300,11 +300,11 @@ export default function ArnGoalSetupPage() {
 
       const syntheticProduct: DirectProduct = {
         key: `fund-search-${preselectedFund.id ?? preselectedFund.isin}`,
-        name: normalized.suggestedGoalName,
-        tagline: normalized.suggestedGoalName,
-        goldLine: normalized.suggestedGoalName,
-        description: normalized.suggestedGoalName,
-        goalId: normalized.suggestedGoalId,
+        name: normalized.suggestedGoalName!,
+        tagline: normalized.suggestedGoalName!,
+        goldLine: normalized.suggestedGoalName!,
+        description: normalized.suggestedGoalName!,
+        goalId: normalized.suggestedGoalId!,
         stockType: preselectedFund.stockType || "IndianStock",
         assumedCagr: "12%",
         defAmt: 10000,
