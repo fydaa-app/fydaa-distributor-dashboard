@@ -21,6 +21,8 @@
   --arn-blue-bg: #e6f1fb;
   --arn-red: #B91C1C;
   --arn-red-bg: #fcebeb;
+  --arn-card-green: #0E6B55;
+  --arn-card-red: #A32D2D;
   --arn-pur-bg: #eeedfe;
   --arn-pur-txt: #534ab7;
   --arn-tel-bg: #e1f5ee;
@@ -100,6 +102,8 @@
   --arn-amber-bg-grad-1: rgba(186, 117, 23, 0.25);
   --arn-amber-bg-grad-2: rgba(186, 117, 23, 0.10);
   --arn-amber-sel-bg: rgba(186, 117, 23, 0.15);
+  --arn-card-green: #6EE7B7;
+  --arn-card-red: #FC8181;
 
   /* ========== TAG COLORS ========== */
 /* Dark mode */

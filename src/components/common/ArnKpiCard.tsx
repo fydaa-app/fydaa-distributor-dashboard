@@ -15,9 +15,9 @@ export default function ArnKpiCard({
 }: ArnKpiCardProps) {
   const trendClass =
     trend === "up"
-      ? "text-[#3B6D11]"
+      ? "text-[var(--arn-card-green)]"
       : trend === "down"
-      ? "text-[#A32D2D]"
+      ? "text-[var(--arn-card-red)]"
       : "text-[var(--arn-txt-3)]";
 
   return (
