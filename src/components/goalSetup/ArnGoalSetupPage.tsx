@@ -13,6 +13,7 @@ import ArnGoalGrid from "@/components/goalSetup/ArnGoalGrid";
 import ArnSetSipPage, { type ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
 import ArnSetSipDatePage, { type ArnSetSipDatePageRef } from "@/components/goalSetup/ArnSetSipDatePage";
 import ArnReviewConfirmPage, { type ArnReviewConfirmPageRef } from "@/components/goalSetup/ArnReviewConfirmPage";
+import ArnIncompleteOnboardingModal from "@/components/goalSetup/ArnIncompleteOnboardingModal";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
 import type { GoalResponse, FundOption } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
@@ -32,6 +33,15 @@ const STEP_NAMES_LUMPSUM: Record<number, string> = {
   3: "Set investment",
   4: "Review & confirm",
 };
+
+function normalizeFundGoal(fund: FundOption): FundOption {
+  if (fund.suggestedGoalId && fund.suggestedGoalName) return fund;
+  return {
+    ...fund,
+    suggestedGoalId: fund.suggestedGoalId ?? 42,
+    suggestedGoalName: fund.suggestedGoalName ?? "Custom",
+  };
+}
 
 interface OnboardedTarget {
   userId: string;
@@ -228,16 +238,12 @@ export default function ArnGoalSetupPage() {
   }, []);
 
   const handleSearchFundSelect = useCallback((fund: FundOption) => {
-    if (!fund.suggestedGoalName || !fund.suggestedGoalId) {
-      setFundSelectError("This fund does not have a valid goal configuration.");
-      return;
-    }
-
+    const normalized = normalizeFundGoal(fund);
     setFundSelectError(null);
     setSelectedPath("goal");
     setSelectedGoal(null);
     setSelectedProduct(null);
-    setPreselectedFund(fund);
+    setPreselectedFund(normalized);
   }, []);
 
   const handleContinue = useCallback(async () => {
@@ -274,14 +280,11 @@ export default function ArnGoalSetupPage() {
     } else if (selectedPath === "direct" && selectedProduct && step === 2) {
       setStep(3);
     } else if (step === 2 && selectedPath === "goal" && !selectedGoal && preselectedFund) {
-      if (!preselectedFund.suggestedGoalName || !preselectedFund.suggestedGoalId) {
-        setFundSelectError("This fund does not have a valid goal configuration.");
-        return;
-      }
+      const normalized = normalizeFundGoal(preselectedFund);
 
       const syntheticGoal: GoalResponse = {
-        id: preselectedFund.suggestedGoalId,
-        name: preselectedFund.suggestedGoalName,
+        id: normalized.suggestedGoalId!,
+        name: normalized.suggestedGoalName!,
         termId: 2,
         termName: "Medium Term",
         tenureMin: 36,
@@ -289,7 +292,7 @@ export default function ArnGoalSetupPage() {
         feePricing: 0,
         goalAmountMin: 10000,
         goalAmountMax: 10000000,
-        description: preselectedFund.suggestedGoalName,
+        description: normalized.suggestedGoalName!,
         items: [],
         imageUrl: "",
         iconUrl: "",
@@ -297,11 +300,11 @@ export default function ArnGoalSetupPage() {
 
       const syntheticProduct: DirectProduct = {
         key: `fund-search-${preselectedFund.id ?? preselectedFund.isin}`,
-        name: preselectedFund.suggestedGoalName,
-        tagline: preselectedFund.suggestedGoalName,
-        goldLine: preselectedFund.suggestedGoalName,
-        description: preselectedFund.suggestedGoalName,
-        goalId: preselectedFund.suggestedGoalId,
+        name: normalized.suggestedGoalName!,
+        tagline: normalized.suggestedGoalName!,
+        goldLine: normalized.suggestedGoalName!,
+        description: normalized.suggestedGoalName!,
+        goalId: normalized.suggestedGoalId!,
         stockType: preselectedFund.stockType || "IndianStock",
         assumedCagr: "12%",
         defAmt: 10000,
@@ -323,7 +326,6 @@ export default function ArnGoalSetupPage() {
           sipPageRef.current.getConfig();
         } catch {}
       }
-      setPreselectedFund(null);
       if (investmentMode === "lumpsum") {
         setStep(5);
       } else {
@@ -407,9 +409,9 @@ export default function ArnGoalSetupPage() {
                 <div className="mt-6">
                   <ArnFundSearchBar onSelect={handleSearchFundSelect} />
                   {preselectedFund && (
-                    <div className="mt-3 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                    <div className="mt-3 rounded-[12px] border border-[var(--arn-input-ring)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--arn-input-ring)] text-[10px] font-bold text-[var(--arn-amber)]">
                           ✓
                         </span>
                         <span className="text-sm font-semibold text-[var(--arn-txt)]">
@@ -533,47 +535,18 @@ export default function ArnGoalSetupPage() {
       />
 
       {showIncompleteModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-[400px] rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-6 shadow-xl">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--arn-red-bg)]">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--arn-red)]">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-bold text-[var(--arn-txt)]">User Onboarding Incomplete</h3>
-                <p className="mt-1 text-sm text-[var(--arn-txt-2)]">
-                  <span className="font-semibold text-[var(--arn-txt)]">{incompleteClientName}</span> hasn&apos;t completed onboarding yet. Please complete their onboarding before setting up a goal or SIP.
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowIncompleteModal(false)}
-                className="min-h-10 rounded-[10px] border border-[var(--arn-bdr)] px-4 py-2 text-xs font-semibold text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)] hover:text-[var(--arn-txt)] sm:text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowIncompleteModal(false);
-                  if (typeof window !== 'undefined') {
-                    sessionStorage.setItem("arn_onboard_mobile", incompleteUserMobile);
-                  }
-                  router.push(`/arn-onboard?mobile=${encodeURIComponent(incompleteUserMobile)}`);
-                }}
-                className="min-h-10 rounded-[10px] bg-[var(--arn-amber)] px-4 py-2 text-xs font-bold text-white shadow-[0_2px_8px_rgba(184,134,11,.2)] transition-colors hover:bg-[#A46512] hover:shadow-[0_4px_16px_rgba(184,134,11,.3)] active:scale-[0.99] sm:text-sm"
-              >
-                Complete Onboarding
-              </button>
-            </div>
-          </div>
-        </div>
+        <ArnIncompleteOnboardingModal
+          isOpen={showIncompleteModal}
+          clientName={incompleteClientName}
+          onCancel={() => setShowIncompleteModal(false)}
+          onContinue={() => {
+            setShowIncompleteModal(false);
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem("arn_onboard_mobile", incompleteUserMobile);
+            }
+            router.push(`/arn-onboard?mobile=${encodeURIComponent(incompleteUserMobile)}`);
+          }}
+        />
       )}
     </div>
   );

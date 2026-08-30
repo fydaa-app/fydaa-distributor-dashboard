@@ -161,12 +161,10 @@ const RelationshipTeam = () => {
         .card {
           min-height: 168px;
           padding: 16px;
-          border: 1px solid rgba(186, 117, 23, 0.3);
-          border-radius: 16px;
+          border: 1px solid var(--arn-amber);
+          border-radius: 10px;
           color: var(--arn-txt);
-          background:
-            linear-gradient(90deg, rgba(186, 117, 23, 0.1), rgba(186, 117, 23, 0.03)),
-            var(--arn-bg);
+          background: var(--arn-amber-sel-bg);
           box-shadow: none;
         }
         .card-body {
@@ -206,14 +204,10 @@ const RelationshipTeam = () => {
           fill: currentColor;
         }
         .relationship {
-          background:
-            linear-gradient(90deg, rgba(186, 117, 23, 0.1), rgba(186, 117, 23, 0.03)),
-            var(--arn-bg);
+          background: var(--arn-amber-sel-bg);
         }
         .tech-support {
-          background:
-            linear-gradient(90deg, rgba(186, 117, 23, 0.1), rgba(186, 117, 23, 0.03)),
-            var(--arn-bg);
+          background: var(--arn-amber-sel-bg);
         }
         .support-section-main {
           margin-top: 20px;

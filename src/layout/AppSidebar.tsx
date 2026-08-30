@@ -103,7 +103,7 @@ export default function AppSidebar() {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >
-      <div className="flex h-[72px] items-center gap-3 border-b border-[var(--arn-bdr)] px-4">
+      <Link href="/" className="flex h-[72px] items-center gap-3 border-b border-[var(--arn-bdr)] px-4">
         <Image
           className="h-8 w-auto"
           src={logoSrc}
@@ -111,7 +111,7 @@ export default function AppSidebar() {
           width={128}
           height={32}
         />
-      </div>
+      </Link>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
         {navSections.map((section) => {

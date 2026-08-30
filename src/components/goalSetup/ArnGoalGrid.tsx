@@ -13,130 +13,36 @@ const CATEGORIES = [
 const EXCLUDED_GOAL_IDS = new Set([34, 35, 36, 37, 38, 39, 40, 41, 42]);
 
 const GOAL_ICONS: Record<string, string> = {
-  vacation: "plane",
-  gadgets: "monitor",
-  shopping: "bag",
-  "emergency fund": "shield",
-  emergency: "shield",
-  jewellery: "gem",
-  "insurance premium": "file",
-  vehicle: "car",
-  wellness: "smile",
-  parenting: "users",
+  vacation: "vacation",
+  gadgets: "gadgets",
+  shopping: "shopping",
+  "wellness & hobbies": "wellness",
+  "emergency fund": "emergency",
+  jewellery: "jewellery",
+  "insurance premiums": "insurance",
+  vehicle: "vehicle",
+  "buying a vehicle": "buyingdream",
+  parenting: "parenting",
   "home purchase": "home",
-  "buying a vehicle": "car",
-  "marriage fund": "heart",
-  "wealth creation": "trending",
-  retirement: "medal",
-  "children education": "edu",
-  "gold savings": "gem",
-};
-
-const ICONS: Record<string, React.ReactNode> = {
-  plane: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M21 16v-2a4 4 0 00-4-4H7l5-5M7 10l5 5" />
-      <circle cx="6" cy="18" r="2" />
-      <circle cx="18" cy="18" r="2" />
-    </svg>
-  ),
-  monitor: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <rect x="2" y="4" width="20" height="14" rx="2" />
-      <path d="M6 22h12M10 18v4M14 18v4" />
-    </svg>
-  ),
-  bag: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18" />
-      <path d="M16 10a4 4 0 01-8 0" />
-    </svg>
-  ),
-  shield: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-  gem: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-    </svg>
-  ),
-  file: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <path d="M12 18v-6M9 15l3-3 3 3" />
-    </svg>
-  ),
-  car: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M5 17H3a2 2 0 01-2-2V9a2 2 0 012-2h2M19 17h2a2 2 0 002-2V9a2 2 0 00-2-2h-2" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="2" />
-    </svg>
-  ),
-  smile: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
-    </svg>
-  ),
-  users: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-    </svg>
-  ),
-  home: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  ),
-  wallet: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <rect x="1" y="6" width="22" height="12" rx="2" />
-      <circle cx="12" cy="12" r="3" />
-      <path d="M1 10h2M21 10h2" />
-    </svg>
-  ),
-  heart: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-    </svg>
-  ),
-  trending: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-      <polyline points="17 6 23 6 23 12" />
-    </svg>
-  ),
-  clock: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  ),
-  edu: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-      <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
-    </svg>
-  ),
-  medal: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <circle cx="12" cy="8" r="6" />
-      <path d="M8 14h8l2 8H6l2-8z" />
-    </svg>
-  ),
+  "marriage fund": "marriage",
+  "wealth creation": "wealth",
+  retirement: "retire",
+  "children education": "children",
+  "gold savings": "gold",
 };
 
 function getGoalIcon(name: string): React.ReactNode {
-  const key = GOAL_ICONS[name.toLowerCase().trim()] || "trending";
-  return ICONS[key] || ICONS.trending;
+  const key = GOAL_ICONS[name.toLowerCase().trim()] || "vacation";
+  return (
+    <img
+      src={`/images/icons/${key}.png`}
+      alt={name}
+      className={cn(
+        "h-12 w-12 shrink-0 rounded-[12px] border object-contain",
+        "border-transparent bg-[var(--arn-bg-2)]"
+      )}
+    />
+  );
 }
 
 interface ArnGoalGridProps {
@@ -211,7 +117,7 @@ export default function ArnGoalGrid({ selectedGoalId, onSelect }: ArnGoalGridPro
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex flex-col items-center gap-2 rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-4">
-                  <div className="h-10 w-10 animate-pulse rounded-[12px] bg-[var(--arn-bg-2)]" />
+                  <div className="h-12 w-12 animate-pulse rounded-[12px] bg-[var(--arn-bg-2)]" />
                   <div className="h-3 w-20 animate-pulse rounded bg-[var(--arn-bg-2)]" />
                 </div>
               ))}
@@ -248,18 +154,11 @@ export default function ArnGoalGrid({ selectedGoalId, onSelect }: ArnGoalGridPro
                   className={cn(
                     "flex flex-col items-center gap-2 rounded-[14px] border p-4 text-center transition-all",
                     isSelected
-                      ? "border border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)] shadow-[0_4px_16px_rgba(184,134,11,.12)]"
+                       ? "border border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)] shadow-[0_4px_16px_var(--arn-amber-bg-grad-1)]"
                       : "border-[var(--arn-bdr)] bg-[var(--arn-bg)] hover:border-[var(--arn-bdr-2)] hover:shadow-[0_4px_16px_rgba(0,0,0,.04)]"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px]",
-                      isSelected
-                        ? "bg-[var(--arn-bg)] text-[var(--arn-amber)]"
-                        : "bg-[var(--arn-amber-bg)] text-[var(--arn-amber)]"
-                    )}
-                  >
+                  <div className="flex shrink-0 items-center justify-center">
                     {getGoalIcon(goal.name)}
                   </div>
                   <div className="w-full min-w-0 break-words text-xs font-bold leading-tight text-[var(--arn-txt)] sm:text-sm">

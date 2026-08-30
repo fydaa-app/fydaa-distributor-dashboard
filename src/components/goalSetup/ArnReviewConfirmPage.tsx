@@ -892,7 +892,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                type="button"
                onClick={handleCta}
                disabled={isSubmitting}
-               className="mt-3 rounded-[12px] bg-[var(--arn-amber)] px-4 py-2 text-sm font-bold text-white transition-all hover:bg-[var(--arn-amber-h)] disabled:opacity-40"
+                className="mt-3 rounded-[12px] bg-[var(--arn-amber)] px-4 py-2 text-sm font-bold text-white transition-all hover:bg-[var(--arn-amber-hover)] disabled:opacity-40"
              >
                Retry mandate setup
              </button>

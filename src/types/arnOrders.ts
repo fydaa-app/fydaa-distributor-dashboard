@@ -36,6 +36,7 @@ export interface ArnOrderItem {
   id: string;
   date: string;
   dateLabel: string;
+  timeLabel: string;
   clientName: string;
   clientShortName: string;
   clientId: string;

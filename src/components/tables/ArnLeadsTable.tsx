@@ -42,8 +42,8 @@ export default function ArnLeadsTable({
 
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
-      <div className="overflow-x-auto">
-        <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm">
+      <div className="-mx-5 overflow-x-auto">
+        <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)]">
           <thead>
             <tr>
               <th className="w-[24%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">User Name</th>
@@ -55,10 +55,10 @@ export default function ArnLeadsTable({
           </thead>
           <tbody>
             {leads.map((lead) => (
-              <tr key={lead.userId} className="transition-colors hover:[&_td]:bg-[var(--arn-bg-2)]">
+              <tr key={lead.userId} className="transition-colors">
                 <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
                   <div className="flex items-center gap-3">
-                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--arn-amber)]/10 text-xs font-black text-[var(--arn-amber)]">
+                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--arn-avatar-bg)] text-xs font-black text-[var(--arn-avatar-txt)]">
                       {lead.userName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?"}
                     </div>
                     <span className="truncate font-bold">{lead.userName}</span>

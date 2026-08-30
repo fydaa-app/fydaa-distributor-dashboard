@@ -10,10 +10,20 @@ import {
   type HierarchyResponse,
 } from "@/services/arnHierarchyService";
 import ComponentCard from "@/components/common/ComponentCard";
+import ArnEuinsTable from "@/components/tables/ArnEuinsTable";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
-import ArnLoadingState from "@/components/common/ArnLoadingState";
 
 type EditState = Record<string, { name: string; email: string; phone: string }>;
+type ValidationErrors = Record<string, { name?: string; email?: string; phone?: string }>;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function inputClass(hasError?: string | boolean) {
+  return [
+    "flex-1 rounded-[8px] border bg-[var(--arn-bg)] px-3 py-1.5 text-right text-sm text-[var(--arn-txt)]",
+    hasError ? "border-[var(--arn-red)]" : "border-[var(--arn-bdr-2)]",
+  ].join(" ");
+}
 
 function getColumnVisibility(data: HierarchyOption[]) {
   const hasName = data.some((item) => item.name && item.name.trim().length > 0);
@@ -36,11 +46,10 @@ export default function ArnEuinsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, isPartner } = useAuth();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [hierarchy, setHierarchy] = useState<HierarchyResponse | null>(null);
   const [editing, setEditing] = useState<EditState>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && !isPartner) {
@@ -50,20 +59,16 @@ export default function ArnEuinsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     getHierarchy()
       .then((data) => {
         if (!cancelled) {
           setHierarchy(data);
-          setLoading(false);
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load EUINs");
-          setLoading(false);
+          console.error(err);
         }
       });
 
@@ -73,7 +78,11 @@ export default function ArnEuinsPage() {
   }, []);
 
   if (isLoading) {
-    return <ArnLoadingState label="Loading..." />;
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-sm text-[var(--arn-txt-2)]">Loading EUINs...</div>
+      </div>
+    );
   }
 
   if (!isAuthenticated || !isPartner) {
@@ -121,6 +130,10 @@ export default function ArnEuinsPage() {
     const nextEdit = editing[euin];
     if (!nextEdit) return;
 
+    if (!validateEdit(euin)) {
+      return;
+    }
+
     setSaving(euin);
     try {
       const row = euins.find((u) => u.euinNumber === euin);
@@ -134,12 +147,10 @@ export default function ArnEuinsPage() {
         mobileNumber: nextEdit.phone,
       });
 
-      // Refresh server state so Assign visibility and displayed values match backend.
       const data = await getHierarchy();
       setHierarchy(data);
       cancelEdit(euin);
     } catch (err) {
-      // Preserve existing UI behavior: keep the edit mode on failure.
       console.error(err);
     } finally {
       setSaving(null);
@@ -154,23 +165,40 @@ export default function ArnEuinsPage() {
         [field]: value,
       },
     }));
+    setValidationErrors((prev) => {
+      const next = { ...prev };
+      delete next[euin];
+      return next;
+    });
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-sm text-[var(--arn-txt-2)]">Loading EUINs...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-sm text-[var(--arn-red)]">{error}</div>
-      </div>
-    );
-  }
+  const validateEdit = (euin: string) => {
+    const data = editing[euin];
+    if (!data) return false;
+    const errors: { name?: string; email?: string; phone?: string } = {};
+    if (!data.name.trim()) {
+      errors.name = "Name cannot be empty";
+    } else if (/\d/.test(data.name)) {
+      errors.name = "Name cannot contain numbers";
+    }
+    if (!data.email.trim()) {
+      errors.email = "Email cannot be empty";
+    } else if (!EMAIL_REGEX.test(data.email.trim())) {
+      errors.email = "Enter a valid email address";
+    }
+    if (!data.phone.trim()) {
+      errors.phone = "Phone cannot be empty";
+    } else if (!/^\d+$/.test(data.phone.trim())) {
+      errors.phone = "Phone must contain only digits";
+    } else if (data.phone.trim().length !== 10) {
+      errors.phone = "Phone must be 10 digits";
+    }
+    const hasError = Object.keys(errors).length > 0;
+    if (hasError) {
+      setValidationErrors((prev) => ({ ...prev, [euin]: errors }));
+    }
+    return !hasError;
+  };
 
   if (euins.length === 0) {
     return (
@@ -185,236 +213,148 @@ export default function ArnEuinsPage() {
   const isEditing = (euin: string) => !!editing[euin];
 
   return (
-    <ComponentCard title="EUINs" desc="Manage EUIN details and contact information">
-      <div className="overflow-x-auto">
-        <table className="hidden sm:table w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--arn-bdr)]">
-              <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">EUIN</th>
-              {hasName && <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Name</th>}
-              {hasEmail && <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Email</th>}
-              {hasPhone && <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Phone</th>}
-              <th className="pb-3 pr-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Status</th>
-              <th className="pb-3 pl-4 text-xs font-bold uppercase tracking-wider text-[var(--arn-txt-2)]">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {euins.map((item) => {
-              const edit = editing[item.euinNumber];
-              const editingThis = isEditing(item.euinNumber);
-              return (
-                <tr key={item.euinNumber} className="border-b border-[var(--arn-bdr)] last:border-0">
-                  <td className="py-4 pr-4">
+    <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
+      <ComponentCard title="EUINs" desc="Manage EUIN details and contact information">
+      <ArnEuinsTable
+        euins={euins}
+        hasName={hasName}
+        hasEmail={hasEmail}
+        hasPhone={hasPhone}
+        editing={editing}
+        validationErrors={validationErrors}
+        isEditing={isEditing}
+        startEdit={startEdit}
+        cancelEdit={cancelEdit}
+        saveEdit={saveEdit}
+        updateField={updateField}
+        saving={saving}
+      />
+
+      <div className="sm:hidden mt-4 space-y-4">
+        {euins.map((item) => {
+          const edit = editing[item.euinNumber];
+          const editingThis = isEditing(item.euinNumber);
+          return (
+            <div key={item.euinNumber} className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-bold text-[var(--arn-txt)]">EUIN</span>
+                <input
+                  type="text"
+                  readOnly
+                  value={item.euinNumber}
+                  className="w-32 rounded-[8px] border border-black dark:border-white bg-[var(--arn-bg-3)] px-3 py-1.5 text-right text-xs text-black dark:text-white cursor-not-allowed"
+                />
+              </div>
+
+              {hasName && (
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Name</span>
+                  {editingThis ? (
                     <input
                       type="text"
-                      readOnly
-                      value={item.euinNumber}
-                      className="w-full rounded-[8px] border border-black dark:border-white bg-[var(--arn-bg-3)] px-3 py-2 text-sm text-black dark:text-white cursor-not-allowed"
+                      value={edit?.name ?? ""}
+                      onChange={(e) => updateField(item.euinNumber, "name", e.target.value)}
+                      className={inputClass(validationErrors[item.euinNumber]?.name)}
                     />
-                  </td>
-                  {hasName && (
-                    <td className="py-4 pr-4">
-                      {editingThis ? (
-                        <input
-                          type="text"
-                          value={edit?.name ?? ""}
-                          onChange={(e) => updateField(item.euinNumber, "name", e.target.value)}
-                          className="w-full rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg)] px-3 py-2 text-sm text-[var(--arn-txt)]"
-                        />
-                      ) : (
-                        <span className="text-sm text-[var(--arn-txt)]">{item.name || "—"}</span>
-                      )}
-                    </td>
+                  ) : (
+                    <span className="text-sm text-[var(--arn-txt)]">{item.name || "—"}</span>
                   )}
-                  {hasEmail && (
-                    <td className="py-4 pr-4">
-                      {editingThis ? (
-                        <input
-                          type="email"
-                          value={edit?.email ?? ""}
-                          onChange={(e) => updateField(item.euinNumber, "email", e.target.value)}
-                          className="w-full rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg)] px-3 py-2 text-sm text-[var(--arn-txt)]"
-                        />
-                      ) : (
-                        <span className="text-sm text-[var(--arn-txt)]">{item.email || "—"}</span>
-                      )}
-                    </td>
+                  {validationErrors[item.euinNumber]?.name && (
+                    <p className="mt-1 text-xs text-[var(--arn-red)]">{validationErrors[item.euinNumber].name}</p>
                   )}
-                  {hasPhone && (
-                    <td className="py-4 pr-4">
-                      {editingThis ? (
-                        <input
-                          type="tel"
-                          value={edit?.phone ?? ""}
-                          onChange={(e) => updateField(item.euinNumber, "phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                          className="w-full rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg)] px-3 py-2 text-sm text-[var(--arn-txt)]"
-                        />
-                      ) : (
-                        <span className="text-sm text-[var(--arn-txt)]">{item.phone || "—"}</span>
-                      )}
-                    </td>
-                  )}
-                  <td className="py-4 pr-4">
-                    {(() => {
-                      const { label, variant } = getStatusMeta(item.status);
-                      return (
-                        <div>
-                          <ArnStatusTag label={label} variant={variant} />
-                          {item.status === "REJECTED" && item.rejectionReason && (
-                            <p className="mt-1 text-xs text-[var(--arn-red)]">{item.rejectionReason}</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </td>
-                  <td className="py-4 pl-4">
-                    {editingThis ? (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveEdit(item.euinNumber)}
-                          disabled={saving === item.euinNumber}
-                          className="rounded-[8px] bg-[var(--arn-amber)] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[var(--arn-amber-txt)] disabled:opacity-70"
-                        >
-                          {saving === item.euinNumber ? "Saving..." : "Save"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => cancelEdit(item.euinNumber)}
-                          disabled={saving === item.euinNumber}
-                          className="rounded-[8px] border border-[var(--arn-bdr)] px-3 py-1.5 text-xs font-bold text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)] disabled:opacity-70"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : !(item.name && item.name.trim() && item.email && item.email.trim() && item.phone && item.phone.trim()) ? (
-                      <button
-                        type="button"
-                        onClick={() => startEdit(item.euinNumber, item)}
-                        className="rounded-[8px] border border-[var(--arn-bdr)] px-3 py-1.5 text-xs font-bold text-[var(--arn-amber)] transition-colors hover:bg-[var(--arn-amber-bg)]"
-                      >
-                        Assign
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        <div className="sm:hidden space-y-4">
-          {euins.map((item) => {
-            const edit = editing[item.euinNumber];
-            const editingThis = isEditing(item.euinNumber);
-            return (
-              <div key={item.euinNumber} className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-bold text-[var(--arn-txt)]">EUIN</span>
-                  <input
-                    type="text"
-                    readOnly
-                    value={item.euinNumber}
-                      className="w-32 rounded-[8px] border border-black dark:border-white bg-[var(--arn-bg-3)] px-3 py-1.5 text-right text-xs text-black dark:text-white cursor-not-allowed"
-                  />
                 </div>
+              )}
 
-                {hasName && (
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Name</span>
-                    {editingThis ? (
-                      <input
-                        type="text"
-                        value={edit?.name ?? ""}
-                        onChange={(e) => updateField(item.euinNumber, "name", e.target.value)}
-                        className="flex-1 rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg)] px-3 py-1.5 text-right text-sm text-[var(--arn-txt)]"
-                      />
-                    ) : (
-                      <span className="text-sm text-[var(--arn-txt)]">{item.name || "—"}</span>
-                    )}
-                  </div>
-                )}
-
-                {hasEmail && (
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Email</span>
-                    {editingThis ? (
+              {hasEmail && (
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Email</span>
+                  {editingThis ? (
+                    <div>
                       <input
                         type="email"
                         value={edit?.email ?? ""}
                         onChange={(e) => updateField(item.euinNumber, "email", e.target.value)}
-                        className="flex-1 rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg)] px-3 py-1.5 text-right text-sm text-[var(--arn-txt)]"
+                        className={inputClass(validationErrors[item.euinNumber]?.email)}
                       />
-                    ) : (
-                      <span className="text-sm text-[var(--arn-txt)]">{item.email || "—"}</span>
-                    )}
-                  </div>
-                )}
+                      {validationErrors[item.euinNumber]?.email && (
+                        <p className="mt-1 text-right text-xs text-[var(--arn-red)]">{validationErrors[item.euinNumber].email}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-[var(--arn-txt)]">{item.email || "—"}</span>
+                  )}
+                </div>
+              )}
 
-                {hasPhone && (
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Phone</span>
-                    {editingThis ? (
+              {hasPhone && (
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Phone</span>
+                  {editingThis ? (
+                    <div>
                       <input
                         type="tel"
                         value={edit?.phone ?? ""}
                         onChange={(e) => updateField(item.euinNumber, "phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        className="flex-1 rounded-[8px] border border-[var(--arn-bdr-2)] bg-[var(--arn-bg)] px-3 py-1.5 text-right text-sm text-[var(--arn-txt)]"
+                        className={inputClass(validationErrors[item.euinNumber]?.phone)}
                       />
-                    ) : (
-                      <span className="text-sm text-[var(--arn-txt)]">{item.phone || "—"}</span>
-                    )}
-                  </div>
-                )}
-
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Status</span>
-                  {(() => {
-                    const { label, variant } = getStatusMeta(item.status);
-                    return (
-                      <div className="text-right">
-                        <ArnStatusTag label={label} variant={variant} />
-                        {item.status === "REJECTED" && item.rejectionReason && (
-                          <p className="mt-1 text-xs text-[var(--arn-red)]">{item.rejectionReason}</p>
-                        )}
-                      </div>
-                    );
-                  })()}
+                      {validationErrors[item.euinNumber]?.phone && (
+                        <p className="mt-1 text-right text-xs text-[var(--arn-red)]">{validationErrors[item.euinNumber].phone}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-[var(--arn-txt)]">{item.phone || "—"}</span>
+                  )}
                 </div>
+              )}
 
-                {editingThis ? (
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => saveEdit(item.euinNumber)}
-                      disabled={saving === item.euinNumber}
-                      className="flex-1 rounded-[8px] bg-[var(--arn-amber)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--arn-amber-txt)] disabled:opacity-70"
-                    >
-                      {saving === item.euinNumber ? "Saving..." : "Save"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => cancelEdit(item.euinNumber)}
-                      disabled={saving === item.euinNumber}
-                      className="flex-1 rounded-[8px] border border-[var(--arn-bdr)] px-3 py-2 text-xs font-bold text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)] disabled:opacity-70"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : !(item.name && item.name.trim() && item.email && item.email.trim() && item.phone && item.phone.trim()) ? (
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-[var(--arn-txt-2)]">Status</span>
+                {(() => {
+                  const { label, variant } = getStatusMeta(item.status);
+                  return (
+                    <div className="text-right">
+                      <ArnStatusTag label={label} variant={variant} />
+                      {item.status === "REJECTED" && item.rejectionReason && (
+                        <p className="mt-1 text-xs text-[var(--arn-red)]">{item.rejectionReason}</p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {editingThis ? (
+                <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => startEdit(item.euinNumber, item)}
-                    className="w-full rounded-[8px] border border-[var(--arn-bdr)] px-3 py-2 text-xs font-bold text-[var(--arn-amber)] transition-colors hover:bg-[var(--arn-amber-bg)]"
+                    onClick={() => saveEdit(item.euinNumber)}
+                    disabled={saving === item.euinNumber}
+                    className="flex-1 rounded-[8px] bg-[var(--arn-amber)] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[var(--arn-amber-txt)] disabled:opacity-70"
                   >
-                    Assign
+                    {saving === item.euinNumber ? "Saving..." : "Save"}
                   </button>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+                  <button
+                    type="button"
+                    onClick={() => cancelEdit(item.euinNumber)}
+                    disabled={saving === item.euinNumber}
+                    className="flex-1 rounded-[8px] border border-[var(--arn-bdr)] px-3 py-2 text-xs font-bold text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)] disabled:opacity-70"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : !(item.name && item.name.trim() && item.email && item.email.trim() && item.phone && item.phone.trim()) ? (
+                <button
+                  type="button"
+                  onClick={() => startEdit(item.euinNumber, item)}
+                  className="w-full rounded-[8px] border border-[var(--arn-bdr)] px-3 py-2 text-xs font-bold text-[var(--arn-amber)] transition-colors hover:bg-[var(--arn-amber-bg)]"
+                >
+                  Assign
+                </button>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </ComponentCard>
+    </div>
   );
 }

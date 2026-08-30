@@ -23,6 +23,7 @@ export default function ArnClientsPage() {
   const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [view, setView] = useState<"table" | "list">("table");
   const page = Number(searchParams.get("page")) || 1;
   const lastSearch = useRef(debouncedSearch);
 
@@ -105,7 +106,7 @@ export default function ArnClientsPage() {
         </ArnCardHeader>
 
         <div className="mb-5">
-          <ArnClientsToolbar search={search} onSearchChange={setSearch} />
+          <ArnClientsToolbar search={search} onSearchChange={setSearch} view={view} onViewChange={setView} />
         </div>
 
         {error ? (
@@ -137,6 +138,7 @@ export default function ArnClientsPage() {
             total={total}
             page={page}
             pageSize={5}
+            view={view}
             onPageChange={setPage}
           />
         )}

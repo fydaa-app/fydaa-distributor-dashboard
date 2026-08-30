@@ -13,17 +13,6 @@ function getMandateVariant(status: string): "active" | "cancelled" | "pending" {
   return "pending";
 }
 
-function formatPanStatus(panStatus?: string): string {
-  if (!panStatus) return "unknown";
-  const map: Record<string, string> = {
-    KYC_SUCCESS: "KYC Success",
-    KYC_FAILED: "KYC Failed",
-    KYC_UPLOAD_REQ: "KYC Upload Req",
-    KYC_VERIFICATION_PENDING: "KYC Verification Pending",
-  };
-  return map[panStatus] || panStatus;
-}
-
 export default function ArnClientPreview({ client }: ArnClientPreviewProps) {
   if (!client) {
     return (
@@ -44,14 +33,14 @@ export default function ArnClientPreview({ client }: ArnClientPreviewProps) {
   return (
     <div className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
       <div className="flex items-center gap-3 mb-5">
-        <ArnClientAvatar initials={client.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()} tone="amber" size="lg" />
+        <ArnClientAvatar initials={client.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()} size="lg" />
         <div className="min-w-0">
           <div className="text-base font-bold text-[var(--arn-txt)] truncate">{client.name}</div>
           <div className="text-xs text-[var(--arn-txt-3)] mt-0.5">{client.email}</div>
         </div>
       </div>
 
-      <div className="space-y-3">
+        <div className="space-y-3">
         <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
           <span className="text-xs font-medium text-[var(--arn-txt-2)]">Mobile</span>
           <span className="text-xs font-semibold text-[var(--arn-txt)]">{client.mobileNumber}</span>
@@ -59,10 +48,6 @@ export default function ArnClientPreview({ client }: ArnClientPreviewProps) {
         <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
           <span className="text-xs font-medium text-[var(--arn-txt-2)]">Email</span>
           <span className="text-xs font-semibold text-[var(--arn-txt)] truncate ml-2 text-right">{client.email}</span>
-        </div>
-        <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
-          <span className="text-xs font-medium text-[var(--arn-txt-2)]">PAN Status</span>
-          <span className="text-xs font-semibold text-[var(--arn-txt)]">{formatPanStatus(client.panStatus)}</span>
         </div>
         <div className="flex justify-between py-2 border-t border-[var(--arn-bdr)]">
           <span className="text-xs font-medium text-[var(--arn-txt-2)]">Mandate Status</span>

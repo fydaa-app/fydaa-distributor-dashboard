@@ -42,8 +42,8 @@ export default function ArnCommissionLedgerTable({
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5">
       {view === "table" ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm">
+        <div className="-mx-5 overflow-x-auto">
+          <table className="min-w-[820px] w-full table-fixed border-collapse text-left text-sm [&_tbody_tr:nth-child(odd)]:bg-[var(--arn-bg-2)] [&_tbody_tr:nth-child(even)]:bg-[var(--arn-bg)]">
             <thead>
               <tr>
                 <th className="w-[15%] border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">Month</th>
@@ -56,7 +56,7 @@ export default function ArnCommissionLedgerTable({
             </thead>
             <tbody>
               {ledger.map((item) => (
-                <tr key={item.id} className="hover:[&_td]:bg-[var(--arn-bg-2)]">
+                <tr key={item.id} className="transition-colors">
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-sm font-bold text-[var(--arn-txt)]">{item.month}</td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-sm text-[var(--arn-txt-3)]">{item.aum}</td>
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-right text-sm text-[var(--arn-txt)]">{item.trail}</td>

@@ -117,55 +117,6 @@ function RiskScoreArc({ score }: { score: number }) {
   );
 }
 
-const COUNTRY_CODES = [
-  { code: "+1", country: "US", flag: "🇺🇸", label: "United States" },
-  { code: "+91", country: "IN", flag: "🇮🇳", label: "India" },
-  { code: "+44", country: "GB", flag: "🇬🇧", label: "United Kingdom" },
-  { code: "+971", country: "AE", flag: "🇦🇪", label: "United Arab Emirates" },
-  { code: "+966", country: "SA", flag: "🇸🇦", label: "Saudi Arabia" },
-  { code: "+65", country: "SG", flag: "🇸🇬", label: "Singapore" },
-  { code: "+61", country: "AU", flag: "🇦🇺", label: "Australia" },
-  { code: "+880", country: "BD", flag: "🇧🇩", label: "Bangladesh" },
-  { code: "+92", country: "PK", flag: "🇵🇰", label: "Pakistan" },
-  { code: "+94", country: "LK", flag: "🇱🇰", label: "Sri Lanka" },
-  { code: "+977", country: "NP", flag: "🇳🇵", label: "Nepal" },
-  { code: "+95", country: "MM", flag: "🇲🇲", label: "Myanmar" },
-  { code: "+63", country: "PH", flag: "🇵🇭", label: "Philippines" },
-  { code: "+60", country: "MY", flag: "🇲🇾", label: "Malaysia" },
-  { code: "+62", country: "ID", flag: "🇮🇩", label: "Indonesia" },
-  { code: "+84", country: "VN", flag: "🇻🇳", label: "Vietnam" },
-  { code: "+66", country: "TH", flag: "🇹🇭", label: "Thailand" },
-  { code: "+82", country: "KR", flag: "🇰🇷", label: "South Korea" },
-  { code: "+81", country: "JP", flag: "🇯🇵", label: "Japan" },
-  { code: "+86", country: "CN", flag: "🇨🇳", label: "China" },
-  { code: "+49", country: "DE", flag: "🇩🇪", label: "Germany" },
-  { code: "+33", country: "FR", flag: "🇫🇷", label: "France" },
-  { code: "+39", country: "IT", flag: "🇮🇹", label: "Italy" },
-  { code: "+34", country: "ES", flag: "🇪🇸", label: "Spain" },
-  { code: "+31", country: "NL", flag: "🇳🇱", label: "Netherlands" },
-  { code: "+41", country: "CH", flag: "🇨🇭", label: "Switzerland" },
-  { code: "+46", country: "SE", flag: "🇸🇪", label: "Sweden" },
-  { code: "+47", country: "NO", flag: "🇳🇴", label: "Norway" },
-  { code: "+45", country: "DK", flag: "🇩🇰", label: "Denmark" },
-  { code: "+358", country: "FI", flag: "🇫🇮", label: "Finland" },
-  { code: "+48", country: "PL", flag: "🇵🇱", label: "Poland" },
-  { code: "+43", country: "AT", flag: "🇦🇹", label: "Austria" },
-  { code: "+32", country: "BE", flag: "🇧🇪", label: "Belgium" },
-  { code: "+30", country: "GR", flag: "🇬🇷", label: "Greece" },
-  { code: "+7", country: "RU", flag: "🇷🇺", label: "Russia" },
-  { code: "+55", country: "BR", flag: "🇧🇷", label: "Brazil" },
-  { code: "+52", country: "MX", flag: "🇲🇽", label: "Mexico" },
-  { code: "+1", country: "CA", flag: "🇨🇦", label: "Canada" },
-  { code: "+20", country: "EG", flag: "🇪🇬", label: "Egypt" },
-  { code: "+234", country: "NG", flag: "🇳🇬", label: "Nigeria" },
-  { code: "+27", country: "ZA", flag: "🇿🇦", label: "South Africa" },
-  { code: "+254", country: "KE", flag: "🇰🇪", label: "Kenya" },
-  { code: "+972", country: "IL", flag: "🇮🇱", label: "Israel" },
-  { code: "+90", country: "TR", flag: "🇹🇷", label: "Turkey" },
-  { code: "+98", country: "IR", flag: "🇮🇷", label: "Iran" },
-  { code: "+964", country: "IQ", flag: "🇮🇶", label: "Iraq" },
-];
-
 export const STATE_CODES: Record<string, string> = {
   "Andhra Pradesh": "AP",
   "Arunachal Pradesh": "AR",
@@ -245,12 +196,9 @@ export default function ArnOnboardForm({
 }: ArnOnboardFormProps) {
   const [resendTimer, setResendTimer] = useState(30);
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [countryCode, setCountryCode] = useState("+91");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const panInputRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState("");
@@ -572,7 +520,13 @@ export default function ArnOnboardForm({
       });
 
       setCookie("bankVerified", "1", { path: "/", maxAge: 60 * 60 * 24 * 30 });
-      setBankStatus("success");
+
+      if (optOutNominee) {
+        await handleNomineeOptOut();
+        onGoToWelcome();
+      } else {
+        onBankVerified();
+      }
     } catch (err) {
       setBankError(
         err instanceof Error
@@ -735,19 +689,9 @@ export default function ArnOnboardForm({
     if (phase !== "emailOtp" || emailResendTimer <= 0) return;
     const timer = setInterval(() => {
       setEmailResendTimer((t) => (t <= 1 ? (clearInterval(timer), 0) : t - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [phase, emailResendTimer]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, 1000);
+  return () => clearInterval(timer);
+}, [phase, emailResendTimer]);
 
   const handleMobileSubmit = async () => {
     if (mobile.replace(/\D/g, "").length !== 10) return;
@@ -758,7 +702,7 @@ export default function ArnOnboardForm({
     try {
       const digits = mobile.replace(/\D/g, "");
       await requestArnOtp({
-        callingCode: countryCode,
+        callingCode: "+91",
         mobileNumber: digits,
         referredBy,
       });
@@ -835,7 +779,7 @@ export default function ArnOnboardForm({
     try {
       const digits = mobile.replace(/\D/g, "");
       await requestArnOtp({
-        callingCode: countryCode,
+        callingCode: "+91",
         mobileNumber: digits,
         referredBy,
       });
@@ -928,8 +872,6 @@ export default function ArnOnboardForm({
     }
   };
 
-  const selectedCountry = COUNTRY_CODES.find((c) => c.code === countryCode) || COUNTRY_CODES[1];
-
   const riskProfileBlock =
     riskScoreData &&
     typeof riskScoreData.riskProfile === "object" &&
@@ -981,8 +923,7 @@ export default function ArnOnboardForm({
   const formattedMobile = (() => {
     const digits = mobile.replace(/\D/g, "");
     if (!digits) return "";
-    const prefix = selectedCountry.flag + " " + selectedCountry.code;
-    return `${prefix} ${digits}`;
+    return `🇮🇳 +91 ${digits}`;
   })();
 
   const isMobileValid = mobile.replace(/\D/g, "").length === 10;
@@ -994,8 +935,8 @@ export default function ArnOnboardForm({
         <div className="step-panel">
           <div className="text-center">
             <p className="step-eyebrow">Account Setup</p>
-            <h2 className="step-title">Tell us your mobile number</h2>
-            <p className="step-helper">We will send a one-time code to verify your number.</p>
+            <h2 className="step-title">Enter user&apos;s mobile number</h2>
+            <p className="step-helper">We will send a one-time code to this number for verification.</p>
           </div>
 
           <div className="field-group">
@@ -1003,36 +944,8 @@ export default function ArnOnboardForm({
               Mobile Number <span className="req">Required</span>
             </label>
             <div className="flex gap-2">
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsDropdownOpen((prev) => !prev)}
-                  className="field-prefix flex items-center justify-between gap-1 min-w-[88px]"
-                >
-                  <span>{selectedCountry.flag} {selectedCountry.code}</span>
-                  <i className="ti ti-chevron-down text-[10px] text-[var(--arn-txt-3)]" aria-hidden="true" />
-                </button>
-                {isDropdownOpen && (
-                  <div className="country-dropdown">
-                    {COUNTRY_CODES.map((item) => (
-                      <button
-                        key={item.country}
-                        type="button"
-                        onClick={() => {
-                          setCountryCode(item.code);
-                          setIsDropdownOpen(false);
-                        }}
-                        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--arn-bg-2)] ${
-                          item.code === countryCode ? "text-[var(--arn-amber)]" : "text-[var(--arn-txt)]"
-                        }`}
-                      >
-                        <span className="text-base">{item.flag}</span>
-                        <span className="flex-1">{item.label}</span>
-                        <span className="text-[var(--arn-txt-2)]">{item.code}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="field-prefix field-prefix-fixed flex items-center justify-center gap-1 min-w-[88px]">
+                <span>🇮🇳 +91</span>
               </div>
               <input
                 className="field-input flex-1"
@@ -1132,7 +1045,7 @@ export default function ArnOnboardForm({
           {isLoadingRisk ? (
             <div className="text-center py-10">
               <p className="step-eyebrow">Risk Assessment</p>
-              <h2 className="step-title">Loading your risk profile</h2>
+              <h2 className="step-title">Loading risk profile</h2>
               <p className="step-helper">Please wait a moment…</p>
             </div>
           ) : riskQuestions.length === 0 ? (
@@ -1232,7 +1145,7 @@ export default function ArnOnboardForm({
           {isLoadingScore ? (
             <div className="text-center py-10">
               <p className="step-eyebrow">Risk Assessment</p>
-              <h2 className="step-title">Generating your risk score</h2>
+              <h2 className="step-title">Generating user risk score</h2>
               <p className="step-helper">Please wait a moment…</p>
             </div>
           ) : (
@@ -1241,14 +1154,14 @@ export default function ArnOnboardForm({
                 Risk Assessment
               </p>
               <h2 className="step-title" style={{ textAlign: "center" }}>
-                Your Risk Profile
+                User Risk Profile
               </h2>
 
               <div className="risk-gauge-wrap">
                 <RiskScoreArc score={riskScore} />
                 <div className="risk-score">{displayScore}</div>
                 <div className="risk-appetite">{riskAppetite}</div>
-                <div className="risk-score-sub">Your risk score is</div>
+                <div className="risk-score-sub">User risk score is</div>
               </div>
 
               {scoreError && (
@@ -1279,9 +1192,9 @@ export default function ArnOnboardForm({
           </div>
 
           <p className="step-eyebrow">Identity Verification</p>
-          <h2 className="step-title">Verify your email address</h2>
+          <h2 className="step-title">Verify user&apos;s email address</h2>
           <p className="step-helper">
-            Verify your email to receive your personalised risk profile report.
+            Verify the user&apos;s email to generate their personalised risk profile report.
           </p>
 
           <div className="field-group">
@@ -1291,7 +1204,7 @@ export default function ArnOnboardForm({
             <input
               className="field-input"
               type="email"
-              placeholder="Enter your email-id"
+              placeholder="Enter user&apos;s email-id"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -1385,9 +1298,9 @@ export default function ArnOnboardForm({
 
           <div className="text-center">
             <p className="step-eyebrow">Identity Verification</p>
-            <h2 className="step-title">Complete your PAN details</h2>
+            <h2 className="step-title">Complete user&apos;s PAN details</h2>
             <p className="step-helper">
-              Please provide your PAN number, date of birth and full name to complete your profile.
+              Please provide user&apos;s PAN number, date of birth and full name to complete the user profile.
             </p>
           </div>
 
@@ -1397,7 +1310,7 @@ export default function ArnOnboardForm({
             </label>
             <input
               className="field-input"
-              placeholder="Enter your full name"
+              placeholder="Enter full name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value.replace(/\d/g, ""))}
             />
@@ -1467,18 +1380,18 @@ export default function ArnOnboardForm({
             KYC compliance status
           </h2>
           <p className="step-helper" style={{ textAlign: "center" }}>
-            We&apos;ve checked your KYC status with the CKYC Registry (CERSAI) and SEBI databases.
+            We&apos;ve checked the user&apos;s KYC status with the CKYC Registry (CERSAI) and SEBI databases.
           </p>
 
-          <div className="glass-card gold" style={{ textAlign: "center", padding: "34px 26px" }}>
-            <div className="success-ring">
+          <div className="glass-card rounded-[10px] border border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)]" style={{ textAlign: "center", padding: "34px 26px" }}>
+            <div className="success-ring brand">
               <i className="ti ti-shield-check" aria-hidden="true" />
             </div>
             <div className="card-title" style={{ textAlign: "center" }}>
-              You&apos;re KYC Compliant!
+              KYC Compliant!
             </div>
             <div className="card-sub" style={{ textAlign: "center" }}>
-              Your KYC is complete and up to date. You can proceed without any additional verification.
+              KYC is complete and up to date. You can proceed without any additional verification.
             </div>
           </div>
 
@@ -1504,7 +1417,7 @@ export default function ArnOnboardForm({
           <p className="step-eyebrow">Identity Verification</p>
           <h2 className="step-title">Answer the following questions</h2>
           <p className="step-helper">
-            Please provide the information below to complete your profile.
+            Please provide the information below to complete user&apos;s profile.
           </p>
 
           <div className="onboard-section-label">Family Details</div>
@@ -1514,7 +1427,7 @@ export default function ArnOnboardForm({
             </label>
             <input
               className="field-input"
-              placeholder="Enter father's name"
+              placeholder="Enter father&apos;s name"
               value={fatherName}
               onChange={(e) => setFatherName(e.target.value.replace(/\d/g, ""))}
             />
@@ -1529,7 +1442,7 @@ export default function ArnOnboardForm({
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
               >
-                <option value="">Select your gender</option>
+                <option value="">Select user&apos;s gender</option>
                 {genderOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -1544,7 +1457,7 @@ export default function ArnOnboardForm({
                 value={maritalStatus}
                 onChange={(e) => setMaritalStatus(e.target.value)}
               >
-                <option value="">Select your marital status</option>
+                <option value="">Select user&apos;s marital status</option>
                 {maritalOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -1563,7 +1476,7 @@ export default function ArnOnboardForm({
                 value={incomeSlab}
                 onChange={(e) => setIncomeSlab(e.target.value)}
               >
-                <option value="">Select your income slab range</option>
+                <option value="">Select user&apos;s income slab range</option>
                 {incomeSlabOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -1578,7 +1491,7 @@ export default function ArnOnboardForm({
                 value={occupationType}
                 onChange={(e) => setOccupationType(e.target.value)}
               >
-                <option value="">Select your occupation</option>
+                <option value="">Select user&apos;s occupation</option>
                 {occupationOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -1593,7 +1506,7 @@ export default function ArnOnboardForm({
                 value={sourceOfWealth}
                 onChange={(e) => setSourceOfWealth(e.target.value)}
               >
-                <option value="">Select your source of wealth</option>
+                <option value="">Select user&apos;s source of wealth</option>
                 {sourceOfWealthOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -1646,73 +1559,18 @@ export default function ArnOnboardForm({
             </div>
           </div>
 
-          {bankStatus === "success" ? (
-            <>
-              <p className="step-eyebrow" style={{ textAlign: "center" }}>
-                Investment Setup
-              </p>
-              <h2 className="step-title" style={{ textAlign: "center" }}>
-                Bank account connected
-              </h2>
-              <p className="step-helper" style={{ textAlign: "center" }}>
-                Your bank account has been connected and verification is in
-                progress.
-              </p>
-
-              <div
-                className="glass-card gold"
-                style={{ textAlign: "center", padding: "34px 26px" }}
-              >
-                <div className="success-ring">
-                  <i className="ti ti-circle-check" aria-hidden="true" />
-                </div>
-                <div className="card-title" style={{ textAlign: "center" }}>
-                  You&apos;re all set!
-                </div>
-                <div className="card-sub" style={{ textAlign: "center" }}>
-                  You can continue with the rest of the onboarding.
-                </div>
-              </div>
-
-              <label className="onboard-check">
-                <input
-                  type="checkbox"
-                  checked={optOutNominee}
-                  onChange={(e) => setOptOutNominee(e.target.checked)}
-                />
-                <span>I want to opt out of adding a nominee</span>
-              </label>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (optOutNominee) {
-                    handleNomineeOptOut();
-                    onGoToWelcome();
-                  } else {
-                    onBankVerified();
-                  }
-                }}
-                className="btn-primary btn-wide"
-                style={{ marginTop: 20 }}
-              >
-                Continue <i className="ti ti-arrow-right" aria-hidden="true" />
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="step-eyebrow">Investment Setup</p>
-              <h2 className="step-title">Connect your bank account</h2>
-              <p className="step-helper">
-                Please provide your bank details to complete your profile.
-              </p>
+          <p className="step-eyebrow">Investment Setup</p>
+          <h2 className="step-title">Connect bank account</h2>
+          <p className="step-helper">
+            Please provide bank details to complete the user profile.
+          </p>
 
               <div className="field-group">
                 <label className="field-label">IFSC Code</label>
                 <input
                   ref={ifscInputRef}
                   className="field-input"
-                  placeholder="Enter your IFSC code"
+                  placeholder="Enter IFSC code"
                   maxLength={11}
                   spellCheck={false}
                   autoComplete="off"
@@ -1812,6 +1670,15 @@ export default function ArnOnboardForm({
                 </div>
               )}
 
+              <label className="onboard-check">
+                <input
+                  type="checkbox"
+                  checked={optOutNominee}
+                  onChange={(e) => setOptOutNominee(e.target.checked)}
+                />
+                <span>I want to opt out of adding a nominee</span>
+              </label>
+
               <button
                 type="button"
                 onClick={handleBankVerify}
@@ -1821,8 +1688,6 @@ export default function ArnOnboardForm({
               >
                 {bankStatus === "loading" ? "Verifying..." : "Verify"}
               </button>
-            </>
-          )}
         </div>
       )}
 
@@ -1837,7 +1702,7 @@ export default function ArnOnboardForm({
           <p className="step-eyebrow">Investment Setup</p>
           <h2 className="step-title">Add a trusted nominee</h2>
           <p className="step-helper">
-            Add the details of a trusted person to complete your profile.
+            Add the details of a trusted person to complete the user profile.
           </p>
 
           <>
@@ -2204,7 +2069,8 @@ export default function ArnOnboardForm({
           <p className="step-eyebrow" style={{ textAlign: "center" }}>Welcome to Fydaa</p>
           <h2 className="step-title" style={{ textAlign: "center" }}>You&apos;re all set</h2>
           <p className="step-helper" style={{ textAlign: "center", margin: "0 auto 28px", maxWidth: "440px" }}>
-            Your advisor will reach out within 24 hours to begin your wealth journey.
+            You can now start the user&apos;s investment directly from the dashboard, or the user can invest through the app.
+
           </p>
 
           <div className="summary-list">

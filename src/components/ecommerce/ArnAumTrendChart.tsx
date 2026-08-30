@@ -4,8 +4,10 @@ import dynamic from "next/dynamic";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 import type { ApexOptions } from "apexcharts";
+import { useEffect, useState } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import type { ArnDashboardAumTrend } from "@/types/arnDashboard";
+import { getBrandColor } from "@/lib/utils";
 
 interface ArnAumTrendChartProps {
   aumTrend: ArnDashboardAumTrend[];
@@ -16,6 +18,11 @@ function toCr(value: number): number {
 }
 
 export default function ArnAumTrendChart({ aumTrend }: ArnAumTrendChartProps) {
+  const [brandColor, setBrandColor] = useState("#BA7517");
+
+  useEffect(() => {
+    setBrandColor(getBrandColor());
+  }, []);
   const xCategories = aumTrend.map((point) => point.month);
   const seriesData = aumTrend.map((point) => toCr(point.aum));
 
@@ -28,7 +35,7 @@ export default function ArnAumTrendChart({ aumTrend }: ArnAumTrendChartProps) {
       background: "transparent",
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     },
-    colors: ["#BA7517"],
+    colors: [brandColor],
     dataLabels: {
       enabled: false,
     },
@@ -48,7 +55,7 @@ export default function ArnAumTrendChart({ aumTrend }: ArnAumTrendChartProps) {
     markers: {
       size: 5,
       strokeWidth: 2,
-      strokeColors: "#BA7517",
+      strokeColors: brandColor,
       hover: {
         size: 7,
       },
@@ -57,7 +64,7 @@ export default function ArnAumTrendChart({ aumTrend }: ArnAumTrendChartProps) {
       borderColor: "rgba(0,0,0,0.08)",
       strokeDashArray: 4,
       padding: {
-        left: 0,
+        left: 24,
         right: 0,
         top: 0,
       },

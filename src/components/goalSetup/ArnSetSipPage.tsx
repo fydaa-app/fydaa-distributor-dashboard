@@ -584,17 +584,17 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                 {investmentMode === "lumpsum" ? "Edit your investment amount" : "Edit your investment amount"}
               </div>
               <input
-               type="range"
-               min={investmentMode === "lumpsum" ? lumpsumAmountLimits.min : amountLimits.min}
-               max={investmentMode === "lumpsum" ? lumpsumAmountLimits.max : amountLimits.max}
-               step={investmentMode === "lumpsum" ? lumpsumAmountLimits.step : amountLimits.step}
-               value={sipAmount}
-               onChange={handleSliderChange}
-               className="mt-4 w-full h-1 cursor-pointer appearance-none rounded-full"
-               style={{
-                 background: `linear-gradient(to right, var(--arn-amber) ${sliderPct}%, var(--arn-bdr) ${sliderPct}%)`,
-               }}
-             />
+                type="range"
+                min={investmentMode === "lumpsum" ? lumpsumAmountLimits.min : amountLimits.min}
+                max={investmentMode === "lumpsum" ? lumpsumAmountLimits.max : amountLimits.max}
+                step={investmentMode === "lumpsum" ? lumpsumAmountLimits.step : amountLimits.step}
+                value={sipAmount}
+                onChange={handleSliderChange}
+                className="arn-sip-slider mt-4 w-full h-1 cursor-pointer appearance-none rounded-full"
+                style={{
+                  background: `linear-gradient(to right, var(--arn-amber) ${sliderPct}%, var(--arn-bdr) ${sliderPct}%)`,
+                }}
+              />
 
               {/* Quick Picks */}
               <div className="mt-3 flex flex-wrap gap-2">
@@ -684,9 +684,9 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                   <span className="text-sm font-semibold text-[var(--arn-txt)]">
                     Fund
                   </span>
-                  <div className="flex-1 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                  <div className="flex-1 rounded-[12px] border border-[var(--arn-input-ring)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--arn-input-ring)] text-[10px] font-bold text-[var(--arn-amber)]">
                         {isLoadingRec ? "..." : "✓"}
                       </span>
                       <span className="text-sm font-semibold text-[var(--arn-txt)]">
@@ -736,11 +736,11 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
                  {/* Fund Display / Search */}
                  {fundMode === "rec" ? (
-                   <div className="mt-3 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                    <div className="mt-3 rounded-[12px] border border-[var(--arn-input-ring)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
                      <div className="flex items-center gap-2">
-                       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
-                         {isLoadingRec ? "..." : "✓"}
-                       </span>
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--arn-avatar-bg)] text-[10px] font-bold text-[var(--arn-avatar-txt)]">
+                        {isLoadingRec ? "..." : "✓"}
+                      </span>
                        <span className="text-sm font-semibold text-[var(--arn-txt)]">
                          {isLoadingRec ? "Loading recommended fund..." : fundDisplayName}
                        </span>
@@ -754,11 +754,11 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                   ) : (
                      <div className="mt-3">
                        {selectedFund && (
-                         <div className="mb-2 rounded-[12px] border border-[rgba(184,134,11,.12)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
+                          <div className="mb-2 rounded-[12px] border border-[var(--arn-input-ring)] bg-[var(--arn-amber-bg)] px-3 py-2.5">
                            <div className="flex items-center gap-2">
-                             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(184,134,11,.12)] text-[10px] font-bold text-[var(--arn-amber)]">
-                               ✓
-                             </span>
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--arn-avatar-bg)] text-[10px] font-bold text-[var(--arn-avatar-txt)]">
+                          {isLoadingRec ? "..." : "✓"}
+                        </span>
                              <span className="text-sm font-semibold text-[var(--arn-txt)]">
                                {fundDisplayName}
                              </span>
@@ -816,8 +816,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
            {/* RIGHT: Projection Card or Lumpsum Details */}
            <div className="lg:sticky lg:top-[100px]">
-             {investmentMode === "lumpsum" ? (
-               <div className="overflow-hidden rounded-[14px] bg-[#3D2E06] p-5 text-white">
+              {investmentMode === "lumpsum" ? (
+                <div className="overflow-hidden rounded-[14px] bg-[var(--arn-amber-card-dark)] p-5 text-white">
                  <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
                    Lumpsum Details
                  </div>
@@ -838,8 +838,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                    </div>
                  </div>
                </div>
-             ) : (
-               <div className="overflow-hidden rounded-[14px] bg-[#3D2E06] p-5 text-white">
+              ) : (
+                <div className="overflow-hidden rounded-[14px] bg-[var(--arn-amber-card-dark)] p-5 text-white">
                  <div className="flex items-start justify-between">
                    <div>
                      <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">

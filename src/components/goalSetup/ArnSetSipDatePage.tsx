@@ -256,7 +256,7 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
                 <div className="px-4 pb-4 space-y-3">
                   <div className="flex gap-3">
                     <div className="flex flex-col items-center">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--arn-amber-bg)] text-[10px] font-bold text-[var(--arn-amber)]">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--arn-avatar-bg)] text-[10px] font-bold text-[var(--arn-avatar-txt)]">
                         1
                       </div>
                       <div className="w-px flex-1 bg-[var(--arn-bdr)]" />
@@ -268,7 +268,7 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
                   </div>
                   <div className="flex gap-3">
                     <div className="flex flex-col items-center">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--arn-amber-bg)] text-[10px] font-bold text-[var(--arn-amber)]">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--arn-avatar-bg)] text-[10px] font-bold text-[var(--arn-avatar-txt)]">
                         2
                       </div>
                       <div className="w-px flex-1 bg-[var(--arn-bdr)]" />
@@ -280,7 +280,7 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
                   </div>
                   <div className="flex gap-3">
                     <div className="flex flex-col items-center">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--arn-amber-bg)] text-[10px] font-bold text-[var(--arn-amber)]">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--arn-avatar-bg)] text-[10px] font-bold text-[var(--arn-avatar-txt)]">
                         3
                       </div>
                     </div>
@@ -303,7 +303,7 @@ const ArnSetSipDatePage = forwardRef<ArnSetSipDatePageRef, ArnSetSipDatePageProp
           {/* RIGHT: Portfolio + Payment summary */}
           <div className="space-y-4">
             {/* Portfolio card */}
-            <div className="overflow-hidden rounded-[14px] bg-[#3D2E06] p-5 text-white">
+            <div className="overflow-hidden rounded-[14px] bg-[var(--arn-amber-card-dark)] p-5 text-white">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
                 Portfolio
               </div>

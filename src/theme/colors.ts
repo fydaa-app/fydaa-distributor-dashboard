@@ -33,6 +33,15 @@ export const COLORS = {
       darkBg: "#412402",
       darkTxt: "#FAC775",
     },
+    jade: {
+      DEFAULT: "#0C4A3E",
+      bg: "#E8F5F1",
+      txt: "#0C4A3E",
+      hover: "#094039",
+      shadow: "rgba(12, 74, 62, 0.24)",
+      darkBg: "#042821",
+      darkTxt: "#9FE1CB",
+    },
     green: {
       DEFAULT: "#3B6D11",
       bg: "#EAF3DE",
@@ -80,7 +89,7 @@ export const COLORS = {
     },
   } as const,
 
-  currentBrand: "amberx" as const,
+  currentBrand: "jade" as const,
 
   inputRing: "rgba(186, 117, 23, 0.1)",
   loginShadow: "rgba(186, 117, 23, 0.20)",

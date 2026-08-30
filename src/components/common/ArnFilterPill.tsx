@@ -12,7 +12,7 @@ export default function ArnFilterPill({ label, active = false, onClick }: ArnFil
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-[20px] border border-[var(--arn-bdr-2)] px-[11px] py-1 text-[11px] font-semibold transition-colors",
+        "inline-flex items-center rounded px-[11px] py-1 text-[11px] font-semibold whitespace-nowrap border border-[var(--arn-bdr-2)] transition-colors",
         active
           ? "border-[var(--arn-amber)] bg-[var(--arn-amber)] text-white"
           : "border-transparent bg-transparent text-[var(--arn-txt-2)] hover:bg-[var(--arn-bg-2)]"

@@ -17,20 +17,20 @@ type ArnStatusVariant =
   | "cancelled";
 
 const variantClasses: Record<ArnStatusVariant, string> = {
-  active: "bg-[var(--arn-green-bg)] text-[var(--arn-green)] dark:text-[#C0DD97]",
+  active: "bg-[var(--arn-done-bg)] text-[var(--arn-done-txt)]",
   paused: "bg-[var(--arn-bg-2)] text-[var(--arn-txt-3)] border border-[var(--arn-bdr)] dark:bg-[#252522] dark:border-white/10",
-  due: "bg-[var(--arn-amber-bg)] text-[var(--arn-amber-txt)]",
-  failed: "bg-[var(--arn-red-bg)] text-[var(--arn-red)] dark:text-[#F09595]",
-  processing: "bg-[var(--arn-blue-bg)] text-[var(--arn-blue)] dark:text-[#B5D4F4]",
-  valuation: "bg-[var(--arn-pur-bg)] text-[var(--arn-pur-txt)]",
-  teal: "bg-[var(--arn-tel-bg)] text-[var(--arn-tel-txt)]",
-  pending: "bg-[var(--arn-amber-bg)] text-[var(--arn-amber-txt)]",
-  review: "bg-[var(--arn-pur-bg)] text-[var(--arn-pur-txt)]",
-  kyc: "bg-[var(--arn-blue-bg)] text-[var(--arn-blue)] dark:text-[#B5D4F4]",
-  sip: "bg-[var(--arn-amber-bg)] text-[var(--arn-amber-txt)]",
-  call: "bg-[var(--arn-tel-bg)] text-[var(--arn-tel-txt)]",
+  due: "bg-[var(--arn-pending-bg)] text-[var(--arn-pending-txt)]",
+  failed: "bg-[var(--arn-failed-bg)] text-[var(--arn-failed-txt)]",
+  processing: "bg-[var(--arn-processing-bg)] text-[var(--arn-processing-txt)]",
+  valuation: "bg-[var(--arn-lumpsum-bg)] text-[var(--arn-lumpsum-txt)]",
+  teal: "bg-[var(--arn-redemption-bg)] text-[var(--arn-redemption-txt)]",
+  pending: "bg-[var(--arn-pending-bg)] text-[var(--arn-pending-txt)]",
+  review: "bg-[var(--arn-switch-bg)] text-[var(--arn-switch-txt)]",
+  kyc: "bg-[var(--arn-processing-bg)] text-[var(--arn-processing-txt)]",
+  sip: "bg-[var(--arn-sip-bg)] text-[var(--arn-sip-txt)]",
+  call: "bg-[var(--arn-redemption-bg)] text-[var(--arn-redemption-txt)]",
   inactive: "bg-[var(--arn-bg-2)] text-[var(--arn-txt-3)] border border-[var(--arn-bdr)] dark:bg-[#252522] dark:border-white/10",
-  cancelled: "bg-[var(--arn-red-bg)] text-[var(--arn-red)] dark:text-[#F09595]",
+  cancelled: "bg-[var(--arn-failed-bg)] text-[var(--arn-failed-txt)]",
 };
 
 export interface ArnStatusTagProps {
@@ -40,8 +40,8 @@ export interface ArnStatusTagProps {
 }
 
 const sizeClasses: Record<"default" | "task", string> = {
-  default: "inline-flex items-center rounded-[10px] px-[7px] py-[2px] text-[10px] font-semibold whitespace-nowrap",
-  task: "inline-flex items-center rounded-[10px] px-[5px] py-[1px] text-[10px] font-semibold whitespace-nowrap",
+  default: "inline-flex items-center rounded px-2 py-[3px] text-[10px] font-semibold whitespace-nowrap",
+  task: "inline-flex items-center rounded px-2 py-[3px] text-[10px] font-semibold whitespace-nowrap",
 };
 
 export default function ArnStatusTag({

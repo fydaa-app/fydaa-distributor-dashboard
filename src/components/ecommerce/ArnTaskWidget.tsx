@@ -71,14 +71,14 @@ export default function ArnTaskWidget() {
   const remaining = taskState.filter((t) => !t.done).length;
 
   return (
-    <div className="rounded-[16px] border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1c1c1a] sm:p-6">
+    <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 dark:border-[var(--arn-bdr)] dark:bg-[var(--arn-bg)] sm:p-6">
       <ArnCardHeader
         title="Today's tasks"
         action={
           <button
             type="button"
             onClick={() => setAdding((v) => !v)}
-            className="text-xs font-bold text-[#BA7517] sm:text-sm"
+            className="text-xs font-bold text-[var(--arn-amber)] sm:text-sm"
           >
             + Add
           </button>
@@ -115,7 +115,7 @@ export default function ArnTaskWidget() {
 
       <div className="flex flex-col">
         {taskState.length === 0 ? (
-          <p className="py-4 text-center text-sm text-[#8a8a85]">
+          <p className="py-4 text-center text-sm text-[var(--arn-txt-3)]">
             No tasks for today.
           </p>
         ) : (
@@ -133,7 +133,7 @@ export default function ArnTaskWidget() {
       </div>
 
       {taskState.length > 0 && (
-        <p className="mt-3 text-xs text-[#8a8a85]">{remaining} remaining</p>
+        <p className="mt-3 text-xs text-[var(--arn-txt-3)]">{remaining} remaining</p>
       )}
     </div>
   );

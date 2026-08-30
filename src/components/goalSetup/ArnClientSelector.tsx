@@ -6,6 +6,7 @@ import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import { getGoalSetupClients, type GoalSetupClient } from "@/services/arnGoalSetupService";
+import ArnStatusTag from "@/components/common/ArnStatusTag";
 
 interface ArnClientSelectorProps {
   onSelect: (client: GoalSetupClient) => void;
@@ -22,28 +23,6 @@ function getInitials(name: string): string {
     .map((part) => part[0])
     .join("")
     .toUpperCase();
-}
-
-function getMandateText(status: string): string {
-  const normalized = status.toUpperCase();
-  if (normalized === "APPROVED") return "Mandate Approved";
-  if (normalized === "CANCELLED") return "Mandate Cancelled";
-  if (normalized === "PENDING") return "Mandate Pending";
-  return status;
-}
-
-function getMandateTextColor(status: string): string {
-  const normalized = status.toUpperCase();
-  if (normalized === "APPROVED") return "text-[var(--arn-green)]";
-  if (normalized === "CANCELLED") return "text-[var(--arn-red)]";
-  return "text-[var(--arn-amber-txt)]";
-}
-
-function getPanStatusLabel(panStatus?: string): { label: string; className: string } {
-  if (panStatus === "KYC_SUCCESS") {
-    return { label: "KYC Done", className: "bg-[var(--arn-green-bg)] text-[var(--arn-green)]" };
-  }
-  return { label: "KYC Pending", className: "bg-[var(--arn-red-bg)] text-[var(--arn-red)]" };
 }
 
 const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
@@ -127,7 +106,7 @@ export default function ArnClientSelector({ onSelect, selectedClientId, onSearch
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] px-4 py-0 transition-colors focus-within:border-[var(--arn-amber)] focus-within:shadow-[0_0_0_3px_rgba(184,134,11,.08)]">
+      <div className="flex items-center gap-3 rounded-[12px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] px-4 py-0 transition-colors focus-within:border-[var(--arn-amber)] focus-within:shadow-[0_0_0_3px_var(--arn-input-ring)]">
         <svg
           width="18"
           height="18"
@@ -198,26 +177,26 @@ export default function ArnClientSelector({ onSelect, selectedClientId, onSearch
                   }
                 }}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-[12px] border p-3 text-left transition-colors sm:p-4 sm:gap-4",
+                  "flex w-full items-center gap-3 rounded-[10px] border p-3 text-left transition-colors sm:p-4 sm:gap-4",
                   isSelected
-                    ? "border-[rgba(184,134,11,.18)] bg-[var(--arn-amber-bg)]"
+                    ? "border-[var(--arn-amber)] bg-[var(--arn-amber-sel-bg)]"
                     : "border-transparent bg-transparent hover:border-[var(--arn-bdr)] hover:bg-[var(--arn-bg)]"
                 )}
               >
                 <ArnClientAvatar
                   initials={getInitials(client.name)}
-                  tone="amber"
                   size="md"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="truncate text-sm font-bold text-[var(--arn-txt)]">{client.name}</div>
                   <div className="mt-0.5 text-xs text-[var(--arn-txt-3)]">
-                    {client.mobileNumber} · <span className={getMandateTextColor(client.mandateStatus)}>{getMandateText(client.mandateStatus)}</span>
+                    {client.mobileNumber}
                   </div>
                 </div>
-                <div className={cn("text-[10px] font-semibold px-2 py-[3px] rounded", getPanStatusLabel(client.panStatus).className)}>
-                  {getPanStatusLabel(client.panStatus).label}
-                </div>
+                <ArnStatusTag
+                  label={client.mandateStatus}
+                  variant={client.mandateStatus.toUpperCase() === "APPROVED" ? "active" : client.mandateStatus.toUpperCase() === "CANCELLED" ? "cancelled" : "pending"}
+                />
                 <div
                   className={cn(
                     "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-2 transition-colors",

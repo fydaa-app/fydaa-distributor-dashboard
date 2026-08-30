@@ -6,7 +6,7 @@ import ArnProgressBar from "@/components/common/ArnProgressBar";
 import type { ArnSipBookHealthData, ArnSipBookHealthMetric } from "@/types/arnSipBook";
 
 const toneColors = {
-  amber: "#BA7517",
+  amber: "var(--arn-amber)",
   green: "#3B6D11",
   blue: "#185FA5",
   red: "#A32D2D",
@@ -25,7 +25,7 @@ function mapHealthToMetrics(health: ArnSipBookHealthData): ArnSipBookHealthMetri
       value: `${Math.round(health.successRate)}%`,
       caption: health.successRatePeriod || "",
       progress: Math.round(health.successRate),
-      tone: "green",
+      tone: "amber",
     },
     {
       label: "NACH coverage",

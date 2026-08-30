@@ -31,18 +31,18 @@ export default function ArnTaskItem({ text, tag, done = false, onToggle, onRemov
       tabIndex={0}
       onClick={onToggle}
       onKeyDown={handleKeyDown}
-      className="flex w-full cursor-pointer items-center gap-3 border-b border-black/10 py-3 text-left last:border-b-0 dark:border-white/10 sm:py-4"
+      className="flex w-full cursor-pointer items-center gap-3 border-b border-[var(--arn-bdr)] py-3 text-left last:border-b-0 sm:py-4"
     >
       <span
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border ${
           done
-            ? "border-[#3B6D11] bg-[#3B6D11] text-white"
+            ? "border-[var(--arn-green)] bg-[var(--arn-green)] text-white"
             : "border-black/20 bg-transparent dark:border-white/20"
         }`}
       >
         {done && <span className="text-[11px] font-bold">✓</span>}
       </span>
-      <span className="flex-1 text-sm font-semibold text-[#1a1a18] sm:text-base dark:text-[#f0efe8]">
+      <span className="flex-1 text-sm font-semibold text-[var(--arn-txt)] sm:text-base">
         {text}
       </span>
       <ArnStatusTag label={tag} variant={tagVariant[tag]} size="task" />
@@ -54,7 +54,7 @@ export default function ArnTaskItem({ text, tag, done = false, onToggle, onRemov
             onRemove();
           }}
           aria-label="Remove task"
-          className="ml-2 text-[#8a8a85] hover:text-[#BA7517]"
+          className="ml-2 text-[var(--arn-txt-3)] hover:text-[var(--arn-amber)]"
         >
           ✕
         </button>

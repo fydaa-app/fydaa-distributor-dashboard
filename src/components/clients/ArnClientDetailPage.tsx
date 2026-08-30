@@ -113,8 +113,12 @@ export default function ArnClientDetailPage() {
 
         {activeTab === "holdings" && (
           <div>
-            <ArnClientHoldingsChart assetAllocation={detail.assetAllocation} />
-            <ArnHoldingsLegend assetAllocation={detail.assetAllocation} />
+            {detail.holdings.length > 0 && (
+              <>
+                <ArnClientHoldingsChart assetAllocation={detail.assetAllocation} />
+                <ArnHoldingsLegend assetAllocation={detail.assetAllocation} />
+              </>
+            )}
             <ArnClientHoldingsList holdings={detail.holdings} />
           </div>
         )}

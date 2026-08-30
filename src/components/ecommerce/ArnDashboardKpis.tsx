@@ -3,13 +3,10 @@
 import type { ArnDashboardSummary } from "@/types/arnDashboard";
 import ArnKpiCard from "@/components/common/ArnKpiCard";
 
-type ArnTone = "amber" | "green" | "blue" | "red" | "purple" | "teal" | "gray";
-
 interface DashboardKpi {
   label: string;
   value: string;
   trendText: string;
-  tone: ArnTone;
   trend: "up" | "down" | "neutral";
   icon?: string;
 }
@@ -44,7 +41,6 @@ function buildSummaryKpis(summary: ArnDashboardSummary): DashboardKpi[] {
       label: "Total AUM",
       value: formatIndianCurrency(summary.totalAum),
       trendText: `${aumChange >= 0 ? "+" : ""}${aumChange.toFixed(1)}%`,
-      tone: "amber",
       trend: aumUp ? "up" : aumDown ? "down" : "neutral",
       icon: aumUp ? "ti ti-arrow-up" : aumDown ? "ti ti-arrow-down" : "ti ti-equal",
     },
@@ -52,7 +48,6 @@ function buildSummaryKpis(summary: ArnDashboardSummary): DashboardKpi[] {
       label: "SIP book / mo",
       value: formatIndianCurrency(summary.sipBookMonthly),
       trendText: `+${summary.newSips} new SIPs`,
-      tone: "green",
       trend: sipUp ? "up" : "neutral",
       icon: sipUp ? "ti ti-arrow-up" : "ti ti-equal",
     },
@@ -60,7 +55,6 @@ function buildSummaryKpis(summary: ArnDashboardSummary): DashboardKpi[] {
       label: `Trail earned (${summary.trailEarnedPeriod})`,
       value: formatRupee(summary.trailEarned),
       trendText: `${trailChange >= 0 ? "+" : ""}${trailChange.toFixed(1)}% vs prev`,
-      tone: "blue",
       trend: trailUp ? "up" : trailDown ? "down" : "neutral",
       icon: trailUp ? "ti ti-arrow-up" : trailDown ? "ti ti-arrow-down" : "ti ti-equal",
     },
@@ -68,7 +62,6 @@ function buildSummaryKpis(summary: ArnDashboardSummary): DashboardKpi[] {
       label: "SIPs at risk",
       value: String(summary.sipsAtRisk),
       trendText: "No Activity",
-      tone: "red",
       trend: "down",
     },
   ];

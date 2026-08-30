@@ -2,19 +2,20 @@
 
 import dynamic from "next/dynamic";
 import type { ApexOptions } from "apexcharts";
+import { useMemo } from "react";
 import ArnCardHeader from "@/components/common/ArnCardHeader";
 import ArnErrorState from "@/components/common/ArnErrorState";
 import type { ArnOrderTypeSplit } from "@/types/arnOrders";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
-const chartColors = ["#BA7517", "#185FA5", "#3B6D11", "#534AB7"];
+const chartColors = ["var(--arn-processing-txt)", "var(--arn-lumpsum-txt)", "var(--arn-redemption-txt)"];
 
-function getToneColor(tone: ArnOrderTypeSplit["tone"]): string {
-  if (tone === "green") return "#3B6D11";
-  if (tone === "blue") return "#185FA5";
-  if (tone === "purple") return "#534AB7";
-  return "#BA7517";
+function getTypeColor(type: ArnOrderTypeSplit["type"]): string {
+  if (type === "sip") return "var(--arn-processing-txt)";
+  if (type === "lumpsum") return "var(--arn-lumpsum-txt)";
+  if (type === "redemption") return "var(--arn-redemption-txt)";
+  return "var(--arn-processing-txt)";
 }
 
 interface ArnOrderTypeSplitChartProps {
@@ -23,10 +24,13 @@ interface ArnOrderTypeSplitChartProps {
   error?: string | null;
   retry?: () => void;
   totalOrders?: number;
+  monthLabel?: string;
 }
 
-export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry, totalOrders }: ArnOrderTypeSplitChartProps) {
-  const options: ApexOptions = {
+export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry, totalOrders, monthLabel = "Jun" }: ArnOrderTypeSplitChartProps) {
+  const visibleSplits = splits.filter((item) => item.type !== "switch");
+
+  const options = useMemo<ApexOptions>(() => ({
     chart: {
       type: "donut",
       height: "100%",
@@ -35,8 +39,8 @@ export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry
       background: "transparent",
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
     },
-    colors: splits.length ? splits.map((item) => getToneColor(item.tone)) : chartColors,
-    labels: splits.length ? splits.map((item) => item.label) : ["SIP", "Lumpsum", "Redemption", "Switch"],
+    colors: visibleSplits.length ? visibleSplits.map((item) => getTypeColor(item.type)) : chartColors,
+    labels: visibleSplits.length ? visibleSplits.map((item) => item.label) : ["SIP", "Lumpsum", "Redemption"],
     stroke: { show: false },
     dataLabels: { enabled: false },
     legend: { show: false },
@@ -51,14 +55,14 @@ export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry
               fontSize: "11px",
             },
             value: {
-              color: "#1a1a18",
+              color: "var(--arn-txt)",
               fontSize: "18px",
               fontWeight: 700,
               formatter: (value) => `${Number(value).toFixed(0)}%`,
             },
             total: {
               show: true,
-              label: "Jun",
+              label: monthLabel,
               color: "#a8a8a3",
               fontSize: "11px",
               formatter: () => String(totalOrders ?? 0),
@@ -77,11 +81,11 @@ export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry
         formatter: (value) => `${Number(value).toFixed(0)}%`,
       },
     },
-  };
+  }), [visibleSplits, totalOrders, monthLabel]);
 
   return (
     <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
-      <ArnCardHeader title="Order type split (Jun)" />
+      <ArnCardHeader title={`Order type split (${monthLabel})`} />
       {isLoading ? (
         <div className="relative h-[140px] animate-pulse rounded-[14px] bg-[var(--arn-bg-2)]" />
       ) : error ? (
@@ -95,16 +99,16 @@ export default function ArnOrderTypeSplitChart({ splits, isLoading, error, retry
           <div className="relative h-[140px] sm:h-[160px]">
             <ReactApexChart
               options={options}
-              series={splits.length ? splits.map((item) => item.percentage) : [58, 26, 10, 6]}
+              series={visibleSplits.length ? visibleSplits.map((item) => item.percentage) : [58, 26, 10]}
               type="donut"
               height="100%"
               width="100%"
             />
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-medium text-[var(--arn-txt-2)] sm:text-xs">
-            {(splits.length ? splits : []).map((item) => (
+            {visibleSplits.map((item) => (
               <span key={item.type} className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-[2px]" style={{ background: getToneColor(item.tone) }} />
+                <span className="size-2 rounded-[2px]" style={{ background: getTypeColor(item.type) }} />
                 {item.label} {item.percentage}%
               </span>
             ))}
