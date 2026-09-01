@@ -35,7 +35,7 @@ function mergeOnboardedUserData(updates: Record<string, unknown>) {
 }
 
 interface ArnOnboardFormProps {
-  phase: "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
+  phase: "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome" | "modifyKyc";
   mobile: string;
   onMobileChange: (value: string) => void;
   otpValues: string[];
@@ -45,6 +45,7 @@ interface ArnOnboardFormProps {
   onReset: () => void;
   userStage?: UserStage | null;
   onKycVerified: () => void;
+  onKycModify: () => void;
   onGoToIdentity: () => void;
   onGoToKycCompliant: () => void;
   onGoToEmail: () => void;
@@ -168,6 +169,7 @@ export default function ArnOnboardForm({
   onReset,
   userStage,
   onKycVerified,
+  onKycModify,
   onGoToIdentity,
   onGoToKycCompliant,
   onGoToEmail,
@@ -411,6 +413,7 @@ export default function ArnOnboardForm({
   const [dob, setDob] = useState("");
   const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
   const [kycLocalError, setKycLocalError] = useState<string | null>(null);
+  const [kycModifyReason, setKycModifyReason] = useState<string | null>(null);
 
   const [fatherName, setFatherName] = useState("");
   const [gender, setGender] = useState("");
@@ -651,8 +654,11 @@ export default function ArnOnboardForm({
         fullName: fullName.trim(),
       });
 
-      if (result.isKycCompliant) {
+      if (result.isKycCompliant && result.action !== 'modify') {
         onKycVerified();
+      } else if (result.action === 'modify') {
+        setKycModifyReason(result.reason);
+        onKycModify();
       } else {
         const reason = result.reason ? ` — ${result.reason}` : "";
         setKycLocalError(`${result.message}${reason}`.trim());
@@ -1403,6 +1409,20 @@ export default function ArnOnboardForm({
           >
             Continue <i className="ti ti-arrow-right" aria-hidden="true" />
           </button>
+        </div>
+      )}
+
+      {phase === "modifyKyc" && (
+        <div className="step-panel">
+          <p className="step-eyebrow" style={{ textAlign: "center" }}>
+            Identity Verification
+          </p>
+          <h2 className="step-title" style={{ textAlign: "center" }}>
+            KYC Update Required
+          </h2>
+          <p className="step-helper" style={{ textAlign: "center" }}>
+             KYC record needs to be updated. Please complete the Modify KYC process on the Fydaa mobile app.
+          </p>
         </div>
       )}
 

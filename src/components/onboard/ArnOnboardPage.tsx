@@ -6,7 +6,7 @@ import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
 import type { RiskProfileQuestion, UserStage } from "@/services/arnOnboardService";
 
-type Phase = "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome";
+type Phase = "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome" | "modifyKyc";
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -175,6 +175,7 @@ export default function ArnOnboardPage() {
 
   const goToIdentity = () => setPhase("identity");
   const goToKycCompliant = () => setPhase("kycCompliant");
+  const goToModifyKyc = () => setPhase("modifyKyc");
 
   const goToEmail = () => setPhase("email");
   const goToEmailOtp = () => setPhase("emailOtp");
@@ -328,6 +329,7 @@ export default function ArnOnboardPage() {
           onGoToMobile={goToMobile}
           onReset={goToDashboard}
           onKycVerified={() => setPhase("kycCompliant")}
+          onKycModify={goToModifyKyc}
           onGoToIdentity={goToIdentity}
           onGoToKycCompliant={goToKycCompliant}
           onGoToEmail={goToEmail}
