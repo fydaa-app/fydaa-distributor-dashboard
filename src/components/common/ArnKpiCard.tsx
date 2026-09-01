@@ -1,7 +1,7 @@
 interface ArnKpiCardProps {
   label: string;
   value: string;
-  trendText: string;
+  trendText?: string;
   trend?: "up" | "down" | "neutral";
   icon?: string;
 }
@@ -27,10 +27,12 @@ export default function ArnKpiCard({
       <div className="mb-2 text-2xl font-black leading-none text-[var(--arn-txt)] sm:text-3xl">
         {value}
       </div>
-      <div className={`flex items-center gap-2 text-xs sm:text-sm ${trendClass}`}>
-        {icon ? <i aria-hidden="true" className={icon} /> : <span>{trend === "up" ? "↗" : trend === "down" ? "↘" : "•"}</span>}
-        <span>{trendText}</span>
-      </div>
+      {trendText && (
+        <div className={`flex items-center gap-2 text-xs sm:text-sm ${trendClass}`}>
+          {icon ? <i aria-hidden="true" className={icon} /> : <span>{trend === "up" ? "↗" : trend === "down" ? "↘" : "•"}</span>}
+          <span>{trendText}</span>
+        </div>
+      )}
     </div>
   );
 }

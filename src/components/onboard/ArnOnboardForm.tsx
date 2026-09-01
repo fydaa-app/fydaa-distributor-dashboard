@@ -413,7 +413,6 @@ export default function ArnOnboardForm({
   const [dob, setDob] = useState("");
   const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
   const [kycLocalError, setKycLocalError] = useState<string | null>(null);
-  const [kycModifyReason, setKycModifyReason] = useState<string | null>(null);
 
   const [fatherName, setFatherName] = useState("");
   const [gender, setGender] = useState("");
@@ -657,7 +656,6 @@ export default function ArnOnboardForm({
       if (result.isKycCompliant && result.action !== 'modify') {
         onKycVerified();
       } else if (result.action === 'modify') {
-        setKycModifyReason(result.reason);
         onKycModify();
       } else {
         const reason = result.reason ? ` — ${result.reason}` : "";

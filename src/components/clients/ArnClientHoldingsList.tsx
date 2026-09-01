@@ -42,7 +42,11 @@ export default function ArnClientHoldingsList({ holdings }: ArnClientHoldingsLis
           </div>
           <div className="text-right">
             <div className="text-sm font-bold text-[var(--arn-txt)]">{holding.value}</div>
-            <div className="text-xs text-[var(--arn-green)]">+{holding.xirr.toFixed(1)}% XIRR</div>
+            {holding.xirr >= 0 ? (
+              <div className="text-xs text-[var(--arn-green)]">+{holding.xirr.toFixed(1)}% XIRR</div>
+            ) : (
+              <div className="text-xs text-[var(--arn-red)]">{holding.xirr.toFixed(1)}% XIRR</div>
+            )}
           </div>
         </div>
       ))}

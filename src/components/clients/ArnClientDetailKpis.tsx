@@ -17,8 +17,6 @@ export default function ArnClientDetailKpis({ detail }: ArnClientDetailKpisProps
       <ArnKpiCard
         label="XIRR"
         value={`${detail.xirr.toFixed(1)}%`}
-        trendText="vs 12.4% benchmark"
-        trend={detail.xirr >= 12.4 ? "up" : "down"}
       />
       <ArnKpiCard
         label="Monthly SIP"
