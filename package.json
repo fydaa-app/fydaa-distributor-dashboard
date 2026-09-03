@@ -13,6 +13,7 @@
     "@tabler/icons-webfont": "^3.0.0",
     "apexcharts": "^4.3.0",
     "cookies-next": "^5.1.0",
+    "fix": "^0.0.6",
     "ifsc": "^2.0.50",
     "js-cookie": "^3.0.5",
     "next": "^15.2.3",

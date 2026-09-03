@@ -10,6 +10,7 @@ type AuthContextType = {
   isLoading: boolean;
   logout: () => void;
   isPartner: boolean;
+  isImpersonating: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       logout,
       isPartner: Boolean(user?.isPartner),
+      isImpersonating: Boolean(user?.isImpersonation),
     }),
     [user, isLoading]
   );
