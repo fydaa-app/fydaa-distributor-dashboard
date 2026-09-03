@@ -29,15 +29,15 @@ export default function DistributorShell({
   }
 
   return (
-    <ProtectedRoute>
-      <div className={`tone-${COLORS.currentBrand}`}>
+    <div className={`tone-${COLORS.currentBrand}`}>
+      <ProtectedRoute>
         <AppSidebar />
         <Backdrop />
         <div className="min-h-screen lg:ml-[220px]">
           <AppHeader />
           <main className="pt-[72px]">{children}</main>
         </div>
-      </div>
-    </ProtectedRoute>
+      </ProtectedRoute>
+    </div>
   );
 }

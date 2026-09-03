@@ -138,6 +138,7 @@ export interface RecommendedPortfolioResponse {
     CapType?: string;
     returns?: string;
     riskType?: string;
+    minInitialInvestment?: number;
   }>;
 }
 

@@ -135,6 +135,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       max: 10000000,
       step: 1000,
     });
+    const [sipAmountLimits, setSipAmountLimits] = useState<{ min: number; max: number; step: number } | null>(null);
     const [portfolioId, setPortfolioId] = useState<number | null>(null);
 
     const debouncedQuery = useDebounce(fundSearchQuery, 300);
@@ -235,9 +236,13 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
     useEffect(() => {
       if (investmentMode !== "lumpsum") return;
-      if (!recommendedPortfolio?.portfolio?.minimumInvestment) return;
 
-      const min = recommendedPortfolio.portfolio.minimumInvestment;
+      const schemeMin = recommendedPortfolio?.schemeAllocations?.[0]?.minInitialInvestment;
+      const portfolioMin = recommendedPortfolio?.portfolio?.minimumInvestment;
+      const min = schemeMin ?? portfolioMin;
+
+      if (!min) return;
+
       setLumpsumAmountLimits({
         min,
         max: 10000000,
@@ -368,13 +373,28 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         return;
       }
       if (frequency === "daily") {
-        setSipAmount(300);
+        setSipAmount((prev) => Math.max(sipAmountLimits?.min ?? 300, prev));
         setTenure(1);
       } else {
-        setSipAmount(1000);
+        setSipAmount((prev) => Math.max(sipAmountLimits?.min ?? 1000, prev));
         setTenure(5);
       }
-    }, [frequency, isGoalMode, preselectedFund, product.defAmt, product.defTenure]);
+    }, [frequency, isGoalMode, preselectedFund, product.defAmt, product.defTenure, sipAmountLimits]);
+
+    useEffect(() => {
+      if (fundMode === "own") {
+        setSipAmountLimits(null);
+        if (!preselectedFund) {
+          setLumpsumAmountLimits({
+            min: 0,
+            max: 10000000,
+            step: 1000,
+          });
+        }
+      } else {
+        setSipAmountLimits(null);
+      }
+    }, [fundMode, preselectedFund]);
 
     const handleFundSelect = useCallback(
       (fund: FundOption) => {
@@ -385,21 +405,27 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         setSelectedMfId(fund.selectedMfId ?? fund.id ?? null);
         setFundSearchQuery("");
 
-        if (investmentMode === "lumpsum" && fund.minInitialInvestment) {
-          const min = fund.minInitialInvestment;
+        if (fund.minInitialInvestment) {
           setLumpsumAmountLimits({
-            min,
+            min: fund.minInitialInvestment,
             max: 10000000,
-            step: min,
+            step: fund.minInitialInvestment,
           });
-          setSipAmount((prev) => (prev < min ? min : prev));
+        }
+        if (fund.minSipAmount) {
+          setSipAmountLimits({
+            min: fund.minSipAmount,
+            max: AMOUNT_LIMITS[frequency].max,
+            step: AMOUNT_LIMITS[frequency].step,
+          });
         }
       },
-      [investmentMode, setSelectedFund, setSelectedScheme, setSelectedMfId, setFundSearchQuery]
+      [frequency]
     );
 
     const amountLimits = isGoalMode && !preselectedFund ? AMOUNT_LIMITS.monthly : AMOUNT_LIMITS[frequency];
-    const activeAmountLimits = investmentMode === "lumpsum" ? lumpsumAmountLimits : amountLimits;
+    const activeSipLimits = sipAmountLimits ?? amountLimits;
+    const activeAmountLimits = investmentMode === "lumpsum" ? lumpsumAmountLimits : activeSipLimits;
 
     const tenureMin = isGoalMode && !preselectedFund
       ? Math.round(selectedGoal!.tenureMin / 12)
@@ -607,7 +633,9 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                        Math.min(500000, lumpsumAmountLimits.max),
                        lumpsumAmountLimits.max,
                      ].filter((v, i, a) => a.indexOf(v) === i)
-                   : AMOUNT_PICKS[isGoalMode && !preselectedFund ? "monthly" : frequency]
+                    : AMOUNT_PICKS[isGoalMode && !preselectedFund ? "monthly" : frequency].map(
+                        (pick) => Math.max(pick, sipAmountLimits?.min ?? 0)
+                      )
                  ).map((pick) => (
                   <button
                     key={pick}
