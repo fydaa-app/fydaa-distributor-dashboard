@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import ArnLoadingState from "@/components/common/ArnLoadingState";
@@ -10,6 +10,7 @@ export default function ImpersonatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const startedForToken = useRef<string | null>(null);
 
   useEffect(() => {
     const token = searchParams.get("token")?.trim();
@@ -19,26 +20,23 @@ export default function ImpersonatePage() {
       return;
     }
 
-    let cancelled = false;
+    if (startedForToken.current === token) {
+      return;
+    }
+    startedForToken.current = token;
 
     consumeImpersonationToken(token)
       .then(() => {
-        if (cancelled) return;
         window.dispatchEvent(new Event("auth-changed"));
         router.replace("/");
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
         setError(
           err instanceof Error
             ? err.message
             : "Could not open this partner dashboard."
         );
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [router, searchParams]);
 
   if (error) {
