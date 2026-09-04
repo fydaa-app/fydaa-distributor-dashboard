@@ -1,5 +1,6 @@
 export const AuthEndpoints = {
   LOGIN: "/arn/login",
+  IMPERSONATE_CONSUME: "/arn/impersonate/consume",
 } as const;
 
 export const ArnClientEndpoints = {

@@ -10,6 +10,7 @@ export interface Employee {
   euin?: string;
   referralCode?: string;
   isPartner?: boolean;
+  isImpersonation?: boolean;
 }
 
 export interface LoginResponse {
@@ -114,6 +115,10 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
     getBoolean(effectiveSource?.isPartner) ||
     getBoolean(getNestedRecord(source, "partner")?.isPartner) ||
     getBoolean(source?.isPartner);
+  const isImpersonation =
+    getBoolean(effectiveSource?.isImpersonation) ||
+    getBoolean(getNestedRecord(source, "partner")?.isImpersonation) ||
+    getBoolean(source?.isImpersonation);
 
   return {
     id,
@@ -121,6 +126,7 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
     email: employeeEmail,
     role,
     isPartner,
+    ...(isImpersonation ? { isImpersonation: true } : {}),
     ...(arnCode ? { arnCode } : {}),
     ...(euin ? { euin } : {}),
     ...(referralCode ? { referralCode } : {}),
@@ -170,7 +176,9 @@ function setAuthCookies(response: LoginResponse, rememberMe: boolean) {
   setCookie("employeeData", JSON.stringify(response.employee), cookieOptions);
 }
 
-function setUserDataCookie(payload: JsonObject, rememberMe: boolean) {
+function setUserDataCookie(payload: unknown, rememberMe: boolean) {
+  if (!isRecord(payload)) return;
+
   const cookieOptions = getCookieOptions(rememberMe);
   const userData =
     isRecord(payload.userData)
@@ -182,6 +190,31 @@ function setUserDataCookie(payload: JsonObject, rememberMe: boolean) {
   if (userData) {
     setCookie("userData", JSON.stringify(userData), cookieOptions);
   }
+}
+
+function applyArnSession(
+  payload: unknown,
+  emailFallback: string,
+  rememberMe: boolean
+): LoginResponse {
+  const loginPayload = getLoginPayload(payload);
+  const token =
+    getString(loginPayload?.token) ||
+    getString(loginPayload?.accessToken) ||
+    getString(payload && isRecord(payload) ? payload.token : undefined) ||
+    getString(payload && isRecord(payload) ? payload.accessToken : undefined);
+
+  if (!token) {
+    throw new Error("Login failed. API did not return an auth token.");
+  }
+
+  const employee = normalizeEmployee(getEmployeeSource(payload), emailFallback);
+  const normalizedResponse: LoginResponse = { token, employee };
+
+  setAuthCookies(normalizedResponse, rememberMe);
+  setUserDataCookie(payload, rememberMe);
+
+  return normalizedResponse;
 }
 
 export async function loginWithArnApi(
@@ -204,24 +237,26 @@ export async function loginWithArnApi(
     throw new Error(getApiErrorMessage(payload));
   }
 
-  const loginPayload = getLoginPayload(payload);
-  const token =
-    getString(loginPayload?.token) ||
-    getString(loginPayload?.accessToken) ||
-    getString(payload && isRecord(payload) ? payload.token : undefined) ||
-    getString(payload && isRecord(payload) ? payload.accessToken : undefined);
+  return applyArnSession(payload, email, rememberMe);
+}
 
-  if (!token) {
-    throw new Error("Login failed. API did not return an auth token.");
+export async function consumeImpersonationToken(token: string): Promise<LoginResponse> {
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005").trim();
+  const response = await fetch(`${apiUrl}${AuthEndpoints.IMPERSONATE_CONSUME}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(payload));
   }
 
-  const employee = normalizeEmployee(getEmployeeSource(payload), email);
-  const normalizedResponse: LoginResponse = { token, employee };
-
-  setAuthCookies(normalizedResponse, rememberMe);
-  setUserDataCookie(payload, rememberMe);
-
-  return normalizedResponse;
+  return applyArnSession(payload, "partner-admin", false);
 }
 
 export async function loginTemporarily(

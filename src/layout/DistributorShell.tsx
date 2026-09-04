@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
+import { useAuth } from "@/context/AuthContext";
 import { COLORS } from "@/theme/colors";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
@@ -12,6 +14,7 @@ const publicPaths = [
   "/forgotpassword",
   "/signup",
   "/reset-password",
+  "/impersonate",
 ];
 
 export default function DistributorShell({
@@ -20,6 +23,7 @@ export default function DistributorShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { isImpersonating } = useAuth();
   const isPublicPath = publicPaths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
@@ -29,15 +33,18 @@ export default function DistributorShell({
   }
 
   return (
-    <ProtectedRoute>
-      <div className={`tone-${COLORS.currentBrand}`}>
+    <div className={`tone-${COLORS.currentBrand}`}>
+      <ProtectedRoute>
         <AppSidebar />
         <Backdrop />
         <div className="min-h-screen lg:ml-[220px]">
           <AppHeader />
-          <main className="pt-[72px]">{children}</main>
+          <ImpersonationBanner />
+          <main className={isImpersonating ? "pt-[112px]" : "pt-[72px]"}>
+            {children}
+          </main>
         </div>
-      </div>
-    </ProtectedRoute>
+      </ProtectedRoute>
+    </div>
   );
 }
