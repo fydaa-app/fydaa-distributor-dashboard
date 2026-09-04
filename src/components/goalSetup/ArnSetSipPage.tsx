@@ -136,6 +136,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       step: 1000,
     });
     const [sipAmountLimits, setSipAmountLimits] = useState<{ min: number; max: number; step: number } | null>(null);
+    const [userSelectedFund, setUserSelectedFund] = useState(false);
     const [portfolioId, setPortfolioId] = useState<number | null>(null);
 
     const debouncedQuery = useDebounce(fundSearchQuery, 300);
@@ -236,6 +237,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
     useEffect(() => {
       if (investmentMode !== "lumpsum") return;
+      if (userSelectedFund) return;
 
       const schemeMin = recommendedPortfolio?.schemeAllocations?.[0]?.minInitialInvestment;
       const portfolioMin = recommendedPortfolio?.portfolio?.minimumInvestment;
@@ -249,7 +251,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         step: min || 1000,
       });
       setSipAmount((prev) => (prev < min ? min : prev));
-    }, [recommendedPortfolio, investmentMode]);
+    }, [recommendedPortfolio, investmentMode, userSelectedFund]);
 
     useEffect(() => {
       if (fundMode !== "own" || isGoalMode) {
@@ -393,6 +395,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         }
       } else {
         setSipAmountLimits(null);
+        setUserSelectedFund(false);
       }
     }, [fundMode, preselectedFund]);
 
@@ -404,6 +407,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         setSelectedScheme(fund.ticker || fund.scheme || fund.isin || fund.schemeCode || null);
         setSelectedMfId(fund.selectedMfId ?? fund.id ?? null);
         setFundSearchQuery("");
+        setUserSelectedFund(true);
 
         if (fund.minInitialInvestment) {
           setLumpsumAmountLimits({
@@ -562,7 +566,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                       : (isGoalMode && !preselectedFund ? "per month" : frequency === "daily" ? "per day" : "per month")}
                   </div>
                   <div className="mt-0.5 text-[10px] font-semibold text-[var(--arn-txt-3)]">
-                    Min ₹{lumpsumAmountLimits.min.toLocaleString("en-IN")} — Max ₹{lumpsumAmountLimits.max.toLocaleString("en-IN")}
+                    Min ₹{activeAmountLimits.min.toLocaleString("en-IN")} — Max ₹{activeAmountLimits.max.toLocaleString("en-IN")}
                   </div>
                 </div>
 
