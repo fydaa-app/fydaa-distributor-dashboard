@@ -46,6 +46,9 @@ interface ArnOnboardFormProps {
   userStage?: UserStage | null;
   onKycVerified: () => void;
   onKycModify: () => void;
+  onCheckModifyKycStatus?: () => void;
+  isCheckingModifyKyc?: boolean;
+  modifyKycStatusMessage?: string | null;
   onGoToIdentity: () => void;
   onGoToKycCompliant: () => void;
   onGoToEmail: () => void;
@@ -170,6 +173,9 @@ export default function ArnOnboardForm({
   userStage,
   onKycVerified,
   onKycModify,
+  onCheckModifyKycStatus,
+  isCheckingModifyKyc = false,
+  modifyKycStatusMessage = null,
   onGoToIdentity,
   onGoToKycCompliant,
   onGoToEmail,
@@ -1421,6 +1427,22 @@ export default function ArnOnboardForm({
           <p className="step-helper" style={{ textAlign: "center" }}>
              KYC record needs to be updated. Please complete the Modify KYC process on the Fydaa mobile app.
           </p>
+          {modifyKycStatusMessage && (
+            <p className="field-error" style={{ textAlign: "center", marginTop: 12 }}>
+              {modifyKycStatusMessage}
+            </p>
+          )}
+          {onCheckModifyKycStatus && (
+            <button
+              type="button"
+              className="btn-primary btn-wide"
+              style={{ marginTop: 20 }}
+              onClick={onCheckModifyKycStatus}
+              disabled={isCheckingModifyKyc}
+            >
+              {isCheckingModifyKyc ? "Checking…" : "Check status"}
+            </button>
+          )}
         </div>
       )}
 

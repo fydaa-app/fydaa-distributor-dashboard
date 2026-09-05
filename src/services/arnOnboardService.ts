@@ -308,10 +308,17 @@ export async function createUserRiskProfile(
 export interface UserStage {
   isRiskProfileComplete: boolean;
   isKycCompliant?: boolean;
+  isKycNonCompliant?: boolean;
+  isKycExpired?: boolean;
   isEmail?: boolean;
   isBank?: boolean;
   isNominee?: boolean;
   kycExtraData?: boolean;
+  ismodify?: boolean;
+  ismodifydigilocker?: boolean;
+  ismodifyquestions?: boolean;
+  ismodifyesign?: boolean;
+  ismodifynsdl?: boolean;
   [key: string]: unknown;
 }
 
@@ -340,6 +347,56 @@ export async function getUserStage(token?: string): Promise<UserStage> {
   }
 
   return (isRecord(data) ? data : {}) as UserStage;
+}
+
+export interface CheckKycResult {
+  status: boolean;
+  action: string | null;
+  reason: string | null;
+  message: string | null;
+}
+
+/** Invest / resume gate: `action: "modify"` means not compliant even if status is true. */
+export async function checkKyc(token?: string): Promise<CheckKycResult> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/kyc/check-kyc`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({}),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+  const nested = isRecord(payload.data) ? payload.data : null;
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to check KYC status. Please try again.";
+    throw new Error(message);
+  }
+
+  const actionRaw = nested?.action ?? payload.action;
+  const reasonRaw = nested?.reason ?? payload.reason;
+  const messageRaw = nested?.message ?? payload.message;
+  const statusRaw = nested?.status ?? payload.status;
+
+  return {
+    status: statusRaw === true || statusRaw === "true",
+    action: typeof actionRaw === "string" ? actionRaw : null,
+    reason: typeof reasonRaw === "string" ? reasonRaw : null,
+    message: typeof messageRaw === "string" ? messageRaw : null,
+  };
 }
 
 export async function selectInvestmentModel(

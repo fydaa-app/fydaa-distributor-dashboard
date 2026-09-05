@@ -18,6 +18,7 @@ import type { GoalSetupClient } from "@/services/arnGoalSetupService";
 import type { GoalResponse, FundOption } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 import { getUserStage } from "@/services/arnReviewApi";
+import { isKycReadyToProceed } from "@/utils/kycStage";
 
 const STEP_NAMES_SIP: Record<number, string> = {
   1: "Select a client",
@@ -257,7 +258,7 @@ export default function ArnGoalSetupPage() {
         if (
           stage.isRiskProfileComplete &&
           stage.isEmail &&
-          stage.isKycCompliant &&
+          isKycReadyToProceed(stage) &&
           stage.isBank &&
           stage.isNominee &&
           !!stage.kycExtraData
