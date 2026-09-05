@@ -146,6 +146,8 @@ export default function ArnGoalSetupPage() {
     investmentMode: "sip",
     expectedCagr: 0.12,
     portfolioId: null,
+    schemeAllocations: null,
+    userSelectedFund: false,
   });
   const [dateConfig, setDateConfig] = useState<ReturnType<ArnSetSipDatePageRef["getDateConfig"]>>({
     sipDate: 10,

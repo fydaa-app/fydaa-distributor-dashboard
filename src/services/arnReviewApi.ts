@@ -213,10 +213,16 @@ function getPayApiUrl(): string {
   return process.env.NEXT_PUBLIC_PAYMENT_API_URL || "";
 }
 
+function getMandatePostbackUrl(): string {
+  return process.env.NEXT_PUBLIC_MANDATE_POSTBACK_URL || "https://fydaa.com/mandate-callback";
+}
+
 export interface SetupMandateResponse {
   mandateId: number;
-  authorizationUrl: string;
-  paymentId: number;
+  authorizationUrl: string | null;
+  paymentId: number | null;
+  alreadyAuthorized?: boolean;
+  sipId?: number | null;
   message: string;
 }
 
@@ -262,6 +268,7 @@ export async function setupMandateForUser(
   userId: number,
   mandateType: string,
   mandateLimit: number,
+  sipId?: number,
   postbackUrl?: string
 ): Promise<SetupMandateResponse> {
   const url = `${getPayApiUrl()}/subscription/createAndAuthorizeMandate-for-user`;
@@ -271,7 +278,8 @@ export async function setupMandateForUser(
       userId,
       mandate_type: mandateType,
       mandate_limit: mandateLimit,
-      paymentPostbackUrl: postbackUrl,
+      paymentPostbackUrl: postbackUrl ?? getMandatePostbackUrl(),
+      ...(sipId != null && { sipId }),
     }),
   });
 }
@@ -279,6 +287,18 @@ export async function setupMandateForUser(
 export async function getMandateForUser(mandateId: number, userId: number): Promise<Record<string, unknown>> {
   const url = `${getPayApiUrl()}/subscription/mandate/for-user/${mandateId}?userId=${userId}`;
   return fetchJson(url, { method: "GET" });
+}
+
+export interface SipMandateResponse {
+  sipId: number;
+  hasMandate: boolean;
+  isApproved: boolean;
+  mandate: Record<string, unknown> | null;
+}
+
+export async function getMandateForSip(sipId: number, userId: number): Promise<SipMandateResponse> {
+  const url = `${getPayApiUrl()}/subscription/mandate/sip-for-user/${sipId}?userId=${userId}`;
+  return fetchJson<SipMandateResponse>(url, { method: "GET" });
 }
 
 export async function updateMfiaForUser(userId: number): Promise<UpdateMfiaResponse> {
