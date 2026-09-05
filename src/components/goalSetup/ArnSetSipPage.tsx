@@ -19,6 +19,8 @@ export interface ArnSetSipPageRef {
     investmentMode: "sip" | "lumpsum";
     expectedCagr: number;
     portfolioId: number | null;
+    schemeAllocations: RecommendedPortfolioResponse["schemeAllocations"] | null;
+    userSelectedFund: boolean;
   };
   hasTenureError: boolean;
 }
@@ -208,16 +210,16 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
             if (data?.portfolio?.id) {
               setPortfolioId(data.portfolio.id);
             }
-            if (data?.schemeAllocations?.[0]?.stockName) {
-              const primary = data.schemeAllocations[0];
-              const stockName = primary.stockName || "";
-              setSelectedFund(
-                stockName || product.defFund
-              );
-              if (primary.mutualFundId) {
-                setSelectedMfId(primary.mutualFundId);
+              if (data?.schemeAllocations?.[0]?.stockName) {
+                const primary = data.schemeAllocations[0];
+                const stockName = primary.stockName || "";
+                setSelectedFund(
+                  stockName || product.defFund
+                );
+                if (!isGoalMode && primary.mutualFundId) {
+                  setSelectedMfId(primary.mutualFundId);
+                }
               }
-            }
           }
         })
         .catch((err) => {
@@ -350,6 +352,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         investmentMode,
         expectedCagr,
         portfolioId,
+        schemeAllocations: recommendedPortfolio?.schemeAllocations ?? null,
+        userSelectedFund,
       }),
       hasTenureError: !!tenureError,
     }));
@@ -365,8 +369,10 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         investmentMode,
         expectedCagr,
         portfolioId,
+        schemeAllocations: recommendedPortfolio?.schemeAllocations ?? null,
+        userSelectedFund,
       });
-    }, [sipAmount, frequency, tenure, fundDisplayName, selectedScheme, selectedMfId, investmentMode, expectedCagr, portfolioId, onConfigChange, isGoalMode, preselectedFund]);
+    }, [sipAmount, frequency, tenure, fundDisplayName, selectedScheme, selectedMfId, investmentMode, expectedCagr, portfolioId, onConfigChange, isGoalMode, preselectedFund, recommendedPortfolio, userSelectedFund]);
 
     useEffect(() => {
       if (isGoalMode && !preselectedFund) {
