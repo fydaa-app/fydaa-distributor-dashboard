@@ -57,8 +57,9 @@ function resolvePhaseFromStage(stage: UserStage): Phase | null {
 }
 
 /**
- * When risk+email are done, block on incomplete modify (stage flags) or check-kyc action=modify
- * (covers the window before POST /kyc/kyc-forms/modify sets ismodify).
+ * When risk+email are done, block on incomplete modify (stage flags) or check-kyc action=modify.
+ * If check-kyc still says modify but ismodify is not set yet, create the form so the mobile
+ * app can enter Modify KYC (PAN alone must not look "complete").
  */
 async function resolvePhaseWithKycGate(
   stage: UserStage,
@@ -69,14 +70,25 @@ async function resolvePhaseWithKycGate(
       return "modifyKyc";
     }
 
-    try {
-      const { checkKyc } = await import("@/services/arnOnboardService");
-      const check = await checkKyc(token);
-      if (checkKycRequiresModify(check)) {
-        return "modifyKyc";
+    if (!isModifyKycComplete(stage)) {
+      try {
+        const { checkKyc, createModifyKycForm, loadModifyKycDetails, getUserStage } =
+          await import("@/services/arnOnboardService");
+        const check = await checkKyc(token);
+        if (checkKycRequiresModify(check)) {
+          if (stage.ismodify !== true) {
+            const details = loadModifyKycDetails();
+            if (details) {
+              await createModifyKycForm(details, token);
+              const refreshed = await getUserStage(token);
+              Object.assign(stage, refreshed);
+            }
+          }
+          return "modifyKyc";
+        }
+      } catch {
+        // If check-kyc / create fails, fall through to stage-only routing
       }
-    } catch {
-      // If check-kyc fails, fall through to stage-only routing
     }
   }
 
@@ -297,32 +309,51 @@ export default function ArnOnboardPage() {
     setIsCheckingModifyKyc(true);
     setModifyKycStatusMessage(null);
     try {
-      const { getUserStage, checkKyc } = await import(
-        "@/services/arnOnboardService"
-      );
-      const stage = await getUserStage(onboardedToken);
+      const { getUserStage, checkKyc, createModifyKycForm, loadModifyKycDetails } =
+        await import("@/services/arnOnboardService");
+      let stage = await getUserStage(onboardedToken);
       setSkipStage(stage);
 
-      // Incomplete in-app modify: stay until ismodifynsdl
+      // If modify was required but form was never created (PAN updated, ismodify still false),
+      // create it now so the mobile app can resume Modify KYC.
+      if (
+        !needsKycModify(stage) &&
+        !isModifyKycComplete(stage) &&
+        stage.ismodify !== true
+      ) {
+        const details = loadModifyKycDetails();
+        const check = await checkKyc(onboardedToken);
+        if (checkKycRequiresModify(check) && details) {
+          await createModifyKycForm(details, onboardedToken);
+          stage = await getUserStage(onboardedToken);
+          setSkipStage(stage);
+        } else if (checkKycRequiresModify(check)) {
+          setModifyKycStatusMessage(
+            check.message ||
+              "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+          );
+          return;
+        }
+      }
+
+      // Incomplete in-app modify: stay until ismodifynsdl (do not trust isKycCompliant)
       if (needsKycModify(stage)) {
         setModifyKycStatusMessage(
-          "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+          "KYC update is still required. Please complete DigiLocker, questions, and e-sign in the Fydaa mobile app, then check again."
         );
         return;
       }
 
-      const check = await checkKyc(onboardedToken);
-      // action=modify blocks even if status/isKycCompliant look ready (pre-form or on-hold)
-      if (checkKycRequiresModify(check)) {
-        setModifyKycStatusMessage(
-          check.message ||
-            "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
-        );
-        return;
-      }
-
-      // Only leave this screen when modify is fully done, or KYC is truly ready
-      if (!isModifyKycComplete(stage) && !isKycReadyToProceed(stage)) {
+      // Leave this screen only when Modify KYC is fully submitted (ismodifynsdl)
+      if (!isModifyKycComplete(stage)) {
+        const check = await checkKyc(onboardedToken);
+        if (checkKycRequiresModify(check)) {
+          setModifyKycStatusMessage(
+            check.message ||
+              "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+          );
+          return;
+        }
         setModifyKycStatusMessage(
           "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
         );
@@ -332,7 +363,7 @@ export default function ArnOnboardPage() {
       const nextPhase = resolvePhaseFromStage(stage);
       if (!nextPhase || nextPhase === "modifyKyc" || nextPhase === "kyc") {
         setModifyKycStatusMessage(
-          "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+          "Modify KYC is complete, but onboarding could not continue. Please try again."
         );
         return;
       }

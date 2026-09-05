@@ -545,20 +545,150 @@ export async function fetchKycData(
     throw new Error(message);
   }
 
+  const nested = isRecord(payload.data) ? payload.data : null;
+  const action =
+    typeof payload.action === "string"
+      ? payload.action
+      : typeof nested?.action === "string"
+        ? nested.action
+        : null;
+  const reason =
+    typeof payload.reason === "string"
+      ? payload.reason
+      : typeof nested?.reason === "string"
+        ? nested.reason
+        : null;
+  const message =
+    typeof payload.message === "string"
+      ? payload.message
+      : typeof nested?.message === "string"
+        ? nested.message
+        : "";
+
   return {
-    status: payload.status === true,
-    message:
-      typeof payload.message === "string" ? payload.message : "",
-    data: isRecord(payload.data) ? payload.data : null,
-    isKycCompliant: payload.isKycCompliant === true,
-    reason: typeof payload.reason === "string" ? payload.reason : null,
-    action: typeof payload.action === "string" ? payload.action : null,
+    status: payload.status === true || payload.status === "true",
+    message,
+    data: nested,
+    // action=modify is never treated as compliant (even if status/isKycCompliant is true)
+    isKycCompliant:
+      action === "modify"
+        ? false
+        : payload.isKycCompliant === true ||
+          payload.status === true ||
+          payload.status === "true",
+    reason,
+    action,
     issues: asIssueArray(payload.issues),
     recommendations: asStringArray(payload.recommendations),
     verificationStatus: isRecord(payload.verificationStatus)
       ? payload.verificationStatus
       : null,
   };
+}
+
+export interface CreateModifyKycFormParams {
+  pan: string;
+  name: string;
+  date_of_birth: string;
+}
+
+export interface CreateModifyKycFormResult {
+  id: string | null;
+  status: string | null;
+  resumed: boolean;
+  raw: Record<string, unknown>;
+}
+
+const MODIFY_PROOF_CALLBACK =
+  "https://fydaa.com/kyc-modify?proof=callback";
+const MODIFY_ESIGN_CALLBACK =
+  "https://fydaa.com/kyc-modify?esign=callback";
+
+/**
+ * Creates the Cybrilla modify KYC form so `ismodify` becomes true on getUserStage.
+ * Required after fetch-kyc-data returns action=modify — otherwise PAN/stage can look
+ * "complete" and the mobile app will not enter Modify KYC.
+ */
+export async function createModifyKycForm(
+  params: CreateModifyKycFormParams,
+  token?: string
+): Promise<CreateModifyKycFormResult> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/kyc/kyc-forms/modify`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      pan: params.pan,
+      name: params.name,
+      date_of_birth: params.date_of_birth,
+      proof_details_callback_url: MODIFY_PROOF_CALLBACK,
+      esign_callback_url: MODIFY_ESIGN_CALLBACK,
+    }),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+  const message =
+    typeof payload.message === "string" ? payload.message.toLowerCase() : "";
+  const alreadyExists =
+    message.includes("ongoing") || message.includes("already exists");
+
+  if (!response.ok && !alreadyExists) {
+    throw new Error(
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to start Modify KYC. Please try again."
+    );
+  }
+
+  const idRaw = payload.id;
+  const statusRaw = payload.status;
+
+  return {
+    id: typeof idRaw === "string" ? idRaw : idRaw != null ? String(idRaw) : null,
+    status: typeof statusRaw === "string" ? statusRaw : null,
+    resumed: alreadyExists,
+    raw: payload,
+  };
+}
+
+export const MODIFY_KYC_DETAILS_KEY = "arn_modify_kyc_details";
+
+export function saveModifyKycDetails(details: CreateModifyKycFormParams): void {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.setItem(MODIFY_KYC_DETAILS_KEY, JSON.stringify(details));
+}
+
+export function loadModifyKycDetails(): CreateModifyKycFormParams | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(MODIFY_KYC_DETAILS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CreateModifyKycFormParams>;
+    if (
+      typeof parsed.pan === "string" &&
+      typeof parsed.name === "string" &&
+      typeof parsed.date_of_birth === "string"
+    ) {
+      return {
+        pan: parsed.pan,
+        name: parsed.name,
+        date_of_birth: parsed.date_of_birth,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 export interface KycExtraParams {

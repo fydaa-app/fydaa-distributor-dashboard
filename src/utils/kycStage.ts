@@ -28,15 +28,19 @@ export function isModifyKycComplete(stage: KycStageFlags): boolean {
 /**
  * True when onboard may proceed past the KYC verification gate.
  * - Incomplete modify (`ismodify` without `ismodifynsdl`) → block
- * - Modify complete → allow (even if `isKycCompliant` lags)
+ * - Modify complete (`ismodify` + `ismodifynsdl`) → allow
  * - Otherwise require `isKycCompliant` and not expired
  *
+ * Never treat bare `isKycCompliant` as enough while a modify form is open.
  * Also call `POST /kyc/check-kyc`: `action: "modify"` blocks even when stage looks ready.
  */
 export function isKycReadyToProceed(stage: KycStageFlags): boolean {
   if (stage.isKycExpired === true) return false;
   if (needsKycModify(stage)) return false;
-  if (isModifyKycComplete(stage)) return true;
+  // Open modify form that is not finished must never look "compliant"
+  if (stage.ismodify === true) {
+    return stage.ismodifynsdl === true;
+  }
   return stage.isKycCompliant === true;
 }
 

@@ -6,6 +6,8 @@ import {
   requestArnOtp,
   verifyArnOtp,
   fetchKycData,
+  createModifyKycForm,
+  saveModifyKycDetails,
   submitKycExtra,
   requestLinkEmail,
   verifyLinkEmail,
@@ -648,21 +650,49 @@ export default function ArnOnboardForm({
     setKycLocalError(null);
 
     try {
+      const panValue = pan.trim().toUpperCase();
+      const nameValue = fullName.trim();
+      const dobValue = dob;
+
       const result = await fetchKycData({
-        pan: pan.trim().toUpperCase(),
-        date_of_birth: dob,
-        name: fullName.trim(),
+        pan: panValue,
+        date_of_birth: dobValue,
+        name: nameValue,
       });
 
       mergeOnboardedUserData({
-        name: fullName.trim(),
-        fullName: fullName.trim(),
+        name: nameValue,
+        fullName: nameValue,
       });
 
-      if (result.isKycCompliant && result.action !== 'modify') {
-        onKycVerified();
-      } else if (result.action === 'modify') {
+      if (result.action === "modify") {
+        // CAMS KRA external modify — not in-app DigiLocker flow
+        if (result.reason === "legacy") {
+          setKycLocalError(
+            result.message ||
+              "Please update KYC on the KRA portal (CAMS), then return here."
+          );
+          return;
+        }
+
+        // Must create the modify form so ismodify=true; otherwise PAN/stage
+        // can look complete and the mobile app will skip Modify KYC.
+        saveModifyKycDetails({
+          pan: panValue,
+          name: nameValue,
+          date_of_birth: dobValue,
+        });
+        await createModifyKycForm({
+          pan: panValue,
+          name: nameValue,
+          date_of_birth: dobValue,
+        });
         onKycModify();
+        return;
+      }
+
+      if (result.isKycCompliant) {
+        onKycVerified();
       } else {
         const reason = result.reason ? ` — ${result.reason}` : "";
         setKycLocalError(`${result.message}${reason}`.trim());
@@ -1425,7 +1455,9 @@ export default function ArnOnboardForm({
             KYC Update Required
           </h2>
           <p className="step-helper" style={{ textAlign: "center" }}>
-             KYC record needs to be updated. Please complete the Modify KYC process on the Fydaa mobile app.
+            KYC record needs to be updated. Open the Fydaa mobile app and complete DigiLocker,
+            questions, and e-sign. Do not skip this step — onboarding cannot continue until
+            Modify KYC is finished.
           </p>
           {modifyKycStatusMessage && (
             <p className="field-error" style={{ textAlign: "center", marginTop: 12 }}>
