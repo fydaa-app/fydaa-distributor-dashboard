@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnIncompleteOnboardingModal from "@/components/goalSetup/ArnIncompleteOnboardingModal";
 import { getUserStage } from "@/services/arnReviewApi";
+import { isKycReadyToProceed } from "@/utils/kycStage";
 import type { ArnClient } from "@/types/arnClient";
 
 interface ArnClientDetailHeaderProps {
@@ -50,7 +51,7 @@ export default function ArnClientDetailHeader({
       if (
         stage.isRiskProfileComplete &&
         stage.isEmail &&
-        stage.isKycCompliant &&
+        isKycReadyToProceed(stage) &&
         stage.isBank &&
         stage.isNominee &&
         !!stage.kycExtraData

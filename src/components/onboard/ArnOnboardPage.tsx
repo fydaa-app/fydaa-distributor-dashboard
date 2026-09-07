@@ -5,8 +5,95 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
 import type { RiskProfileQuestion, UserStage } from "@/services/arnOnboardService";
+import {
+  checkKycRequiresModify,
+  isKycReadyToProceed,
+  isModifyKycComplete,
+  needsKycModify,
+} from "@/utils/kycStage";
 
 type Phase = "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome" | "modifyKyc";
+
+/**
+ * Resume onboard phase from getUserStage.
+ * Call only after confirming check-kyc is not still action=modify (when risk+email done).
+ */
+function resolvePhaseFromStage(stage: UserStage): Phase | null {
+  if (stage.isRiskProfileComplete && stage.isEmail && needsKycModify(stage)) {
+    return "modifyKyc";
+  }
+  if (
+    stage.isRiskProfileComplete &&
+    stage.isEmail &&
+    isKycReadyToProceed(stage) &&
+    stage.isBank &&
+    stage.isNominee
+  ) {
+    return "welcome";
+  }
+  if (
+    stage.isRiskProfileComplete &&
+    stage.isEmail &&
+    isKycReadyToProceed(stage) &&
+    stage.isBank
+  ) {
+    return "nominee";
+  }
+  if (
+    stage.isRiskProfileComplete &&
+    stage.isEmail &&
+    isKycReadyToProceed(stage) &&
+    !!stage.kycExtraData
+  ) {
+    return "bank";
+  }
+  if (stage.isRiskProfileComplete && stage.isEmail && isKycReadyToProceed(stage)) {
+    return "kycCompliant";
+  }
+  if (stage.isRiskProfileComplete && stage.isEmail) {
+    return "kyc";
+  }
+  return null;
+}
+
+/**
+ * When risk+email are done, block on incomplete modify (stage flags) or check-kyc action=modify.
+ * If check-kyc still says modify but ismodify is not set yet, create the form so the mobile
+ * app can enter Modify KYC (PAN alone must not look "complete").
+ */
+async function resolvePhaseWithKycGate(
+  stage: UserStage,
+  token: string
+): Promise<Phase | null> {
+  if (stage.isRiskProfileComplete && stage.isEmail) {
+    if (needsKycModify(stage)) {
+      return "modifyKyc";
+    }
+
+    if (!isModifyKycComplete(stage)) {
+      try {
+        const { checkKyc, createModifyKycForm, loadModifyKycDetails, getUserStage } =
+          await import("@/services/arnOnboardService");
+        const check = await checkKyc(token);
+        if (checkKycRequiresModify(check)) {
+          if (stage.ismodify !== true) {
+            const details = loadModifyKycDetails();
+            if (details) {
+              await createModifyKycForm(details, token);
+              const refreshed = await getUserStage(token);
+              Object.assign(stage, refreshed);
+            }
+          }
+          return "modifyKyc";
+        }
+      } catch {
+        // If check-kyc / create fails, fall through to stage-only routing
+      }
+    }
+  }
+
+  return resolvePhaseFromStage(stage);
+}
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -111,6 +198,8 @@ export default function ArnOnboardPage() {
   const [isLoadingScore, setIsLoadingScore] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
   const [kycError, setKycError] = useState<string | null>(null);
+  const [isCheckingModifyKyc, setIsCheckingModifyKyc] = useState(false);
+  const [modifyKycStatusMessage, setModifyKycStatusMessage] = useState<string | null>(null);
 
   const router = useRouter();
   const [skipStage, setSkipStage] = useState<UserStage | null>(null);
@@ -175,7 +264,10 @@ export default function ArnOnboardPage() {
 
   const goToIdentity = () => setPhase("identity");
   const goToKycCompliant = () => setPhase("kycCompliant");
-  const goToModifyKyc = () => setPhase("modifyKyc");
+  const goToModifyKyc = () => {
+    setModifyKycStatusMessage(null);
+    setPhase("modifyKyc");
+  };
 
   const goToEmail = () => setPhase("email");
   const goToEmailOtp = () => setPhase("emailOtp");
@@ -202,10 +294,97 @@ export default function ArnOnboardPage() {
     }
   };
 
+  const applyStageResume = async (
+    stage: UserStage,
+    token: string
+  ): Promise<boolean> => {
+    const nextPhase = await resolvePhaseWithKycGate(stage, token);
+    if (!nextPhase) return false;
+    setSkipStage(stage);
+    setPhase(nextPhase);
+    return true;
+  };
+
+  const handleCheckModifyKycStatus = async () => {
+    setIsCheckingModifyKyc(true);
+    setModifyKycStatusMessage(null);
+    try {
+      const { getUserStage, checkKyc, createModifyKycForm, loadModifyKycDetails } =
+        await import("@/services/arnOnboardService");
+      let stage = await getUserStage(onboardedToken);
+      setSkipStage(stage);
+
+      // If modify was required but form was never created (PAN updated, ismodify still false),
+      // create it now so the mobile app can resume Modify KYC.
+      if (
+        !needsKycModify(stage) &&
+        !isModifyKycComplete(stage) &&
+        stage.ismodify !== true
+      ) {
+        const details = loadModifyKycDetails();
+        const check = await checkKyc(onboardedToken);
+        if (checkKycRequiresModify(check) && details) {
+          await createModifyKycForm(details, onboardedToken);
+          stage = await getUserStage(onboardedToken);
+          setSkipStage(stage);
+        } else if (checkKycRequiresModify(check)) {
+          setModifyKycStatusMessage(
+            check.message ||
+              "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+          );
+          return;
+        }
+      }
+
+      // Incomplete in-app modify: stay until ismodifynsdl (do not trust isKycCompliant)
+      if (needsKycModify(stage)) {
+        setModifyKycStatusMessage(
+          "KYC update is still required. Please complete DigiLocker, questions, and e-sign in the Fydaa mobile app, then check again."
+        );
+        return;
+      }
+
+      // Leave this screen only when Modify KYC is fully submitted (ismodifynsdl)
+      if (!isModifyKycComplete(stage)) {
+        const check = await checkKyc(onboardedToken);
+        if (checkKycRequiresModify(check)) {
+          setModifyKycStatusMessage(
+            check.message ||
+              "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+          );
+          return;
+        }
+        setModifyKycStatusMessage(
+          "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+        );
+        return;
+      }
+
+      const nextPhase = resolvePhaseFromStage(stage);
+      if (!nextPhase || nextPhase === "modifyKyc" || nextPhase === "kyc") {
+        setModifyKycStatusMessage(
+          "Modify KYC is complete, but onboarding could not continue. Please try again."
+        );
+        return;
+      }
+
+      setPhase(nextPhase);
+    } catch (err) {
+      setModifyKycStatusMessage(
+        err instanceof Error
+          ? err.message
+          : "Failed to check KYC status. Please try again."
+      );
+    } finally {
+      setIsCheckingModifyKyc(false);
+    }
+  };
+
   const handleOtpVerified = (token: string) => {
     setOnboardedToken(token);
     setRiskError(null);
     setScoreError(null);
+    setModifyKycStatusMessage(null);
     setIsLoadingRisk(true);
     setPhase("risk");
 
@@ -227,37 +406,8 @@ export default function ArnOnboardPage() {
           })
           .catch(() => getUserStage(effectiveToken));
       })
-      .then((stage) => {
-        if (
-          stage.isRiskProfileComplete &&
-          stage.isEmail &&
-          stage.isKycCompliant &&
-          stage.isBank &&
-          stage.isNominee
-        ) {
-          setSkipStage(stage);
-          setPhase("welcome");
-          return;
-        }
-        if (
-          stage.isRiskProfileComplete &&
-          stage.isEmail &&
-          stage.isKycCompliant &&
-          stage.isBank
-        ) {
-          setPhase("nominee");
-          return;
-        }
-        if (stage.isRiskProfileComplete && stage.isEmail && stage.isKycCompliant && !!stage.kycExtraData) {
-          setPhase("bank");
-          return;
-        }
-        if (stage.isRiskProfileComplete && stage.isEmail && stage.isKycCompliant) {
-          setPhase("kycCompliant");
-          return;
-        }
-        if (stage.isRiskProfileComplete && stage.isEmail) {
-          setPhase("kyc");
+      .then(async (stage) => {
+        if (await applyStageResume(stage, effectiveToken)) {
           return;
         }
         if (stage.isRiskProfileComplete) {
@@ -330,6 +480,9 @@ export default function ArnOnboardPage() {
           onReset={goToDashboard}
           onKycVerified={() => setPhase("kycCompliant")}
           onKycModify={goToModifyKyc}
+          onCheckModifyKycStatus={handleCheckModifyKycStatus}
+          isCheckingModifyKyc={isCheckingModifyKyc}
+          modifyKycStatusMessage={modifyKycStatusMessage}
           onGoToIdentity={goToIdentity}
           onGoToKycCompliant={goToKycCompliant}
           onGoToEmail={goToEmail}
