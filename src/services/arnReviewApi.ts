@@ -202,7 +202,7 @@ export interface CompleteMandateRequest {
   user_ip: string;
   sipId: number;
   orders: Array<{
-    isin: string;
+    scheme: string;
     quantity: string;
     price: string;
     orderValue: string;
@@ -302,7 +302,7 @@ export async function getMandateForSip(sipId: number, userId: number): Promise<S
 }
 
 export async function updateMfiaForUser(userId: number): Promise<UpdateMfiaResponse> {
-  const url = `${getPayApiUrl()}/subscription/update-mfia-for-user`;
+  const url = `${getPayApiUrl()}/subscription/update-mfia-for-user?_t=${Date.now()}`;
   return fetchJson<UpdateMfiaResponse>(url, {
     method: "PATCH",
     body: JSON.stringify({ userId }),
@@ -339,9 +339,12 @@ export async function createSipSetupForUser(
 export async function getBuyOrderMfForUser(
   userId: number,
   sipId: number,
-  minimumAmount: number
+  minimumAmount: number,
+  portfolioId?: number
 ): Promise<BuyOrderMfResponse> {
-  const url = `${getStockApiUrl()}/stock/buyOrderMf-for-user?sipId=${sipId}&minimumAmount=${minimumAmount}&userId=${userId}`;
+  const qs = new URLSearchParams({ sipId: String(sipId), minimumAmount: String(minimumAmount), userId: String(userId) });
+  if (portfolioId) qs.set("portfolioId", String(portfolioId));
+  const url = `${getStockApiUrl()}/stock/buyOrderMf-for-user?${qs.toString()}`;
   return fetchJson<BuyOrderMfResponse>(url, { method: "GET" });
 }
 

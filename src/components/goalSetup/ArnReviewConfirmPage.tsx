@@ -624,13 +624,13 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           }
 
           // Step D: First debit using this SIP's mandate
-          const buyOrderRes = await getBuyOrderMfForUser(selectedClient.userId, currentSipId, sipConfig.sipAmount);
+          const buyOrderRes = await getBuyOrderMfForUser(selectedClient.userId, currentSipId, sipConfig.sipAmount, sipConfig.portfolioId || undefined);
           const rawArray = Array.isArray(buyOrderRes.data)
             ? buyOrderRes.data
             : buyOrderRes.data?.orders;
           const orders = buyOrderRes.orders ?? rawArray ?? [];
           const sanitizedOrders = orders.map((order) => ({
-            isin: order.isin ?? '',
+            scheme: order.scheme ?? order.ticker ?? '',
             quantity: "1",
             price: String(order.price ?? "0"),
             orderValue: String(order.orderValue ?? "0"),
