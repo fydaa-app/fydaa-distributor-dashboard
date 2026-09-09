@@ -202,10 +202,23 @@ export interface CompleteMandateRequest {
   user_ip: string;
   sipId: number;
   orders: Array<{
-    scheme: string;
-    quantity: string;
+    stockId: number;
+    ticker: string;
+    stockName: string;
+    stockType: string;
+    capType: string;
+    weight: number;
     price: string;
-    orderValue: string;
+    minimumamount: number;
+    quantity: number;
+    systemQty: number;
+    orderValue: number;
+    balanceQty: number;
+    stock: number;
+    type: string;
+    portfolioId: number;
+    transactionType: number;
+    portfolioType: number;
   }>;
 }
 
@@ -302,7 +315,7 @@ export async function getMandateForSip(sipId: number, userId: number): Promise<S
 }
 
 export async function updateMfiaForUser(userId: number): Promise<UpdateMfiaResponse> {
-  const url = `${getPayApiUrl()}/subscription/update-mfia-for-user?_t=${Date.now()}`;
+  const url = `${getPayApiUrl()}/subscription/update-mfia-for-user`;
   return fetchJson<UpdateMfiaResponse>(url, {
     method: "PATCH",
     body: JSON.stringify({ userId }),

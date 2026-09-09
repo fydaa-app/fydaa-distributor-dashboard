@@ -127,6 +127,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         if (investmentComplete) return { label: "Redirecting...", disabled: true };
         if (isPollingPayment) return { label: "Waiting for payment...", disabled: true };
         if (isSubmitting) return { label: "Processing...", disabled: true, isLoading: true };
+        if (readiness.kyc === "loading") return { label: "Checking KYC...", disabled: true };
         if (readiness.kyc === "fail") return { label: "Complete KYC", disabled: false };
         if (readiness.consentOtp === "fail") return { label: "Send consent OTP", disabled: false };
         if (otpSent && readiness.consentOtp !== "ok")
@@ -134,6 +135,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         return { label: "Pay now", disabled: false };
       }
 
+      if (readiness.kyc === "loading") return { label: "Checking KYC...", disabled: true };
       if (readiness.kyc === "fail") return { label: "Complete KYC", disabled: false };
       if (isPollingMandate) return { label: "Waiting for mandate...", disabled: true };
       if (readiness.consentOtp === "fail") return { label: "Send consent OTP", disabled: false };
@@ -536,11 +538,6 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       if (readiness.consentOtp === "ok" && readiness.mandate === "fail") {
         setIsSubmitting(true);
         try {
-          const updateRes = await updateMfiaForUser(selectedClient.userId);
-          if (!updateRes || !updateRes.id) {
-            throw new Error("Failed to update MF investment account");
-          }
-
           const payload: SipSetupPayload = {
             goalId: product.goalId,
             sipAmount: sipConfig.sipAmount.toFixed(2),
@@ -571,6 +568,11 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             }
           }
 
+          const updateRes = await updateMfiaForUser(selectedClient.userId);
+          if (!updateRes || !updateRes.id) {
+            throw new Error("Failed to update MF investment account");
+          }
+
           // Step B: Check if THIS SIP already has an approved mandate
           const existingMandate = await getMandateForSip(currentSipId, selectedClient.userId);
           if (existingMandate.isApproved) {
@@ -588,7 +590,15 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
               setReadiness((r) => ({ ...r, mandate: "ok" }));
             } else if (response.authorizationUrl) {
               setIsPollingMandate(true);
-              paymentWindowRef.current = window.open(response.authorizationUrl, "_blank");
+              const authUrl = response.authorizationUrl;
+              paymentWindowRef.current = window.open("/payment-loading", "_blank");
+              if (paymentWindowRef.current) {
+                setTimeout(() => {
+                  if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
+                    paymentWindowRef.current.location.href = authUrl;
+                  }
+                }, 800);
+              }
 
               const maxAttempts = 40;
               let attempts = 0;
@@ -630,10 +640,23 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             : buyOrderRes.data?.orders;
           const orders = buyOrderRes.orders ?? rawArray ?? [];
           const sanitizedOrders = orders.map((order) => ({
-            scheme: order.scheme ?? order.ticker ?? '',
-            quantity: "1",
+            stockId: order.stockId,
+            ticker: order.ticker,
+            stockName: order.stockName,
+            stockType: order.stockType,
+            capType: order.capType,
+            weight: order.weight,
             price: String(order.price ?? "0"),
-            orderValue: String(order.orderValue ?? "0"),
+            minimumamount: order.minimumamount,
+            quantity: order.quantity ?? 1,
+            systemQty: order.systemQty ?? 1,
+            orderValue: order.orderValue,
+            balanceQty: order.balanceQty ?? 0,
+            stock: order.stock,
+            type: order.type ?? "purchase",
+            portfolioId: order.portfolioId,
+            transactionType: order.transactionType ?? 1,
+            portfolioType: order.portfolioType ?? 2,
           }));
 
           const userIp = "127.0.0.1";
