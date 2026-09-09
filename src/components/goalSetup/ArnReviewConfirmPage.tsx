@@ -9,7 +9,6 @@ import type { ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
 import type { ArnSetSipDatePageRef } from "@/components/goalSetup/ArnSetSipDatePage";
 import { calculateProjectedCorpus } from "@/lib/sipMath";
 import {
-  getUserStage,
   checkKycForUser,
   sendConsentOtpForUser,
   verifyConsentOtpForUser,
@@ -17,7 +16,7 @@ import {
   getBuyOrderMfForUser,
   completeWithMandateFirstDebitForUser,
   setupMandateForUser,
-  getMandateForUser,
+  getMandateForSip,
   updateMfiaForUser,
   getMySipMfForUser,
   checkLumpsumCanCreate,
@@ -25,7 +24,6 @@ import {
   completeLumpsumForUser,
   captureLumpsumPayment,
   getBuyOrderMfForPortfolio,
-  type UserStageResponse,
   type KycCheckResponse,
   type SipSetupPayload,
   type SetupMandateResponse,
@@ -76,7 +74,6 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
     const [otpInput, setOtpInput] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submissionError, setSubmissionError] = useState<string | null>(null);
-    const [userStage, setUserStage] = useState<UserStageResponse | null>(null);
     const [kycReason, setKycReason] = useState<string | null>(null);
     const [isPollingMandate, setIsPollingMandate] = useState(false);
     const [mandateError, setMandateError] = useState<string | null>(null);
@@ -123,7 +120,6 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       [sipConfig]
     );
 
-    const mandateAmount = userStage?.mandateAmount ?? 0;
     const sipInstallmentLabel = sipConfig.frequency === "daily" ? "/day" : "/mo";
 
     const ctaState = useMemo(() => {
@@ -131,6 +127,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         if (investmentComplete) return { label: "Redirecting...", disabled: true };
         if (isPollingPayment) return { label: "Waiting for payment...", disabled: true };
         if (isSubmitting) return { label: "Processing...", disabled: true, isLoading: true };
+        if (readiness.kyc === "loading") return { label: "Checking KYC...", disabled: true };
         if (readiness.kyc === "fail") return { label: "Complete KYC", disabled: false };
         if (readiness.consentOtp === "fail") return { label: "Send consent OTP", disabled: false };
         if (otpSent && readiness.consentOtp !== "ok")
@@ -138,6 +135,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         return { label: "Pay now", disabled: false };
       }
 
+      if (readiness.kyc === "loading") return { label: "Checking KYC...", disabled: true };
       if (readiness.kyc === "fail") return { label: "Complete KYC", disabled: false };
       if (isPollingMandate) return { label: "Waiting for mandate...", disabled: true };
       if (readiness.consentOtp === "fail") return { label: "Send consent OTP", disabled: false };
@@ -157,31 +155,8 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         setReadiness((r) => ({ ...r, kyc: "loading", paymentMethod: "ok" }));
         return;
       }
-
-      let cancelled = false;
-      setReadiness((r) => ({ ...r, kyc: "loading", mandate: "fail" }));
-
-      getUserStage(selectedClient.userId, product.goalId)
-        .then((data) => {
-          if (!cancelled) {
-            setUserStage(data);
-            const mandateOk = data.isMfMandate && data.mandateAmount >= sipConfig.sipAmount;
-            setReadiness((r) => ({
-              ...r,
-              mandate: mandateOk ? "ok" : "fail",
-            }));
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setReadiness((r) => ({ ...r, mandate: "fail" }));
-          }
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [selectedClient.userId, product.goalId, sipConfig.sipAmount, investmentMode]);
+      setReadiness((r) => ({ ...r, mandate: "fail" }));
+    }, [investmentMode]);
 
     useEffect(() => {
       let cancelled = false;
@@ -321,11 +296,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           if (investmentMode === "lumpsum") {
             setReadiness((r) => ({ ...r, paymentMethod: "ok" }));
           } else {
-            // Re-fetch mandate status after OTP verified (per MD sequence)
-            const stage = await getUserStage(selectedClient.userId, product.goalId);
-            setUserStage(stage);
-            const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
-            setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
+            setReadiness((r) => ({ ...r, mandate: "fail" }));
           }
         } catch (err) {
           setSubmissionError(err instanceof Error ? err.message : "Invalid OTP");
@@ -377,7 +348,37 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
           setLumpsumId(currentLumpsumId);
 
           let orders: LumpsumOrder[];
-          if (sipConfig.portfolioId) {
+          const useSchemeAllocations =
+            Array.isArray(sipConfig.schemeAllocations) &&
+            sipConfig.schemeAllocations.length > 0 &&
+            !sipConfig.userSelectedFund;
+
+          if (useSchemeAllocations && sipConfig.schemeAllocations) {
+            orders = sipConfig.schemeAllocations.map((sa) => {
+              const weight = (sa.weightPercent ?? 0) / 100;
+              const orderValue = Math.floor(weight * sipConfig.sipAmount);
+              return {
+                stockId: sa.mutualFundId,
+                ticker: sa.ticker ?? "",
+                stockName: sa.stockName ?? "",
+                stockType: sa.StockType ?? "Equity",
+                capType: sa.CapType ?? "others",
+                weight: weight || 1,
+                price: 0,
+                minimumamount: sa.minInitialInvestment ?? 0,
+                quantity: 0,
+                systemQty: 0,
+                orderValue,
+                balanceQty: 0,
+                stock: 0,
+                scheme: sa.ticker ?? "",
+                type: "purchase" as const,
+                transactionType: 1,
+                portfolioType: 2,
+                portfolioId,
+              };
+            });
+          } else if (sipConfig.portfolioId) {
             const buyOrderRes = await getBuyOrderMfForPortfolio(
               selectedClient.userId,
               sipConfig.portfolioId,
@@ -387,31 +388,65 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
               ? buyOrderRes.data
               : buyOrderRes.data?.orders;
             const rawOrders = buyOrderRes.orders ?? rawArray ?? [];
-            orders = rawOrders.map((order) => {
-              const raw = order as unknown as Record<string, unknown>;
-              const toNum = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
-              const toStr = (v: unknown) => (typeof v === 'string' ? v : String(v ?? ''));
-              return {
-                stockId: toNum(raw.stockId) || sipConfig.selectedMfId || 0,
-                ticker: toStr(raw.ticker) || toStr(raw.isin) || sipConfig.selectedScheme || '',
-                stockName: toStr(raw.stockName) || sipConfig.selectedFund || '',
-                stockType: toStr(raw.stockType) || 'Equity',
-                capType: toStr(raw.capType) || 'others',
-                weight: toNum(raw.weight) || 1,
-                price: toNum(raw.price),
-                minimumamount: toNum(raw.minimumamount),
-                quantity: toNum(raw.quantity),
-                systemQty: toNum(raw.systemQty),
-                orderValue: toNum(raw.orderValue),
-                balanceQty: toNum(raw.balanceQty),
-                stock: toNum(raw.stock),
-                scheme: toStr(raw.scheme) || toStr(raw.ticker) || sipConfig.selectedScheme || '',
+            const displayFund = sipConfig.selectedFund || "";
+            const displayMfId = sipConfig.selectedMfId;
+            const displayScheme = sipConfig.selectedScheme;
+            const primaryRaw = rawOrders[0] as unknown as Record<string, unknown> | undefined;
+            const toNum = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
+            const toStr = (v: unknown) => (typeof v === 'string' ? v : String(v ?? ''));
+            const backendPrimaryId = primaryRaw ? toNum(primaryRaw.stockId) : 0;
+            const backendPrimaryName = primaryRaw ? toStr(primaryRaw.stockName) : "";
+            const primaryMismatch =
+              primaryRaw != null &&
+              displayMfId != null &&
+              backendPrimaryId !== displayMfId &&
+              displayFund.length > 0 &&
+              !backendPrimaryName.toUpperCase().includes(displayFund.toUpperCase().split(" ")[0] || "");
+
+            if (primaryMismatch && displayMfId != null) {
+              orders = [{
+                stockId: displayMfId,
+                ticker: displayScheme ?? "",
+                stockName: displayFund,
+                stockType: toStr(primaryRaw!.stockType) || 'Equity',
+                capType: toStr(primaryRaw!.capType) || 'others',
+                weight: 1,
+                price: toNum(primaryRaw!.price),
+                minimumamount: toNum(primaryRaw!.minimumamount),
+                quantity: toNum(primaryRaw!.quantity),
+                systemQty: toNum(primaryRaw!.systemQty),
+                orderValue: Number(sipConfig.sipAmount.toFixed(2)),
+                stock: toNum(primaryRaw!.stock),
+                scheme: displayScheme ?? "",
                 type: "purchase" as const,
                 transactionType: 1,
                 portfolioType: 2,
                 portfolioId,
-              };
-            });
+              }];
+            } else {
+              orders = rawOrders.map((order) => {
+                const raw = order as unknown as Record<string, unknown>;
+                return {
+                  stockId: toNum(raw.stockId) || sipConfig.selectedMfId || 0,
+                  ticker: toStr(raw.ticker) || toStr(raw.isin) || sipConfig.selectedScheme || '',
+                  stockName: toStr(raw.stockName) || sipConfig.selectedFund || '',
+                  stockType: toStr(raw.stockType) || 'Equity',
+                  capType: toStr(raw.capType) || 'others',
+                  weight: toNum(raw.weight) || 1,
+                  price: toNum(raw.price),
+                  minimumamount: toNum(raw.minimumamount),
+                  quantity: toNum(raw.quantity),
+                  systemQty: toNum(raw.systemQty),
+                  orderValue: toNum(raw.orderValue),
+                  stock: toNum(raw.stock),
+                  scheme: toStr(raw.scheme) || toStr(raw.ticker) || sipConfig.selectedScheme || '',
+                  type: "purchase" as const,
+                  transactionType: 1,
+                  portfolioType: 2,
+                  portfolioId,
+                };
+              });
+            }
           } else {
             orders = [{
               stockId: sipConfig.selectedMfId ?? 0,
@@ -499,88 +534,10 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         return;
       }
 
-      // 5. Mandate setup (after OTP verified, only if mandate needed)
+      // 5. Activate SIP with per-SIP mandate flow
       if (readiness.consentOtp === "ok" && readiness.mandate === "fail") {
         setIsSubmitting(true);
         try {
-          const response: SetupMandateResponse = await setupMandateForUser(
-            selectedClient.userId,
-            "UPI",
-            sipConfig.sipAmount
-          );
-          setIsPollingMandate(true);
-
-          // Open authorization URL in new tab and keep reference
-          if (response.authorizationUrl) {
-            paymentWindowRef.current = window.open(response.authorizationUrl, "_blank");
-          }
-
-          // Poll for mandate approval
-          const maxAttempts = 40;
-          let attempts = 0;
-          let approved = false;
-          const pollInterval = 3000;
-
-          while (attempts < maxAttempts && !approved) {
-            await new Promise((resolve) => setTimeout(resolve, pollInterval));
-            attempts++;
-
-            try {
-              const mandate = await getMandateForUser(response.mandateId, selectedClient.userId);
-              const status = mandate.mandate_status || mandate.status || "";
-
-              if (status === "APPROVED") {
-                approved = true;
-                const paymentWindow = paymentWindowRef.current;
-                if (paymentWindow && !paymentWindow.closed) {
-                  paymentWindow.close();
-                }
-                paymentWindowRef.current = null;
-
-                const stage = await getUserStage(selectedClient.userId, product.goalId);
-                setUserStage(stage);
-                const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
-                setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
-                break;
-              } else               if (status === "REJECTED" || status === "CANCELLED") {
-                const reason = typeof mandate.rejected_reason === "string" ? mandate.rejected_reason : undefined;
-                throw new Error(reason || "Mandate was rejected or cancelled");
-              }
-            } catch (pollErr) {
-              if (
-                pollErr instanceof Error &&
-                (pollErr.message.includes("rejected") || pollErr.message.includes("cancelled"))
-              ) {
-                throw pollErr;
-              }
-            }
-          }
-
-          if (!approved) {
-            throw new Error("UPI mandate authorization was not completed in time. Please try again.");
-          }
-        } catch (err) {
-          const message =
-            err instanceof Error ? err.message : "Failed to set up UPI mandate. Please try again.";
-          setMandateError(message);
-          setSubmissionError(message);
-          setReadiness((r) => ({ ...r, mandate: "fail" }));
-        } finally {
-          setIsPollingMandate(false);
-          setIsSubmitting(false);
-        }
-        return;
-      }
-
-      // 5. Activate SIP
-      if (readiness.kyc === "ok" && readiness.consentOtp === "ok" && readiness.mandate === "ok") {
-        setIsSubmitting(true);
-        try {
-          const updateRes = await updateMfiaForUser(selectedClient.userId);
-          if (!updateRes || !updateRes.id) {
-            throw new Error("Failed to update MF investment account");
-          }
-
           const payload: SipSetupPayload = {
             goalId: product.goalId,
             sipAmount: sipConfig.sipAmount.toFixed(2),
@@ -597,6 +554,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             ...(sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
           };
 
+          // Step A: Create the SIP first so we have a sipId
           let currentSipId: number;
           try {
             const res = await createSipSetupForUser(selectedClient.userId, payload);
@@ -610,16 +568,95 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             }
           }
 
-          const buyOrderRes = await getBuyOrderMfForUser(selectedClient.userId, currentSipId, sipConfig.sipAmount);
+          const updateRes = await updateMfiaForUser(selectedClient.userId);
+          if (!updateRes || !updateRes.id) {
+            throw new Error("Failed to update MF investment account");
+          }
+
+          // Step B: Check if THIS SIP already has an approved mandate
+          const existingMandate = await getMandateForSip(currentSipId, selectedClient.userId);
+          if (existingMandate.isApproved) {
+            setReadiness((r) => ({ ...r, mandate: "ok" }));
+          } else {
+            // Step C: Create + authorize mandate for this SIP
+            const response: SetupMandateResponse = await setupMandateForUser(
+              selectedClient.userId,
+              "UPI",
+              sipConfig.sipAmount,
+              currentSipId
+            );
+
+            if (response.alreadyAuthorized) {
+              setReadiness((r) => ({ ...r, mandate: "ok" }));
+            } else if (response.authorizationUrl) {
+              setIsPollingMandate(true);
+              const authUrl = response.authorizationUrl;
+              paymentWindowRef.current = window.open("/payment-loading", "_blank");
+              if (paymentWindowRef.current) {
+                setTimeout(() => {
+                  if (paymentWindowRef.current && !paymentWindowRef.current.closed) {
+                    paymentWindowRef.current.location.href = authUrl;
+                  }
+                }, 800);
+              }
+
+              const maxAttempts = 40;
+              let attempts = 0;
+              let approved = false;
+              const pollInterval = 3000;
+
+              while (attempts < maxAttempts && !approved) {
+                await new Promise((resolve) => setTimeout(resolve, pollInterval));
+                attempts++;
+
+                try {
+                  const sipMandate = await getMandateForSip(currentSipId, selectedClient.userId);
+                  if (sipMandate.isApproved) {
+                    approved = true;
+                    const paymentWindow = paymentWindowRef.current;
+                    if (paymentWindow && !paymentWindow.closed) {
+                      paymentWindow.close();
+                    }
+                    paymentWindowRef.current = null;
+                    setReadiness((r) => ({ ...r, mandate: "ok" }));
+                  }
+                } catch {
+                  // Continue polling on transient errors
+                }
+              }
+
+              if (!approved) {
+                throw new Error("UPI mandate authorization was not completed in time. Please try again.");
+              }
+            } else {
+              throw new Error("Mandate authorization URL not received. Please try again.");
+            }
+          }
+
+          // Step D: First debit using this SIP's mandate
+          const buyOrderRes = await getBuyOrderMfForUser(selectedClient.userId, currentSipId, sipConfig.sipAmount, sipConfig.portfolioId || undefined);
           const rawArray = Array.isArray(buyOrderRes.data)
             ? buyOrderRes.data
             : buyOrderRes.data?.orders;
           const orders = buyOrderRes.orders ?? rawArray ?? [];
           const sanitizedOrders = orders.map((order) => ({
-            isin: order.isin ?? '',
-            quantity: "1",
+            stockId: order.stockId,
+            ticker: order.ticker,
+            stockName: order.stockName,
+            stockType: order.stockType,
+            capType: order.capType,
+            weight: order.weight,
             price: String(order.price ?? "0"),
-            orderValue: String(order.orderValue ?? "0"),
+            minimumamount: order.minimumamount,
+            quantity: order.quantity ?? 1,
+            systemQty: order.systemQty ?? 1,
+            orderValue: order.orderValue,
+            balanceQty: order.balanceQty ?? 0,
+            stock: order.stock,
+            type: order.type ?? "purchase",
+            portfolioId: order.portfolioId,
+            transactionType: order.transactionType ?? 1,
+            portfolioType: order.portfolioType ?? 2,
           }));
 
           const userIp = "127.0.0.1";
@@ -635,7 +672,6 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
 
           if (hasSuccess) {
             setSipActivated(true);
-            setReadiness((r) => ({ ...r, mandate: "ok" }));
             getMySipMfForUser(selectedClient.userId).catch(() => {});
             setTimeout(() => {
               router.push("/arn-orders");
@@ -644,29 +680,15 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             const errorMsg = debitResult.results?.[0]?.error || "SIP activation failed. Please try again.";
             setSubmissionError(errorMsg);
             setOtpSent(false);
-            setReadiness((r) => ({ ...r, consentOtp: "fail" }));
-            try {
-              const stage = await getUserStage(selectedClient.userId, product.goalId);
-              setUserStage(stage);
-              const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
-              setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
-            } catch {
-              setReadiness((r) => ({ ...r, mandate: "fail" }));
-            }
+            setReadiness((r) => ({ ...r, consentOtp: "fail", mandate: "fail" }));
           }
         } catch (err) {
-          setSubmissionError(err instanceof Error ? err.message : "Activation failed. Please try again.");
-          setOtpSent(false);
-          setReadiness((r) => ({ ...r, consentOtp: "fail" }));
-          try {
-            const stage = await getUserStage(selectedClient.userId, product.goalId);
-            setUserStage(stage);
-            const mandateOk = stage.isMfMandate && stage.mandateAmount >= sipConfig.sipAmount;
-            setReadiness((r) => ({ ...r, mandate: mandateOk ? "ok" : "fail" }));
-          } catch {
-            setReadiness((r) => ({ ...r, mandate: "fail" }));
-          }
+          const message = err instanceof Error ? err.message : "Failed to activate SIP. Please try again.";
+          setMandateError(message);
+          setSubmissionError(message);
+          setReadiness((r) => ({ ...r, mandate: "fail" }));
         } finally {
+          setIsPollingMandate(false);
           setIsSubmitting(false);
         }
         return;
@@ -805,7 +827,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                       ? "Waiting for UPI authorization..."
                       : mandateError
                         ? mandateError
-                        : `Current limit ₹${mandateAmount.toLocaleString("en-IN")} — SIP needs ₹${sipConfig.sipAmount.toLocaleString("en-IN")}${sipInstallmentLabel}`
+                        : `UPI mandate required to debit ₹${sipConfig.sipAmount.toLocaleString("en-IN")}${sipInstallmentLabel}`
                   }
                 />
               )}
