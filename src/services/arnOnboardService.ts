@@ -852,3 +852,54 @@ export async function createNominationDetails(
     ? data
     : {}) as Record<string, unknown>;
 }
+
+export interface FinancialPlanSubmitRequest {
+  personalDetails: Array<{
+    questionId: number;
+    option?: string;
+    value?: string;
+  }>;
+}
+
+export interface FinancialPlanSubmitResponse {
+  success: boolean;
+  message?: string;
+  data?: Record<string, unknown>;
+  planId?: string;
+}
+
+export async function submitFinancialPlan(
+  personalDetails: FinancialPlanSubmitRequest["personalDetails"],
+  token?: string
+): Promise<FinancialPlanSubmitResponse> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getOnboardingApiUrl()}/financial-plan/submit-all`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ personalDetails }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === "object" && typeof data.message === "string"
+        ? data.message
+        : null) ||
+      "Failed to submit financial plan. Please try again.";
+    throw new Error(message);
+  }
+
+  return (data && typeof data === "object" && isRecord(data)
+    ? data
+    : {}) as unknown as FinancialPlanSubmitResponse;
+}
