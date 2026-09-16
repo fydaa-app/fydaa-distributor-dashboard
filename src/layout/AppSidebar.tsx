@@ -31,15 +31,16 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
       //{ label: "Commission", href: "/arn-commission", icon: "coin" },
     ],
   },
-  {
-    title: "Grow",
-    items: [
-      { label: "Start Investing", href: "/arn-goal-setup", icon: "target" },
-      { label: "Onboard client", href: "/arn-onboard", icon: "user-plus" },
-      { label: "Reports", href: "/arn-reports", icon: "chart-bar" },
-     // { label: "Share portfolio", href: "/arn-share", icon: "send" },
-    ],
-  },
+{
+      title: "Grow",
+      items: [
+        { label: "Start Investing", href: "/arn-goal-setup", icon: "target" },
+        { label: "Onboard client", href: "/arn-onboard", icon: "user-plus" },
+        { label: "Financial Plan", href: "/arn-financial-plan", icon: "file-analytics" },
+        { label: "Reports", href: "/arn-reports", icon: "chart-bar" },
+       // { label: "Share portfolio", href: "/arn-share", icon: "send" },
+      ],
+    },
   {
     title: "Leads",
     items: [
