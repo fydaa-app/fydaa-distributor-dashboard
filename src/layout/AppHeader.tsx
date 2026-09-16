@@ -108,6 +108,10 @@ function getHeaderCopy(pathname: string, userName: string) {
       title: "Onboard client",
       subtitle: "Start new client onboarding and KYC workflow",
     },
+    "/arn-financial-plan": {
+      title: "360° Financial Plan",
+      subtitle: "Build a complete financial plan for your client",
+    },
     "/arn-reports": {
       title: "Reports",
       subtitle: "Generate distributor and client-level reports",
