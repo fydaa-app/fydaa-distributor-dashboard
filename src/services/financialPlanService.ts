@@ -14,12 +14,24 @@ function getOnboardedUserToken(): string {
   return match ? decodeURIComponent(match[1]) : "";
 }
 
+function getPartnerAuthToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/authToken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 export interface QuestionAnswerDto {
   questionId?: number;
   option?: string;
-  value?: string | number;
+  value?: string | number | boolean;
   question?: string;
   goalId?: string;
+}
+
+export interface QuestionDefinition {
+  questionId: number;
+  question: string;
+  option?: Record<string, string | number | boolean>;
 }
 
 export interface SubmitPersonalDetailsResponse {
@@ -100,6 +112,22 @@ function authHeaders(token?: string): Headers {
   if (authToken) {
     headers.set("Authorization", `Bearer ${authToken}`);
   }
+  return headers;
+}
+
+function partnerAuthHeaders(): Headers {
+  const authToken = getPartnerAuthToken();
+  const headers = new Headers();
+  headers.set("Accept", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+  return headers;
+}
+
+function partnerJsonHeaders(): Headers {
+  const headers = partnerAuthHeaders();
+  headers.set("Content-Type", "application/json");
   return headers;
 }
 
@@ -344,6 +372,260 @@ export async function downloadFinancialPlan(
   const response = await fetch(url, {
     method: "GET",
     headers: authHeaders(token),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as
+      | Record<string, unknown>
+      | null;
+    const message =
+      payload && typeof payload.message === "string"
+        ? payload.message
+        : "Failed to download financial plan. Please try again.";
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
+
+export async function getFinancialPlanForUser(
+  userId: string | number
+): Promise<FinancialPlanData | null> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/admin/${userId}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: partnerAuthHeaders(),
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to fetch financial plan. Please try again.";
+    throw new Error(message);
+  }
+
+  if (payload.data == null) return null;
+  if (!isRecord(payload.data)) return null;
+  return payload.data as FinancialPlanData;
+}
+
+export async function getFinancialPlanQuestions(): Promise<
+  Record<string, QuestionDefinition[]> | null
+> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/questions`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: partnerAuthHeaders(),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to fetch financial plan questions. Please try again.";
+    throw new Error(message);
+  }
+
+  if (payload.data == null || !isRecord(payload.data)) return null;
+  return payload.data as Record<string, QuestionDefinition[]>;
+}
+
+export async function updatePersonalDetailsForUser(
+  userId: string | number,
+  answers: QuestionAnswerDto[]
+): Promise<{ success: boolean; message: string }> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/admin/${userId}/personal-details`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: partnerJsonHeaders(),
+    body: JSON.stringify(answers),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to update personal details. Please try again.";
+    throw new Error(message);
+  }
+
+  return {
+    success: payload.success === true,
+    message:
+      typeof payload.message === "string"
+        ? payload.message
+        : "Personal details updated successfully",
+  };
+}
+
+export async function updateFinancialGoalsForUser(
+  userId: string | number,
+  answers: QuestionAnswerDto[]
+): Promise<{ success: boolean; message: string }> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/admin/${userId}/financial-goals`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: partnerJsonHeaders(),
+    body: JSON.stringify(answers),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to update financial goals. Please try again.";
+    throw new Error(message);
+  }
+
+  return {
+    success: payload.success === true,
+    message:
+      typeof payload.message === "string"
+        ? payload.message
+        : "Financial goals updated successfully",
+  };
+}
+
+export async function updateBudgetingForUser(
+  userId: string | number,
+  answers: QuestionAnswerDto[]
+): Promise<{ success: boolean; message: string }> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/admin/${userId}/budgeting`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: partnerJsonHeaders(),
+    body: JSON.stringify(answers),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to update budgeting. Please try again.";
+    throw new Error(message);
+  }
+
+  return {
+    success: payload.success === true,
+    message:
+      typeof payload.message === "string"
+        ? payload.message
+        : "Budgeting updated successfully",
+  };
+}
+
+export async function updateAssetsLiabilitiesForUser(
+  userId: string | number,
+  payload: AssetsLiabilitiesPayload
+): Promise<{ success: boolean; message: string }> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/admin/${userId}/assets-liabilities`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: partnerJsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => null);
+  const result = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof result.message === "string"
+        ? result.message
+        : "Failed to update assets and liabilities. Please try again.";
+    throw new Error(message);
+  }
+
+  return {
+    success: result.success === true,
+    message:
+      typeof result.message === "string"
+        ? result.message
+        : "Assets and liabilities updated successfully",
+  };
+}
+
+export async function updateInsurancePlanningForUser(
+  userId: string | number,
+  answers: QuestionAnswerDto[]
+): Promise<{ success: boolean; message: string }> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/admin/${userId}/insurance-planning`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: partnerJsonHeaders(),
+    body: JSON.stringify(answers),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to update insurance planning. Please try again.";
+    throw new Error(message);
+  }
+
+  return {
+    success: payload.success === true,
+    message:
+      typeof payload.message === "string"
+        ? payload.message
+        : "Insurance planning updated successfully",
+  };
+}
+
+export async function recalculateWealthScoreForPartner(
+  userId: string | number
+): Promise<{ success: boolean; message: string; data?: unknown }> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/partner/wealth-score/recalculate/${userId}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: partnerAuthHeaders(),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to recalculate wealth score. Please try again.";
+    throw new Error(message);
+  }
+
+  return payload as { success: boolean; message: string; data?: unknown };
+}
+
+export async function downloadFinancialPlanForUser(
+  userId: string | number
+): Promise<Blob> {
+  const url = `${getOnboardingApiUrl()}/financial-plan/admin/${userId}/download`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: partnerAuthHeaders(),
   });
 
   if (!response.ok) {

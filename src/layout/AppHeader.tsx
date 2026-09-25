@@ -88,6 +88,10 @@ function getHeaderCopy(pathname: string, userName: string) {
   }
 
   const routeTitles: Record<string, { title: string; subtitle: string }> = {
+    "/arn-leads": {
+      title: "Sales CRM",
+      subtitle: "Track leads, follow-ups and conversions",
+    },
     "/arn-clients": {
       title: "Clients",
       subtitle: "Manage client profiles, holdings and follow-ups",
@@ -107,6 +111,10 @@ function getHeaderCopy(pathname: string, userName: string) {
     "/arn-onboard": {
       title: "Onboard client",
       subtitle: "Start new client onboarding and KYC workflow",
+    },
+    "/arn-financial-plan": {
+      title: "360° Financial Plan",
+      subtitle: "Build a complete financial plan for your client",
     },
     "/arn-reports": {
       title: "Reports",

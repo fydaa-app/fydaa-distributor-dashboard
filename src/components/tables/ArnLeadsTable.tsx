@@ -8,8 +8,8 @@ interface ArnLeadsTableProps {
   onPageChange: (page: number) => void;
 }
 
-function formatCurrency(value: number): string {
-  if (value === 0) return "₹0";
+function formatCurrency(value: number | null | undefined): string {
+  if (!value || value === 0) return "₹0";
   if (value < 100000) return `₹${Math.round(value).toLocaleString("en-IN")}`;
   if (value < 10000000) {
     const lakhs = value / 100000;
@@ -17,6 +17,16 @@ function formatCurrency(value: number): string {
   }
   const crores = value / 10000000;
   return `₹${Math.round(crores * 10) / 10} Cr`;
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "?";
 }
 
 export default function ArnLeadsTable({
@@ -54,28 +64,32 @@ export default function ArnLeadsTable({
             </tr>
           </thead>
           <tbody>
-            {leads.map((lead) => (
-              <tr key={lead.userId} className="transition-colors">
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
-                  <div className="flex items-center gap-3">
-                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--arn-avatar-bg)] text-xs font-black text-[var(--arn-avatar-txt)]">
-                      {lead.userName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?"}
+            {leads.map((lead) => {
+              const displayName = lead.userName || lead.name || "Unknown";
+              const initials = getInitials(displayName);
+              return (
+                <tr key={lead.userId || lead.id} className="transition-colors">
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
+                    <div className="flex items-center gap-3">
+                      <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--arn-avatar-bg)] text-xs font-black text-[var(--arn-avatar-txt)]">
+                        {initials}
+                      </div>
+                      <span className="truncate font-bold">{displayName}</span>
                     </div>
-                    <span className="truncate font-bold">{lead.userName}</span>
-                  </div>
-                </td>
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">{lead.mobileNumber}</td>
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">{lead.managerName}</td>
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">{formatCurrency(lead.netWorth)}</td>
-                <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">
-                  {new Date(lead.onboardingDate).toLocaleDateString("en-US", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">{lead.mobileNumber}</td>
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">
+                    {lead.managerName || lead.assignedToName || "-"}
+                  </td>
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt)]">
+                    {lead.netWorth !== undefined ? formatCurrency(lead.netWorth) : (lead.potentialInvestment !== undefined && lead.potentialInvestment !== null ? formatCurrency(lead.potentialInvestment) : "-")}
+                  </td>
+                  <td className="border-b border-[var(--arn-bdr)] px-4 py-3 text-[var(--arn-txt-3)]">
+                    {lead.onboardingDate ? new Date(lead.onboardingDate).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : (lead.createdAt ? new Date(lead.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "-")}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

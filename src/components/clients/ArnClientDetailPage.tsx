@@ -11,14 +11,22 @@ import ArnClientDetailKpis from "@/components/clients/ArnClientDetailKpis";
 import ArnClientGoalsList from "@/components/clients/ArnClientGoalsList";
 import ArnClientHoldingsChart, { ArnHoldingsLegend } from "@/components/clients/ArnClientHoldingsChart";
 import ArnClientHoldingsList from "@/components/clients/ArnClientHoldingsList";
+import ArnClientPlanDataTab from "@/components/clients/ArnClientPlanDataTab";
 import ArnClientTransactionsTable from "@/components/tables/ArnClientTransactionsTable";
 import { getArnClientDetail } from "@/services/arnClientsService";
+import {
+  getFinancialPlanForUser,
+  getFinancialPlanQuestions,
+  type FinancialPlanData,
+  type QuestionDefinition,
+} from "@/services/financialPlanService";
 import type { ArnClientDetail } from "@/types/arnClient";
 
 const tabs = [
   { id: "holdings", label: "Holdings" },
   { id: "transactions", label: "Transactions" },
   { id: "goals", label: "Goals" },
+  { id: "planData", label: "Plan Data" },
 ];
 
 function getBackTarget(from: string | null): { href: string; label: string } {
@@ -44,6 +52,12 @@ export default function ArnClientDetailPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [financialPlan, setFinancialPlan] = useState<FinancialPlanData | null>(null);
+  const [questions, setQuestions] = useState<QuestionDefinition[]>([]);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [planFetched, setPlanFetched] = useState(false);
+
   const loadDetail = useCallback(async () => {
     if (!clientId) return;
 
@@ -60,9 +74,42 @@ export default function ArnClientDetailPage() {
     }
   }, [clientId]);
 
+  const loadPlanData = useCallback(async () => {
+    if (!clientId) return;
+
+    setPlanLoading(true);
+    setPlanError(null);
+
+    try {
+      const [plan, questionsGrouped] = await Promise.all([
+        getFinancialPlanForUser(clientId),
+        getFinancialPlanQuestions(),
+      ]);
+
+      setFinancialPlan(plan);
+      setQuestions(
+        questionsGrouped ? Object.values(questionsGrouped).flat() : []
+      );
+      setPlanFetched(true);
+    } catch (err) {
+      setPlanError(
+        err instanceof Error ? err.message : "Could not load financial plan."
+      );
+      setPlanFetched(true);
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [clientId]);
+
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
+
+  useEffect(() => {
+    if (activeTab === "planData" && !planFetched && !planLoading) {
+      loadPlanData();
+    }
+  }, [activeTab, planFetched, planLoading, loadPlanData]);
 
   if (isLoading) {
     return (
@@ -129,6 +176,33 @@ export default function ArnClientDetailPage() {
 
         {activeTab === "goals" && (
           <ArnClientGoalsList goals={detail.goals} />
+        )}
+
+        {activeTab === "planData" && (
+          <div>
+            {planLoading && (
+              <div className="animate-pulse space-y-3 p-4">
+                <div className="h-4 w-48 rounded bg-[var(--arn-bg-2)]" />
+                <div className="h-24 rounded bg-[var(--arn-bg-2)]" />
+                <div className="h-24 rounded bg-[var(--arn-bg-2)]" />
+              </div>
+            )}
+            {!planLoading && planError && (
+              <ArnErrorState
+                title="Could not load plan data"
+                message={planError}
+                retry={loadPlanData}
+              />
+            )}
+            {!planLoading && !planError && (
+              <ArnClientPlanDataTab
+                userId={clientId}
+                financialPlan={financialPlan}
+                questions={questions}
+                onRefresh={loadPlanData}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

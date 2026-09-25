@@ -3,6 +3,13 @@ export const AuthEndpoints = {
   IMPERSONATE_CONSUME: "/arn/impersonate/consume",
 } as const;
 
+export const ReferralEndpoints = {
+  LEADS: "/referrals/leads",
+  LEAD_STATS: "/referrals/leads/stats",
+  LEAD_BY_ID: "/referrals/leads/{leadId}",
+  LEAD_UPLOAD_IMAGE: "/referrals/leads/upload-image",
+} as const;
+
 export const ArnClientEndpoints = {
   CLIENTS: "/arn/clients",
   CLIENT_DETAIL: "/arn/client/{clientId}",
@@ -43,6 +50,10 @@ export const ArnDashboardEndpoints = {
 
 export const ArnLeadEndpoints = {
   LEAD_USER_LIST: "/arn/lead-user-list",
+  PARTNER_LEADS: "/arn/leads/partner",
+  PARTNER_LEAD_BY_ID: "/arn/leads/{leadId}",
+  PARTNER_LEAD_ASSIGN: "/arn/leads/{leadId}/assign-partner",
+  PARTNER_LEAD_STATS: "/arn/leads/stats",
 } as const;
 
 export const ArnGoalSetupEndpoints = {
