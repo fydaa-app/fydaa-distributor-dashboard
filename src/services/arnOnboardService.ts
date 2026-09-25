@@ -399,6 +399,48 @@ export async function checkKyc(token?: string): Promise<CheckKycResult> {
   };
 }
 
+/** KYC check by PAN only — requires auth token. Used in partner dashboard onboarding. */
+export async function checkKycWithPan(pan: string, token?: string): Promise<CheckKycResult> {
+  const authToken = token || getOnboardedUserToken();
+  const url = `${getApiUrl()}/kyc/check-kyc-me`;
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ pan: pan.toUpperCase() }),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+  const nested = isRecord(payload.data) ? payload.data : null;
+
+  if (!response.ok) {
+    const message =
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to check KYC status. Please try again.";
+    throw new Error(message);
+  }
+
+  const actionRaw = nested?.action ?? payload.action;
+  const reasonRaw = nested?.reason ?? payload.reason;
+  const messageRaw = nested?.message ?? payload.message;
+  const statusRaw = nested?.status ?? payload.status;
+
+  return {
+    status: statusRaw === true || statusRaw === "true",
+    action: typeof actionRaw === "string" ? actionRaw : null,
+    reason: typeof reasonRaw === "string" ? reasonRaw : null,
+    message: typeof messageRaw === "string" ? messageRaw : null,
+  };
+}
+
 export async function selectInvestmentModel(
   investmentModel: string,
   token?: string

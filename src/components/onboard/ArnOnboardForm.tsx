@@ -6,6 +6,7 @@ import {
   requestArnOtp,
   verifyArnOtp,
   fetchKycData,
+  checkKycWithPan,
   createModifyKycForm,
   saveModifyKycDetails,
   submitKycExtra,
@@ -421,6 +422,7 @@ export default function ArnOnboardForm({
   const [dob, setDob] = useState("");
   const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
   const [kycLocalError, setKycLocalError] = useState<string | null>(null);
+  const [kycStage, setKycStage] = useState<"check" | "fetch" | null>(null);
 
   const [fatherName, setFatherName] = useState("");
   const [gender, setGender] = useState("");
@@ -648,12 +650,28 @@ export default function ArnOnboardForm({
 
     setIsSubmittingKyc(true);
     setKycLocalError(null);
+    setKycStage("check");
 
     try {
       const panValue = pan.trim().toUpperCase();
       const nameValue = fullName.trim();
       const dobValue = dob;
 
+      // Step 1: Check KYC compliance (auth API)
+      const authToken = getCookie("onboardedUserToken") as string | undefined;
+      const check = await checkKycWithPan(panValue, authToken);
+      const isCompliant = check.status === true && check.action === null;
+
+      if (!isCompliant) {
+        setKycLocalError(
+          "Please complete KYC from the Fydaa app" +
+            (check.message ? ` — ${check.message}` : "")
+        );
+        return;
+      }
+
+      // Step 2: Fetch full KYC data (auth API) - saves PAN, handles modify
+      setKycStage("fetch");
       const result = await fetchKycData({
         pan: panValue,
         date_of_birth: dobValue,
@@ -666,17 +684,6 @@ export default function ArnOnboardForm({
       });
 
       if (result.action === "modify") {
-        // CAMS KRA external modify — not in-app DigiLocker flow
-        if (result.reason === "legacy") {
-          setKycLocalError(
-            result.message ||
-              "Please update KYC on the KRA portal (CAMS), then return here."
-          );
-          return;
-        }
-
-        // Must create the modify form so ismodify=true; otherwise PAN/stage
-        // can look complete and the mobile app will skip Modify KYC.
         saveModifyKycDetails({
           pan: panValue,
           name: nameValue,
@@ -703,6 +710,7 @@ export default function ArnOnboardForm({
       );
     } finally {
       setIsSubmittingKyc(false);
+      setKycStage(null);
     }
   };
 
@@ -1406,7 +1414,13 @@ export default function ArnOnboardForm({
             className="btn-primary btn-wide"
             style={{ marginTop: 8 }}
           >
-            {isSubmittingKyc ? "Verifying..." : "Verify"}
+            {kycStage === "check"
+              ? "Checking KYC status..."
+              : kycStage === "fetch"
+              ? "Verifying KYC..."
+              : isSubmittingKyc
+              ? "Verifying..."
+              : "Verify"}
           </button>
         </div>
       )}
