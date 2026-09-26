@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useProfilePhoto } from "@/context/ProfilePhotoContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -132,6 +133,10 @@ function getHeaderCopy(pathname: string, userName: string) {
       title: "Share portfolio",
       subtitle: "Share portfolio snapshots with clients",
     },
+    "/profile": {
+      title: "Profile",
+      subtitle: "Manage your profile photo",
+    },
     "/support": {
       title: "Support",
       subtitle: "Contact relationship manager and support channels",
@@ -161,7 +166,8 @@ export default function AppHeader() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
-  const { user, logout } = useAuth();
+  const { user, logout, isPartner } = useAuth();
+  const { hasActiveRm } = useProfilePhoto();
   const [open, setOpen] = useState(false);
 
   const employeeName = user?.name || "Distributor";
@@ -173,6 +179,8 @@ export default function AppHeader() {
     month: "long",
     year: "numeric",
   }).format(new Date());
+
+  const showProfile = isPartner && hasActiveRm;
 
   const handleSignOut = () => {
     logout();
@@ -239,6 +247,16 @@ export default function AppHeader() {
 
             {open && (
               <div className="absolute right-0 top-full mt-3 w-52 rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-2 shadow-xl">
+                {showProfile && (
+                  <Link
+                    href="/profile"
+                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-semibold text-[var(--arn-txt)] transition-colors hover:bg-[var(--arn-bg-2)]"
+                    onClick={() => setOpen(false)}
+                  >
+                    <CrmInfoIcon />
+                    Profile
+                  </Link>
+                )}
                 <Link
                   href="/support"
                   className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-semibold text-[var(--arn-txt)] transition-colors hover:bg-[var(--arn-bg-2)]"
