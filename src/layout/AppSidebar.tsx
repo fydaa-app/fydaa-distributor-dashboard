@@ -118,7 +118,7 @@ export default function AppSidebar() {
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
         {navSections.map((section) => {
           const items =
-            section.title === "Overview" && user?.isPartner
+            section.title === "Overview" && user?.isPartner && !user?.isStaff
               ? [...section.items, { label: "EUINs", href: "/arn-euins", icon: "key" }]
               : section.items;
 
@@ -167,8 +167,10 @@ export default function AppSidebar() {
               <p className="truncate text-sm font-bold text-[var(--arn-txt)]">
                 {employeeName}
               </p>
-              {user?.euin && (
-                <p className="text-xs text-[var(--arn-txt-3)]">{user.euin}</p>
+              {(user?.arnNumber || user?.euin) && (
+                <p className="truncate text-xs text-[var(--arn-txt-3)]">
+                  {[user.arnNumber, user.euin].filter(Boolean).join(" · ")}
+                </p>
               )}
             </div>
           </div>
