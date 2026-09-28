@@ -7,9 +7,11 @@ export interface Employee {
   email: string;
   role: string;
   arnCode?: string;
+  arnNumber?: string;
   euin?: string;
   referralCode?: string;
   isPartner?: boolean;
+  isStaff?: boolean;
   isImpersonation?: boolean;
 }
 
@@ -108,13 +110,21 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
     getString(effectiveSource?.userType) ||
     "ARN";
 
-  const arnCode = getString(effectiveSource?.arnCode) || getString(effectiveSource?.arn);
-  const euin = getString(effectiveSource?.euin);
-  const referralCode = getString(effectiveSource?.referralCode);
+  const arnNumber =
+    getString(effectiveSource?.arnNumber) ||
+    getString(effectiveSource?.arnCode) ||
+    getString(effectiveSource?.arn);
+  const euin =
+    getString(effectiveSource?.euin) || getString(effectiveSource?.euinNumber);
+  const referralCode =
+    getString(effectiveSource?.staffReferralCode) ||
+    getString(effectiveSource?.referralCode);
   const isPartner =
     getBoolean(effectiveSource?.isPartner) ||
     getBoolean(getNestedRecord(source, "partner")?.isPartner) ||
     getBoolean(source?.isPartner);
+  const isStaff =
+    getBoolean(effectiveSource?.isStaff) || getBoolean(source?.isStaff);
   const isImpersonation =
     getBoolean(effectiveSource?.isImpersonation) ||
     getBoolean(getNestedRecord(source, "partner")?.isImpersonation) ||
@@ -126,8 +136,9 @@ function normalizeEmployee(source: JsonObject | undefined, email: string): Emplo
     email: employeeEmail,
     role,
     isPartner,
+    ...(isStaff ? { isStaff: true } : {}),
     ...(isImpersonation ? { isImpersonation: true } : {}),
-    ...(arnCode ? { arnCode } : {}),
+    ...(arnNumber ? { arnNumber, arnCode: arnNumber } : {}),
     ...(euin ? { euin } : {}),
     ...(referralCode ? { referralCode } : {}),
   };
