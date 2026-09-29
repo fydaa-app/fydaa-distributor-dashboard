@@ -85,7 +85,7 @@ export async function fetchPartnerLeads(params: FetchLeadsParams): Promise<ArnLe
   searchParams.set("generatedByType", "PARTNER");
 
   const payload = await fetchJson<ArnLeadsBackendResponse>(
-    `${getApiUrl()}${ReferralEndpoints.LEADS}?${searchParams.toString()}`
+    `${getApiUrl()}${ArnLeadEndpoints.PARTNER_LEAD_LIST}?${searchParams.toString()}`
   );
 
   return payload;
