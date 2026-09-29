@@ -8,6 +8,10 @@ function getOnboardingApiUrl(): string {
   );
 }
 
+function getPaymentApiUrl(): string {
+  return process.env.NEXT_PUBLIC_PAYMENT_API_URL || "https://payment.fydaa.com";
+}
+
 function getOnboardedUserToken(): string {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/onboardedUserToken=([^;]+)/);
@@ -640,4 +644,221 @@ export async function downloadFinancialPlanForUser(
   }
 
   return response.blob();
+}
+
+const SETU_REDIRECT_FALLBACK = "https://fydaa.com/SuccesspageSetu";
+
+export interface SetuFinancialData {
+  bankBalance: number;
+  mutualFunds: number;
+  stocks: number;
+  nps: number;
+  fdsRds: number;
+  gold: number;
+}
+
+export interface SetuConsentResult {
+  id: string;
+  url: string;
+  redirectUrl: string;
+}
+
+function paymentAuthHeaders(token: string): Headers {
+  const headers = new Headers();
+  headers.set("Accept", "application/json");
+  headers.set("Content-Type", "application/json");
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  return headers;
+}
+
+function readResponseMessage(payload: Record<string, unknown>): string | null {
+  if (typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message.trim();
+  }
+
+  if (
+    isRecord(payload.error) &&
+    typeof payload.error.message === "string" &&
+    payload.error.message.trim()
+  ) {
+    return payload.error.message.trim();
+  }
+
+  if (typeof payload.error === "string" && payload.error.trim()) {
+    return payload.error.trim();
+  }
+
+  return null;
+}
+
+function numericAmount(value: unknown): number {
+  return typeof value === "number" ? value : 0;
+}
+
+function nestedAmount(node: unknown): number {
+  if (!isRecord(node)) return 0;
+  return numericAmount(node.amount);
+}
+
+function resolveSetuDataRoot(payload: unknown): Record<string, unknown> | null {
+  if (!isRecord(payload)) return null;
+
+  if (isRecord(payload.data)) {
+    return payload.data;
+  }
+
+  const hasFinancialRoot =
+    isRecord(payload.assets) ||
+    isRecord(payload.liabilities) ||
+    isRecord(payload.income) ||
+    isRecord(payload.expenses) ||
+    isRecord(payload.cashFlow) ||
+    isRecord(payload.netWorth) ||
+    "netSavings" in payload;
+
+  return hasFinancialRoot ? payload : null;
+}
+
+function extractSetuFinancialData(
+  root: Record<string, unknown>
+): SetuFinancialData {
+  const assets = isRecord(root.assets) ? root.assets : {};
+  const cash = isRecord(assets.cashAndCashEquivalents)
+    ? assets.cashAndCashEquivalents
+    : {};
+  const investment = isRecord(assets.investment) ? assets.investment : {};
+
+  return {
+    bankBalance: nestedAmount(cash.bankBalance),
+    mutualFunds: nestedAmount(investment.mutualFunds),
+    stocks: nestedAmount(investment.stocks),
+    nps: nestedAmount(investment.retirement),
+    fdsRds: nestedAmount(investment.fdsRds),
+    gold: nestedAmount(investment.gold),
+  };
+}
+
+export async function fetchSetuFinancialData(
+  token: string
+): Promise<SetuFinancialData | null> {
+  try {
+    const url = `${getPaymentApiUrl()}/setu/sebi-data/last-month`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: paymentAuthHeaders(token),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json().catch(() => null);
+    const root = resolveSetuDataRoot(data);
+    if (!root) return null;
+
+    return extractSetuFinancialData(root);
+  } catch (error) {
+    console.warn("Failed to fetch Setu financial data:", error);
+    return null;
+  }
+}
+
+export async function createSetuConsent(
+  token: string,
+  fiTypes: string[]
+): Promise<SetuConsentResult | null> {
+  const url = `${getPaymentApiUrl()}/setu/consent`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: paymentAuthHeaders(token),
+    body: JSON.stringify({ fiTypes }),
+  });
+
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (!response.ok) {
+    const message =
+      readResponseMessage(payload) ||
+      "Failed to start Account Aggregator consent. Please try again.";
+    throw new Error(message);
+  }
+
+  const consentUrl = typeof payload.url === "string" ? payload.url.trim() : "";
+  if (!consentUrl) return null;
+
+  const id = typeof payload.id === "string" ? payload.id : "";
+  const redirectUrl =
+    typeof payload.redirectUrl === "string" ? payload.redirectUrl.trim() : "";
+
+  return {
+    id,
+    url: consentUrl,
+    redirectUrl: redirectUrl || SETU_REDIRECT_FALLBACK,
+  };
+}
+
+function readConsentStatus(payload: Record<string, unknown>): string | null {
+  if (typeof payload.status === "string" && payload.status.trim()) {
+    return payload.status.trim();
+  }
+  if (typeof payload.consentStatus === "string" && payload.consentStatus.trim()) {
+    return payload.consentStatus.trim();
+  }
+  if (isRecord(payload.data)) {
+    return readConsentStatus(payload.data);
+  }
+  return null;
+}
+
+async function requestSetuConsent(
+  token: string,
+  consentId: string
+): Promise<{ ok: boolean; status: string | null; message: string | null }> {
+  const url = `${getPaymentApiUrl()}/setu/consent/${encodeURIComponent(consentId)}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: paymentAuthHeaders(token),
+  });
+  const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  return {
+    ok: response.ok,
+    status: readConsentStatus(payload),
+    message: readResponseMessage(payload),
+  };
+}
+
+export async function getSetuConsentStatus(
+  token: string,
+  consentId: string
+): Promise<string | null> {
+  if (!consentId.trim()) return null;
+
+  try {
+    const result = await requestSetuConsent(token, consentId);
+    if (!result.ok) return null;
+    return result.status;
+  } catch {
+    return null;
+  }
+}
+
+export async function captureSetuConsent(
+  token: string,
+  consentId: string
+): Promise<void> {
+  if (!consentId.trim()) return;
+
+  try {
+    const result = await requestSetuConsent(token, consentId);
+    if (!result.ok) {
+      console.warn(
+        result.message || "Setu consent capture failed."
+      );
+    }
+  } catch (error) {
+    console.warn("Setu consent capture failed:", error);
+  }
 }
