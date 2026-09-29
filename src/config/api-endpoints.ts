@@ -55,6 +55,7 @@ export const ArnPartnerEndpoints = {
 export const ArnLeadEndpoints = {
   LEAD_USER_LIST: "/arn/lead-user-list",
   PARTNER_LEADS: "/arn/leads/partner",
+  PARTNER_LEAD_LIST: "/arn/leads",
   PARTNER_LEAD_BY_ID: "/arn/leads/{leadId}",
   PARTNER_LEAD_ASSIGN: "/arn/leads/{leadId}/assign-partner",
   PARTNER_LEAD_STATS: "/arn/leads/stats",
