@@ -3,7 +3,9 @@ import Script from "next/script";
 import { AuthProvider } from "@/context/AuthContext";
 import { SidebarProvider } from "@/context/SidebarContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import AppToaster from "@/components/common/AppToaster";
 import DistributorShell from "@/layout/DistributorShell";
+import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,6 +27,7 @@ export default function RootLayout({
         <ThemeProvider>
           <SidebarProvider>
             <AuthProvider>
+              <AppToaster />
               <DistributorShell>{children}</DistributorShell>
             </AuthProvider>
           </SidebarProvider>

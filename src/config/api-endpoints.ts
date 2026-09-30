@@ -1,6 +1,9 @@
 export const AuthEndpoints = {
   LOGIN: "/arn/login",
   IMPERSONATE_CONSUME: "/arn/impersonate/consume",
+  FORGOT_PASSWORD: "/arn/send-password-reset-otp",
+  RESET_PASSWORD: "/arn/verify-otp-reset-password",
+  CHANGE_PASSWORD: "/arn/change-password",
 } as const;
 
 export const ReferralEndpoints = {
