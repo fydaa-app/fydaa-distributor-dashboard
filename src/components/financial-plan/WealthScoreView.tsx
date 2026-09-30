@@ -265,7 +265,7 @@ export default function WealthScoreView({
         {calculatedAt && (
           <div className="step-helper" style={{ marginTop: 8, marginBottom: 0 }}>
             Calculated {calculatedAt}
-            {data.setuDataUsed ? " · Setu data used" : " · Questionnaire data"}
+            {" · Questionnaire data"}
           </div>
         )}
       </div>

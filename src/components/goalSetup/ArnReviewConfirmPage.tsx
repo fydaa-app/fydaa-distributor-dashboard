@@ -494,7 +494,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             setIsPollingPayment(true);
             const maxAttempts = 40;
             let attempts = 0;
-            const pollInterval = 3000;
+            const pollInterval = 7000;
 
             while (attempts < maxAttempts) {
               await new Promise((resolve) => setTimeout(resolve, pollInterval));
@@ -603,7 +603,7 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
               const maxAttempts = 40;
               let attempts = 0;
               let approved = false;
-              const pollInterval = 3000;
+              const pollInterval = 7000;
 
               while (attempts < maxAttempts && !approved) {
                 await new Promise((resolve) => setTimeout(resolve, pollInterval));

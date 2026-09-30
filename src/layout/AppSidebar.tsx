@@ -42,12 +42,12 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
        // { label: "Share portfolio", href: "/arn-share", icon: "send" },
       ],
     },
-  {
-    title: "Leads",
-    items: [
-      { label: "Leads", href: "/arn-leads", icon: "user-plus" },
-    ],
-  },
+  // {
+  //   title: "Leads",
+  //   items: [
+  //     { label: "Leads", href: "/arn-leads", icon: "user-plus" },
+  //   ],
+  // },
 ];
 
 function SidebarIcon({ icon, active }: { icon: string; active: boolean }) {

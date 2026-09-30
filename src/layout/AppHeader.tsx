@@ -166,7 +166,7 @@ export default function AppHeader() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
-  const { user, logout, isPartner } = useAuth();
+  const { user, logout, isPartner, isImpersonating } = useAuth();
   const { hasActiveRm } = useProfilePhoto();
   const [open, setOpen] = useState(false);
 
@@ -265,14 +265,18 @@ export default function AppHeader() {
                   <CrmInfoIcon />
                   Support
                 </Link>
-                <Link
-                  href="/reset-password"
-                  className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-semibold text-[var(--arn-txt)] transition-colors hover:bg-[var(--arn-bg-2)]"
-                  onClick={() => setOpen(false)}
-                >
-                  <CrmInfoIcon />
-                  Reset password
-                </Link>
+                {/* Partner Admin preview sessions cannot change the real
+                    partner's password, so the entry point is hidden. */}
+                {!isImpersonating && (
+                  <Link
+                    href="/reset-password"
+                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-semibold text-[var(--arn-txt)] transition-colors hover:bg-[var(--arn-bg-2)]"
+                    onClick={() => setOpen(false)}
+                  >
+                    <CrmInfoIcon />
+                    Reset password
+                  </Link>
+                )}
                 <button
                   type="button"
                   className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm font-semibold text-[var(--arn-red)] transition-colors hover:bg-[var(--arn-red-bg)]"

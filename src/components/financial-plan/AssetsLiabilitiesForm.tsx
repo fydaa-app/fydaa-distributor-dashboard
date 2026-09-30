@@ -1,9 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type {
-  AssetsLiabilitiesPayload,
-  QuestionAnswerDto,
+import { getCookie } from "cookies-next";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ArnLoadingState from "@/components/common/ArnLoadingState";
+import {
+  captureSetuConsent,
+  createSetuConsent,
+  fetchSetuFinancialData,
+  getSetuConsentStatus,
+  type AssetsLiabilitiesPayload,
+  type QuestionAnswerDto,
+  type SetuFinancialData,
 } from "@/services/financialPlanService";
 
 interface AssetsLiabilitiesFormProps {
@@ -33,6 +40,66 @@ const LOAN_TYPE_OPTIONS = [
   "Education Loan",
   "Other",
 ] as const;
+
+const SETU_FI_TYPES = [
+  "DEPOSIT",
+  "EQUITIES",
+  "MUTUAL_FUNDS",
+  "TERM_DEPOSIT",
+  "RECURRING_DEPOSIT",
+  "ETF",
+  "NPS",
+];
+
+const SETU_REDIRECT_FALLBACK = "https://fydaa.com/SuccesspageSetu";
+const SETU_POSTBACK_PATH = "SuccesspageSetu";
+const SETU_SYNC_DELAY_MS = 2000;
+const SETU_STATUS_POLL_MS = 2000;
+const SETU_FAILURE_STATUSES = new Set([
+  "REJECTED",
+  "REVOKED",
+  "EXPIRED",
+  "ERROR",
+  "FAILED",
+]);
+
+function isSetuPostbackUrl(currentUrl: string, redirectUrl: string): boolean {
+  if (redirectUrl && currentUrl.includes(redirectUrl)) return true;
+  return currentUrl.includes(SETU_POSTBACK_PATH);
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function applySetuAmount(
+  setter: (updater: (current: string) => string) => void,
+  apiValue: number
+) {
+  if (!(apiValue > 0)) return;
+  setter((current) => (amountOrZero(current) === 0 ? String(apiValue) : current));
+}
+
+function prefillSetuAmounts(
+  data: SetuFinancialData,
+  setters: {
+    setBankSavings: (updater: (current: string) => string) => void;
+    setMutualFunds: (updater: (current: string) => string) => void;
+    setStocks: (updater: (current: string) => string) => void;
+    setNps: (updater: (current: string) => string) => void;
+    setFdsRds: (updater: (current: string) => string) => void;
+    setGold: (updater: (current: string) => string) => void;
+  }
+) {
+  applySetuAmount(setters.setBankSavings, data.bankBalance);
+  applySetuAmount(setters.setMutualFunds, data.mutualFunds);
+  applySetuAmount(setters.setStocks, data.stocks);
+  applySetuAmount(setters.setNps, data.nps);
+  applySetuAmount(setters.setFdsRds, data.fdsRds);
+  applySetuAmount(setters.setGold, data.gold);
+}
 
 function emptyDebt(): DebtEntry {
   return {
@@ -78,17 +145,247 @@ export default function AssetsLiabilitiesForm({
   const [noDebts, setNoDebts] = useState(false);
   const [debts, setDebts] = useState<DebtEntry[]>([emptyDebt()]);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isFetchingSetu, setIsFetchingSetu] = useState(false);
+  const [hasFetchedSetu, setHasFetchedSetu] = useState(false);
+  const [setuError, setSetuError] = useState<string | null>(null);
+  const [setuLastMonthError, setSetuLastMonthError] = useState<string | null>(null);
+  const [isSetuSyncing, setIsSetuSyncing] = useState(false);
+  const setuPollRef = useRef<number | null>(null);
+  const setuMountedRef = useRef(true);
+
+  useEffect(() => {
+    setuMountedRef.current = true;
+    return () => {
+      setuMountedRef.current = false;
+      if (setuPollRef.current != null) {
+        window.clearInterval(setuPollRef.current);
+        setuPollRef.current = null;
+      }
+    };
+  }, []);
+
+  const stopSetuPolling = () => {
+    if (setuPollRef.current != null) {
+      window.clearInterval(setuPollRef.current);
+      setuPollRef.current = null;
+    }
+  };
+
+  const handleFetchWithSetu = async () => {
+    if (isFetchingSetu) return;
+
+    setSetuError(null);
+    setSetuLastMonthError(null);
+    setIsFetchingSetu(true);
+
+    const rawToken = getCookie("onboardedUserToken");
+    const token = typeof rawToken === "string" ? rawToken.trim() : "";
+    if (!token) {
+      setIsFetchingSetu(false);
+      return;
+    }
+
+    try {
+      const consent = await createSetuConsent(token, SETU_FI_TYPES);
+      if (!consent?.url.trim()) {
+        setSetuError("Invalid Account Aggregator response. Continue manually.");
+        setIsFetchingSetu(false);
+        return;
+      }
+
+      const popup = window.open(consent.url, "_blank", "width=600,height=800");
+      if (!popup) {
+        setSetuError("Could not open the Setu window. Continue manually.");
+        setIsFetchingSetu(false);
+        return;
+      }
+
+      const redirectUrl = consent.redirectUrl || SETU_REDIRECT_FALLBACK;
+      let handled = false;
+
+      const finishCancelled = () => {
+        if (handled) return;
+        handled = true;
+        stopSetuPolling();
+        if (setuMountedRef.current) {
+          setIsFetchingSetu(false);
+        }
+      };
+
+      const completeSetuFetch = async () => {
+        setIsSetuSyncing(true);
+        try {
+          void captureSetuConsent(token, consent.id);
+
+          await wait(SETU_SYNC_DELAY_MS);
+          if (!setuMountedRef.current) {
+            setIsSetuSyncing(false);
+            return;
+          }
+
+          const result = await fetchSetuFinancialData(token);
+          if (!setuMountedRef.current) {
+            setIsSetuSyncing(false);
+            return;
+          }
+
+          if (result.error) {
+            setSetuLastMonthError(result.error);
+            return;
+          }
+
+          if (!result.data) {
+            setSetuLastMonthError(
+              "Setu auto-fetch failed: No financial data returned. Continue manually."
+            );
+            return;
+          }
+
+          try {
+            if (!popup.closed) popup.close();
+          } catch (closeError) {
+            console.warn("Unable to close Setu window:", closeError);
+          }
+
+          prefillSetuAmounts(result.data, {
+            setBankSavings,
+            setMutualFunds,
+            setStocks,
+            setNps,
+            setFdsRds,
+            setGold,
+          });
+          setHasFetchedSetu(true);
+          setSetuError(null);
+          setSetuLastMonthError(null);
+        } catch (fetchError) {
+          console.warn("Failed to fetch Setu financial data:", fetchError);
+          if (setuMountedRef.current) {
+            setSetuLastMonthError(
+              "Setu auto-fetch failed: Unexpected error. Continue manually."
+            );
+          }
+        } finally {
+          setIsSetuSyncing(false);
+          if (setuMountedRef.current) {
+            setIsFetchingSetu(false);
+          }
+        }
+      };
+
+      const beginSuccess = () => {
+        if (handled) return;
+        handled = true;
+        stopSetuPolling();
+        void completeSetuFetch();
+      };
+
+      const beginFailed = () => {
+        if (handled) return;
+        handled = true;
+        stopSetuPolling();
+        try {
+          if (!popup.closed) popup.close();
+        } catch (closeError) {
+          console.warn("Unable to close Setu window:", closeError);
+        }
+        if (setuMountedRef.current) {
+          setSetuError("Could not auto-fill… Continue manually.");
+          setIsFetchingSetu(false);
+        }
+      };
+
+      let statusCheckInFlight = false;
+      let lastStatusCheckAt = Date.now();
+
+      const pollConsentStatus = () => {
+        if (handled || !consent.id || statusCheckInFlight) return;
+        const now = Date.now();
+        if (now - lastStatusCheckAt < SETU_STATUS_POLL_MS) return;
+        lastStatusCheckAt = now;
+        statusCheckInFlight = true;
+
+        void getSetuConsentStatus(token, consent.id)
+          .then((status) => {
+            statusCheckInFlight = false;
+            if (handled || !setuMountedRef.current) return;
+            const normalized = status?.toUpperCase() ?? "";
+            if (normalized === "ACTIVE") {
+              beginSuccess();
+              return;
+            }
+            if (SETU_FAILURE_STATUSES.has(normalized)) {
+              beginFailed();
+            }
+          })
+          .catch(() => {
+            statusCheckInFlight = false;
+          });
+      };
+
+      stopSetuPolling();
+      setuPollRef.current = window.setInterval(() => {
+        if (handled) {
+          stopSetuPolling();
+          return;
+        }
+
+        try {
+          const currentUrl = popup.location.href;
+          if (isSetuPostbackUrl(currentUrl, redirectUrl)) {
+            beginSuccess();
+            return;
+          }
+        } catch {
+          // Setu and https://fydaa.com are cross-origin, so the popup URL
+          // cannot be read. Consent status is the completion signal instead.
+        }
+
+        if (popup.closed) {
+          finishCancelled();
+          return;
+        }
+
+        pollConsentStatus();
+      }, 500);
+    } catch (error) {
+      const message = error instanceof Error ? error.message.trim() : "";
+      if (setuMountedRef.current) {
+        setSetuError(
+          message
+            ? `Could not auto-fill… ${message} Continue manually.`
+            : "Could not auto-fill… Continue manually."
+        );
+        setSetuLastMonthError(null);
+        setIsFetchingSetu(false);
+      }
+    }
+  };
 
   const totalAssets = useMemo(() => {
-    return (
+    const standardAssets =
       amountOrZero(bankSavings) +
       amountOrZero(mutualFunds) +
       amountOrZero(stocks) +
       amountOrZero(nps) +
       amountOrZero(fdsRds) +
-      amountOrZero(gold)
+      amountOrZero(gold);
+
+    const customAssetsTotal = customAssets.reduce(
+      (sum, asset) => sum + amountOrZero(asset.amount),
+      0
     );
-  }, [bankSavings, mutualFunds, stocks, nps, fdsRds, gold]);
+
+    return standardAssets + customAssetsTotal;
+  }, [
+    bankSavings,
+    mutualFunds,
+    stocks,
+    nps,
+    fdsRds,
+    gold,
+    customAssets,
+  ]);
 
   const addCustomAsset = () => {
     setValidationError(null);
@@ -274,6 +571,8 @@ export default function AssetsLiabilitiesForm({
 
   const displayError = validationError || error;
 
+  const setuDisplayError = setuLastMonthError || setuError;
+
   const renderAmountField = (
     label: string,
     value: string,
@@ -302,6 +601,10 @@ export default function AssetsLiabilitiesForm({
     </div>
   );
 
+  if (isSetuSyncing) {
+    return <ArnLoadingState label="Fetching your financial data..." />;
+  }
+
   return (
     <div className="step-panel">
       <div className="flex justify-center mb-5">
@@ -317,6 +620,40 @@ export default function AssetsLiabilitiesForm({
       </div>
 
       <div className="onboard-section-label">Assets</div>
+
+      <button
+        type="button"
+        onClick={handleFetchWithSetu}
+        disabled={isFetchingSetu}
+        className="btn-primary btn-wide"
+        style={{
+          marginBottom: hasFetchedSetu && !isFetchingSetu ? 8 : 16,
+          background: "var(--arn-amber-sel-bg)",
+          color: "var(--arn-amber)",
+          border: "1px solid var(--arn-amber)",
+          boxShadow: "none",
+        }}
+      >
+        {isFetchingSetu
+          ? "Fetching..."
+          : hasFetchedSetu
+            ? "Fetch again"
+            : "Auto Fetch"}
+      </button>
+
+      {hasFetchedSetu && !isFetchingSetu && (
+        <p className="step-helper" style={{ textAlign: "left", marginBottom: 16 }}>
+          Fetched with Setu
+        </p>
+      )}
+
+      {setuDisplayError && (
+        <div className="field-error" style={{ marginTop: 8, marginBottom: 16 }}>
+          <i className="ti ti-alert-circle" aria-hidden="true" />
+          {setuDisplayError}
+        </div>
+      )}
+
       {renderAmountField("Bank Savings", bankSavings, setBankSavings)}
       {renderAmountField("Mutual Funds", mutualFunds, setMutualFunds)}
       {renderAmountField("Stocks", stocks, setStocks)}
@@ -487,7 +824,7 @@ export default function AssetsLiabilitiesForm({
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isSubmitting}
+        disabled={isSubmitting || isFetchingSetu}
         className="btn-primary btn-wide"
       >
         {isSubmitting ? "Submitting..." : "Continue"}{" "}

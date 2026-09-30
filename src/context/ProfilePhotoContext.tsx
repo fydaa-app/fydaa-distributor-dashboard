@@ -6,21 +6,20 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { fetchPartnerProfilePhoto } from "@/services/arnProfileService";
 import type { PartnerProfilePhoto } from "@/services/arnProfileService";
 
-const STORAGE_KEY = "arnProfilePhotoReminderDismissed";
+const LEGACY_DISMISS_KEY = "arnProfilePhotoReminderDismissed";
 
 type ProfilePhotoContextType = {
   hasActiveRm: boolean;
   photoUrl: string | null;
   isLoading: boolean;
-  reminderDismissed: boolean;
   refreshProfilePhoto: () => void;
-  dismissReminder: () => void;
 };
 
 const ProfilePhotoContext = createContext<ProfilePhotoContextType | undefined>(
@@ -32,15 +31,15 @@ export function ProfilePhotoProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { isPartner } = useAuth();
+  const { isPartner, isLoading: authLoading } = useAuth();
   const [profilePhoto, setProfilePhoto] =
     useState<PartnerProfilePhoto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [reminderDismissed, setReminderDismissed] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setReminderDismissed(localStorage.getItem(STORAGE_KEY) === "true");
+      window.localStorage.removeItem(LEGACY_DISMISS_KEY);
     }
   }, []);
 
@@ -51,37 +50,37 @@ export function ProfilePhotoProvider({
       return;
     }
 
+    const requestId = ++requestIdRef.current;
+    setIsLoading(true);
+
     try {
       const data = await fetchPartnerProfilePhoto();
+      if (requestId !== requestIdRef.current) return;
       setProfilePhoto(data);
     } catch {
+      if (requestId !== requestIdRef.current) return;
       setProfilePhoto({ hasActiveRm: false, photoUrl: null });
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [isPartner]);
 
   useEffect(() => {
-    refreshProfilePhoto();
-  }, [refreshProfilePhoto]);
+    if (authLoading) return;
 
-  const dismissReminder = useCallback(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, "true");
-    }
-    setReminderDismissed(true);
-  }, []);
+    refreshProfilePhoto();
+  }, [authLoading, refreshProfilePhoto]);
 
   const value = useMemo(
     () => ({
       hasActiveRm: profilePhoto?.hasActiveRm ?? false,
       photoUrl: profilePhoto?.photoUrl ?? null,
       isLoading,
-      reminderDismissed,
       refreshProfilePhoto,
-      dismissReminder,
     }),
-    [profilePhoto, isLoading, reminderDismissed, refreshProfilePhoto, dismissReminder],
+    [profilePhoto, isLoading, refreshProfilePhoto],
   );
 
   return (

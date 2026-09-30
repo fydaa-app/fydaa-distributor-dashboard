@@ -6,33 +6,28 @@ import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
 import ProfilePhotoReminder from "@/components/arn-euins/ProfilePhotoReminder";
 import { useAuth } from "@/context/AuthContext";
 import { ProfilePhotoProvider, useProfilePhoto } from "@/context/ProfilePhotoContext";
+import { isPathHidden, isReminderHidden, publicPaths } from "@/config/routes";
 import { COLORS } from "@/theme/colors";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 
-const publicPaths = [
-  "/signin",
-  "/forgotpassword",
-  "/signup",
-  "/reset-password",
-  "/impersonate",
-];
-
-const REMINDER_HEIGHT = 48;
+const REMINDER_HEIGHT = 64;
 const IMPERSONATION_HEIGHT = 40;
 const HEADER_HEIGHT = 72;
 
-function AuthenticatedShell({ children }: { children: React.ReactNode }) {
+function AuthenticatedShell({
+  children,
+  pathname,
+}: {
+  children: React.ReactNode;
+  pathname: string;
+}) {
   const { isImpersonating } = useAuth();
-  const { hasActiveRm, photoUrl, isLoading, reminderDismissed } =
-    useProfilePhoto();
+  const { hasActiveRm, photoUrl, isLoading } = useProfilePhoto();
 
   const showReminder =
-    !isLoading &&
-    hasActiveRm &&
-    !photoUrl &&
-    !reminderDismissed;
+    !isLoading && hasActiveRm && !photoUrl && !isReminderHidden(pathname);
 
   const topOffset =
     HEADER_HEIGHT +
@@ -61,9 +56,7 @@ export default function DistributorShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isPublicPath = publicPaths.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
+  const isPublicPath = isPathHidden(pathname, publicPaths);
 
   if (isPublicPath) {
     return <>{children}</>;
@@ -71,7 +64,7 @@ export default function DistributorShell({
 
   return (
     <ProfilePhotoProvider>
-      <AuthenticatedShell>{children}</AuthenticatedShell>
+      <AuthenticatedShell pathname={pathname}>{children}</AuthenticatedShell>
     </ProfilePhotoProvider>
   );
 }
