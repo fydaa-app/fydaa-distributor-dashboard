@@ -740,9 +740,14 @@ function extractSetuFinancialData(
   };
 }
 
+export interface SetuFinancialDataResult {
+  data: SetuFinancialData | null;
+  error: string | null;
+}
+
 export async function fetchSetuFinancialData(
   token: string
-): Promise<SetuFinancialData | null> {
+): Promise<SetuFinancialDataResult> {
   try {
     const url = `${getPaymentApiUrl()}/setu/sebi-data/last-month`;
     const response = await fetch(url, {
@@ -750,16 +755,31 @@ export async function fetchSetuFinancialData(
       headers: paymentAuthHeaders(token),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      const payload = isRecord(data) ? data : {};
+      const backendMessage = readResponseMessage(payload);
+      return {
+        data: null,
+        error: `Setu auto-fetch failed: ${backendMessage || "Failed to fetch your financial data. Continue manually."}`,
+      };
+    }
 
     const data = await response.json().catch(() => null);
     const root = resolveSetuDataRoot(data);
-    if (!root) return null;
+    if (!root)
+      return {
+        data: null,
+        error: "Setu auto-fetch failed: Response format was unexpected. Continue manually.",
+      };
 
-    return extractSetuFinancialData(root);
+    return { data: extractSetuFinancialData(root), error: null };
   } catch (error) {
     console.warn("Failed to fetch Setu financial data:", error);
-    return null;
+    return {
+      data: null,
+      error: "Setu auto-fetch failed: Network error. Continue manually.",
+    };
   }
 }
 

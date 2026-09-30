@@ -2,6 +2,7 @@
 
 import { getCookie } from "cookies-next";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ArnLoadingState from "@/components/common/ArnLoadingState";
 import {
   captureSetuConsent,
   createSetuConsent,
@@ -147,6 +148,8 @@ export default function AssetsLiabilitiesForm({
   const [isFetchingSetu, setIsFetchingSetu] = useState(false);
   const [hasFetchedSetu, setHasFetchedSetu] = useState(false);
   const [setuError, setSetuError] = useState<string | null>(null);
+  const [setuLastMonthError, setSetuLastMonthError] = useState<string | null>(null);
+  const [isSetuSyncing, setIsSetuSyncing] = useState(false);
   const setuPollRef = useRef<number | null>(null);
   const setuMountedRef = useRef(true);
 
@@ -172,6 +175,7 @@ export default function AssetsLiabilitiesForm({
     if (isFetchingSetu) return;
 
     setSetuError(null);
+    setSetuLastMonthError(null);
     setIsFetchingSetu(true);
 
     const rawToken = getCookie("onboardedUserToken");
@@ -209,28 +213,41 @@ export default function AssetsLiabilitiesForm({
       };
 
       const completeSetuFetch = async () => {
+        setIsSetuSyncing(true);
         try {
           void captureSetuConsent(token, consent.id);
 
           await wait(SETU_SYNC_DELAY_MS);
+          if (!setuMountedRef.current) {
+            setIsSetuSyncing(false);
+            return;
+          }
+
+          const result = await fetchSetuFinancialData(token);
+          if (!setuMountedRef.current) {
+            setIsSetuSyncing(false);
+            return;
+          }
+
+          if (result.error) {
+            setSetuLastMonthError(result.error);
+            return;
+          }
+
+          if (!result.data) {
+            setSetuLastMonthError(
+              "Setu auto-fetch failed: No financial data returned. Continue manually."
+            );
+            return;
+          }
+
           try {
             if (!popup.closed) popup.close();
           } catch (closeError) {
             console.warn("Unable to close Setu window:", closeError);
           }
 
-          await wait(SETU_SYNC_DELAY_MS);
-          if (!setuMountedRef.current) return;
-
-          const data = await fetchSetuFinancialData(token);
-          if (!setuMountedRef.current) return;
-
-          if (!data) {
-            setSetuError("Could not auto-fill… Continue manually.");
-            return;
-          }
-
-          prefillSetuAmounts(data, {
+          prefillSetuAmounts(result.data, {
             setBankSavings,
             setMutualFunds,
             setStocks,
@@ -240,12 +257,16 @@ export default function AssetsLiabilitiesForm({
           });
           setHasFetchedSetu(true);
           setSetuError(null);
+          setSetuLastMonthError(null);
         } catch (fetchError) {
           console.warn("Failed to fetch Setu financial data:", fetchError);
           if (setuMountedRef.current) {
-            setSetuError("Could not auto-fill… Continue manually.");
+            setSetuLastMonthError(
+              "Setu auto-fetch failed: Unexpected error. Continue manually."
+            );
           }
         } finally {
+          setIsSetuSyncing(false);
           if (setuMountedRef.current) {
             setIsFetchingSetu(false);
           }
@@ -335,6 +356,7 @@ export default function AssetsLiabilitiesForm({
             ? `Could not auto-fill… ${message} Continue manually.`
             : "Could not auto-fill… Continue manually."
         );
+        setSetuLastMonthError(null);
         setIsFetchingSetu(false);
       }
     }
@@ -533,7 +555,9 @@ export default function AssetsLiabilitiesForm({
     await onSubmit(payload);
   };
 
-  const displayError = validationError || setuError || error;
+  const displayError = validationError || error;
+
+  const setuDisplayError = setuLastMonthError || setuError;
 
   const renderAmountField = (
     label: string,
@@ -562,6 +586,10 @@ export default function AssetsLiabilitiesForm({
       </div>
     </div>
   );
+
+  if (isSetuSyncing) {
+    return <ArnLoadingState label="Fetching your financial data..." />;
+  }
 
   return (
     <div className="step-panel">
@@ -603,6 +631,13 @@ export default function AssetsLiabilitiesForm({
         <p className="step-helper" style={{ textAlign: "left", marginBottom: 16 }}>
           Fetched with Setu
         </p>
+      )}
+
+      {setuDisplayError && (
+        <div className="field-error" style={{ marginTop: 8, marginBottom: 16 }}>
+          <i className="ti ti-alert-circle" aria-hidden="true" />
+          {setuDisplayError}
+        </div>
       )}
 
       {renderAmountField("Bank Savings", bankSavings, setBankSavings)}
@@ -775,7 +810,7 @@ export default function AssetsLiabilitiesForm({
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isSubmitting}
+        disabled={isSubmitting || isFetchingSetu}
         className="btn-primary btn-wide"
       >
         {isSubmitting ? "Submitting..." : "Continue"}{" "}
