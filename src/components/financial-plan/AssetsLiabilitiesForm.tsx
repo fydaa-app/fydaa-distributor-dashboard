@@ -363,15 +363,29 @@ export default function AssetsLiabilitiesForm({
   };
 
   const totalAssets = useMemo(() => {
-    return (
+    const standardAssets =
       amountOrZero(bankSavings) +
       amountOrZero(mutualFunds) +
       amountOrZero(stocks) +
       amountOrZero(nps) +
       amountOrZero(fdsRds) +
-      amountOrZero(gold)
+      amountOrZero(gold);
+
+    const customAssetsTotal = customAssets.reduce(
+      (sum, asset) => sum + amountOrZero(asset.amount),
+      0
     );
-  }, [bankSavings, mutualFunds, stocks, nps, fdsRds, gold]);
+
+    return standardAssets + customAssetsTotal;
+  }, [
+    bankSavings,
+    mutualFunds,
+    stocks,
+    nps,
+    fdsRds,
+    gold,
+    customAssets,
+  ]);
 
   const addCustomAsset = () => {
     setValidationError(null);
