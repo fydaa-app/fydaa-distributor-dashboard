@@ -6,13 +6,13 @@ import {
   requestArnOtp,
   verifyArnOtp,
   fetchKycData,
-  checkKycWithPan,
   createModifyKycForm,
   saveModifyKycDetails,
   submitKycExtra,
   requestLinkEmail,
   verifyLinkEmail,
   createNominationDetails,
+  getUserStage,
   type RiskProfileQuestion,
   type NomineeRelationship,
   type NomineeAddress,
@@ -21,11 +21,35 @@ import {
   type UserStage,
 } from "@/services/arnOnboardService";
 import {
+  initiateKyc,
+  isUnauthorizedError,
+  reissueTokens,
+} from "@/services/arnKycService";
+import {
   getClientIp,
   createInvestorProfileAndMfAccount,
   createAndVerifyBankAccount,
   type AccountType,
 } from "@/services/arnInvestmentSetupService";
+import ModifyKycWizard from "@/components/onboard/ModifyKycWizard";
+import NonCompliantKycFlow from "@/components/onboard/NonCompliantKycFlow";
+import {
+  COMPLIANT_OCCUPATION_OPTIONS,
+  INCOME_SLAB_OPTIONS,
+  SOURCE_OF_WEALTH_OPTIONS,
+  type OnboardPhase,
+} from "@/components/onboard/onboardPhases";
+import {
+  detectKycMismatch,
+  formatKycIssues,
+  isNoRecordCode,
+  isNoRecordText,
+  isNonCompliantInProgress,
+  isUnderProcessReason,
+  normalizeKycReason,
+  toTitleCaseName,
+  validateKycFullName,
+} from "@/utils/kycStage";
 
 function mergeOnboardedUserData(updates: Record<string, unknown>) {
   try {
@@ -38,7 +62,7 @@ function mergeOnboardedUserData(updates: Record<string, unknown>) {
 }
 
 interface ArnOnboardFormProps {
-  phase: "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome" | "modifyKyc";
+  phase: OnboardPhase;
   mobile: string;
   onMobileChange: (value: string) => void;
   otpValues: string[];
@@ -48,12 +72,22 @@ interface ArnOnboardFormProps {
   onReset: () => void;
   userStage?: UserStage | null;
   onKycVerified: () => void;
-  onKycModify: () => void;
+  onKycModify: (message?: string) => void;
   onCheckModifyKycStatus?: () => void;
   isCheckingModifyKyc?: boolean;
   modifyKycStatusMessage?: string | null;
+  modifySheetMessage?: string | null;
   onGoToIdentity: () => void;
   onGoToKycCompliant: () => void;
+  onGoToNonCompliantQuestions: () => void;
+  onGoToDigilocker: () => void;
+  onGoToSignature: () => void;
+  onGoToNsdl: () => void;
+  onUnauthorized: () => void;
+  onRetryStageLoad: () => void;
+  stageLoadError?: string | null;
+  onUserStageChange?: (stage: UserStage) => void;
+  onTokenChange?: (token: string) => void;
   onGoToEmail: () => void;
   onGoToEmailOtp: () => void;
   onEmailVerified: () => void;
@@ -176,11 +210,19 @@ export default function ArnOnboardForm({
   userStage,
   onKycVerified,
   onKycModify,
-  onCheckModifyKycStatus,
-  isCheckingModifyKyc = false,
   modifyKycStatusMessage = null,
+  modifySheetMessage = null,
   onGoToIdentity,
   onGoToKycCompliant,
+  onGoToNonCompliantQuestions,
+  onGoToDigilocker,
+  onGoToSignature,
+  onGoToNsdl,
+  onUnauthorized,
+  onRetryStageLoad,
+  stageLoadError = null,
+  onUserStageChange,
+  onTokenChange,
   onGoToEmail,
   onGoToEmailOtp,
   onEmailVerified,
@@ -424,9 +466,6 @@ export default function ArnOnboardForm({
   const [kycLocalError, setKycLocalError] = useState<string | null>(null);
   const [kycStage, setKycStage] = useState<"check" | "fetch" | null>(null);
 
-  const [fatherName, setFatherName] = useState("");
-  const [gender, setGender] = useState("");
-  const [maritalStatus, setMaritalStatus] = useState("");
   const [incomeSlab, setIncomeSlab] = useState("");
   const [occupationType, setOccupationType] = useState("");
   const [sourceOfWealth, setSourceOfWealth] = useState("");
@@ -549,65 +588,11 @@ export default function ArnOnboardForm({
     }
   };
 
-  const genderOptions = [
-    { value: "male", label: "Male" },
-    { value: "female", label: "Female" },
-    { value: "others", label: "Others" },
-  ];
-  const maritalOptions = [
-    { value: "single", label: "Single" },
-    { value: "married", label: "Married" },
-  ];
-  const incomeSlabOptions = [
-    { value: "upto_1lakh", label: "Up to ₹1 Lakh" },
-    { value: "above_1lakh_upto_5lakh", label: "Above ₹1 Lakh – ₹5 Lakh" },
-    { value: "above_5lakh_upto_10lakh", label: "Above ₹5 Lakh – ₹10 Lakh" },
-    { value: "above_10lakh_upto_25lakh", label: "Above ₹10 Lakh – ₹25 Lakh" },
-    { value: "above_25lakh_upto_1cr", label: "Above ₹25 Lakh – ₹1 Cr" },
-    { value: "above_1cr", label: "Above ₹1 Cr" },
-  ];
-  const occupationOptions = [
-    { value: "private_sector_service", label: "Private Sector" },
-    { value: "public_sector_service", label: "Public Sector" },
-    { value: "government_service", label: "Government Sector" },
-    { value: "business", label: "Business" },
-    { value: "professional", label: "Professional" },
-    { value: "retired", label: "Retired" },
-    { value: "house_wife", label: "Housewife" },
-    { value: "student", label: "Student" },
-    { value: "agriculture", label: "Agriculture" },
-    { value: "doctor", label: "Doctor" },
-    { value: "forex_dealer", label: "Forex Dealer" },
-    { value: "service", label: "Service" },
-    { value: "others", label: "Others" },
-  ];
-
-  const sourceOfWealthOptions = [
-    { value: "salary", label: "Salary" },
-    { value: "business", label: "Business" },
-    { value: "gift", label: "Gift" },
-    { value: "ancestral_property", label: "Ancestral Property" },
-    { value: "rental_income", label: "Rental Income" },
-    { value: "prize_money", label: "Prize Money" },
-    { value: "royalty", label: "Royalty" },
-    { value: "others", label: "Others" },
-  ];
-
   const isIdentityValid =
-    fatherName.trim().length > 0 &&
-    gender !== "" &&
-    maritalStatus !== "" &&
     incomeSlab !== "" &&
     occupationType !== "" &&
     sourceOfWealth !== "" &&
     pepChecked;
-
-  const titleCase = (value: string): string =>
-    value
-      .trim()
-      .split(/\s+/)
-      .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
-      .join(" ");
 
   const handleIdentitySubmit = async () => {
     if (!isIdentityValid) return;
@@ -617,9 +602,6 @@ export default function ArnOnboardForm({
 
     try {
       await submitKycExtra({
-        father_name: titleCase(fatherName),
-        gender: gender as "male" | "female" | "others",
-        marital_status: maritalStatus as "single" | "married",
         income_slab: incomeSlab as
           | "upto_1lakh"
           | "above_1lakh_upto_5lakh"
@@ -633,6 +615,10 @@ export default function ArnOnboardForm({
       });
       onIdentityVerified();
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        onUnauthorized();
+        return;
+      }
       setIdentityError(
         err instanceof Error ? err.message : "Failed to save profile details. Please try again."
       );
@@ -642,36 +628,54 @@ export default function ArnOnboardForm({
   };
 
   const panValid = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim());
-  const isKycValid =
-    fullName.trim().length > 0 && panValid && dob.trim().length > 0;
+  const isKycValid = panValid && dob.trim().length > 0 && !validateKycFullName(fullName);
+
+  const startNonCompliant = async () => {
+    try {
+      await initiateKyc();
+    } catch (err) {
+      if (isUnauthorizedError(err)) {
+        onUnauthorized();
+        return;
+      }
+      throw err;
+    }
+
+    const stage = await getUserStage();
+    onUserStageChange?.(stage);
+
+    if (stage.isNSDL === true) {
+      onIdentityVerified();
+      return;
+    }
+    if (stage.isDigiLocker === true) {
+      onGoToSignature();
+      return;
+    }
+    if (stage.isNonCompliantData === true) {
+      onGoToDigilocker();
+      return;
+    }
+    onGoToNonCompliantQuestions();
+  };
 
   const handleKycSubmit = async () => {
+    const nameError = validateKycFullName(fullName);
+    if (nameError) {
+      setKycLocalError(nameError);
+      return;
+    }
     if (!isKycValid) return;
 
     setIsSubmittingKyc(true);
     setKycLocalError(null);
-    setKycStage("check");
+    setKycStage("fetch");
 
     try {
       const panValue = pan.trim().toUpperCase();
-      const nameValue = fullName.trim();
+      const nameValue = toTitleCaseName(fullName);
       const dobValue = dob;
 
-      // Step 1: Check KYC compliance (auth API)
-      const authToken = getCookie("onboardedUserToken") as string | undefined;
-      const check = await checkKycWithPan(panValue, authToken);
-      const isCompliant = check.status === true && check.action === null;
-
-      if (!isCompliant) {
-        setKycLocalError(
-          "Please complete KYC from the Fydaa app" +
-            (check.message ? ` — ${check.message}` : "")
-        );
-        return;
-      }
-
-      // Step 2: Fetch full KYC data (auth API) - saves PAN, handles modify
-      setKycStage("fetch");
       const result = await fetchKycData({
         pan: panValue,
         date_of_birth: dobValue,
@@ -682,6 +686,25 @@ export default function ArnOnboardForm({
         name: nameValue,
         fullName: nameValue,
       });
+
+      if (result.isMigratedUser) {
+        const tokens = await reissueTokens();
+        if (tokens.accessToken) {
+          setCookie("onboardedUserToken", tokens.accessToken, { path: "/" });
+          onTokenChange?.(tokens.accessToken);
+        }
+        if (tokens.refreshToken) {
+          setCookie("onboardedUserRefreshToken", tokens.refreshToken, { path: "/" });
+        }
+      }
+
+      if (result.action === "modify" && normalizeKycReason(result.reason) === "legacy") {
+        window.open("https://digital.camsonline.com/kycmodification", "_blank");
+        setKycLocalError(
+          result.message || "Please update your KYC on the KRA portal."
+        );
+        return;
+      }
 
       if (result.action === "modify") {
         saveModifyKycDetails({
@@ -694,17 +717,78 @@ export default function ArnOnboardForm({
           name: nameValue,
           date_of_birth: dobValue,
         });
-        onKycModify();
+        onKycModify(
+          result.message ||
+            result.reason ||
+            "Your KYC needs to be updated. Tap below to proceed."
+        );
         return;
       }
 
-      if (result.isKycCompliant) {
-        onKycVerified();
-      } else {
-        const reason = result.reason ? ` — ${result.reason}` : "";
-        setKycLocalError(`${result.message}${reason}`.trim());
+      if (detectKycMismatch(result)) {
+        setKycLocalError(formatKycIssues(result));
+        return;
       }
+
+      if (isUnderProcessReason(result.reason)) {
+        setKycLocalError("KYC is under process");
+        return;
+      }
+
+      const noRecordFromIssues = result.issues.some((issue) =>
+        isNoRecordCode(issue.code)
+      );
+
+      if (result.action === "create") {
+        await startNonCompliant();
+        return;
+      }
+
+      if (
+        noRecordFromIssues ||
+        isNoRecordText(result.message) ||
+        isNoRecordText(result.reason)
+      ) {
+        await startNonCompliant();
+        return;
+      }
+
+      if (!result.status) {
+        setKycLocalError(
+          result.message || "KYC verification failed. Please try again."
+        );
+        return;
+      }
+
+      const stage = await getUserStage();
+      onUserStageChange?.(stage);
+      if (stage.ismodify === true && stage.ismodifynsdl !== true) {
+        saveModifyKycDetails({
+          pan: panValue,
+          name: nameValue,
+          date_of_birth: dobValue,
+        });
+        onKycModify(
+          result.message ||
+            result.reason ||
+            "Your KYC needs to be updated. Tap below to proceed."
+        );
+        return;
+      }
+      if (isNonCompliantInProgress(stage) || stage.isKycNonCompliant === true) {
+        await startNonCompliant();
+        return;
+      }
+      if (stage.isKycCompliant === true) {
+        onKycVerified();
+        return;
+      }
+      await startNonCompliant();
     } catch (err) {
+      if (isUnauthorizedError(err)) {
+        onUnauthorized();
+        return;
+      }
       setKycLocalError(
         err instanceof Error ? err.message : "KYC verification failed. Please try again."
       );
@@ -1358,9 +1442,11 @@ export default function ArnOnboardForm({
             </label>
             <input
               className="field-input"
-              placeholder="Enter full name"
+              placeholder="Rahul Sharma"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value.replace(/\d/g, ""))}
+              onChange={(e) =>
+                setFullName(e.target.value.replace(/[^A-Za-z ]/g, "").replace(/\s{2,}/g, " "))
+              }
             />
           </div>
 
@@ -1414,13 +1500,7 @@ export default function ArnOnboardForm({
             className="btn-primary btn-wide"
             style={{ marginTop: 8 }}
           >
-            {kycStage === "check"
-              ? "Checking KYC status..."
-              : kycStage === "fetch"
-              ? "Verifying KYC..."
-              : isSubmittingKyc
-              ? "Verifying..."
-              : "Verify"}
+            {kycStage === "fetch" || isSubmittingKyc ? "Verifying KYC..." : "Verify"}
           </button>
         </div>
       )}
@@ -1461,35 +1541,53 @@ export default function ArnOnboardForm({
       )}
 
       {phase === "modifyKyc" && (
+        <ModifyKycWizard
+          userStage={userStage}
+          introMessage={
+            modifySheetMessage ||
+            modifyKycStatusMessage ||
+            "Your KYC needs to be updated. Tap below to proceed."
+          }
+          onStageChange={onUserStageChange}
+          onComplete={() => onIdentityVerified()}
+          onCompleteLater={onReset}
+          onUnauthorized={onUnauthorized}
+        />
+      )}
+
+      {phase === "stageRetry" && (
         <div className="step-panel">
-          <p className="step-eyebrow" style={{ textAlign: "center" }}>
-            Identity Verification
+          <p className="step-eyebrow">Onboarding</p>
+          <h2 className="step-title">Couldn&apos;t load status</h2>
+          <p className="step-helper">
+            {stageLoadError ||
+              "We could not load the user&apos;s onboarding status. Please try again."}
           </p>
-          <h2 className="step-title" style={{ textAlign: "center" }}>
-            KYC Update Required
-          </h2>
-          <p className="step-helper" style={{ textAlign: "center" }}>
-            KYC record needs to be updated. Open the Fydaa mobile app and complete DigiLocker,
-            questions, and e-sign. Do not skip this step — onboarding cannot continue until
-            Modify KYC is finished.
-          </p>
-          {modifyKycStatusMessage && (
-            <p className="field-error" style={{ textAlign: "center", marginTop: 12 }}>
-              {modifyKycStatusMessage}
-            </p>
-          )}
-          {onCheckModifyKycStatus && (
-            <button
-              type="button"
-              className="btn-primary btn-wide"
-              style={{ marginTop: 20 }}
-              onClick={onCheckModifyKycStatus}
-              disabled={isCheckingModifyKyc}
-            >
-              {isCheckingModifyKyc ? "Checking…" : "Check status"}
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn-primary btn-wide"
+            onClick={onRetryStageLoad}
+          >
+            Retry
+          </button>
         </div>
+      )}
+
+      {(phase === "nonCompliantQuestions" ||
+        phase === "digilocker" ||
+        phase === "signature" ||
+        phase === "nsdlEsign") && (
+        <NonCompliantKycFlow
+          phase={phase}
+          userStage={userStage}
+          onGoToQuestions={onGoToNonCompliantQuestions}
+          onGoToDigilocker={onGoToDigilocker}
+          onGoToSignature={onGoToSignature}
+          onGoToNsdl={onGoToNsdl}
+          onComplete={onIdentityVerified}
+          onStageChange={onUserStageChange}
+          onUnauthorized={onUnauthorized}
+        />
       )}
 
       {phase === "identity" && (
@@ -1506,53 +1604,6 @@ export default function ArnOnboardForm({
             Please provide the information below to complete user&apos;s profile.
           </p>
 
-          <div className="onboard-section-label">Family Details</div>
-          <div className="field-group">
-            <label className="field-label">
-              Father&apos;s Name <span className="req">Required</span>
-            </label>
-            <input
-              className="field-input"
-              placeholder="Enter father&apos;s name"
-              value={fatherName}
-              onChange={(e) => setFatherName(e.target.value.replace(/\d/g, ""))}
-            />
-          </div>
-
-          <div className="onboard-section-label">Personal Details</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="field-group">
-              <label className="field-label">Gender</label>
-              <select
-                className="field-select"
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-              >
-                <option value="">Select user&apos;s gender</option>
-                {genderOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field-group">
-              <label className="field-label">Marital Status</label>
-              <select
-                className="field-select"
-                value={maritalStatus}
-                onChange={(e) => setMaritalStatus(e.target.value)}
-              >
-                <option value="">Select user&apos;s marital status</option>
-                {maritalOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
           <div className="onboard-section-label">Financial Details</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field-group">
@@ -1563,7 +1614,7 @@ export default function ArnOnboardForm({
                 onChange={(e) => setIncomeSlab(e.target.value)}
               >
                 <option value="">Select user&apos;s income slab range</option>
-                {incomeSlabOptions.map((opt) => (
+                {INCOME_SLAB_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -1578,7 +1629,7 @@ export default function ArnOnboardForm({
                 onChange={(e) => setOccupationType(e.target.value)}
               >
                 <option value="">Select user&apos;s occupation</option>
-                {occupationOptions.map((opt) => (
+                {COMPLIANT_OCCUPATION_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -1593,7 +1644,7 @@ export default function ArnOnboardForm({
                 onChange={(e) => setSourceOfWealth(e.target.value)}
               >
                 <option value="">Select user&apos;s source of wealth</option>
-                {sourceOfWealthOptions.map((opt) => (
+                {SOURCE_OF_WEALTH_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -1608,14 +1659,7 @@ export default function ArnOnboardForm({
               checked={pepChecked}
               onChange={(e) => setPepChecked(e.target.checked)}
             />
-            <span>
-              I confirm I am not a politically exposed person (PEP).
-               {/* By continuing, you agree to our{" "}
-              <a href="#" onClick={(e) => e.preventDefault()}>
-                Terms &amp; Conditions
-              </a>
-              . */}
-            </span>
+            <span>I am not a politically exposed person</span>
           </label>
 
           {identityError && (
@@ -1640,7 +1684,16 @@ export default function ArnOnboardForm({
       {phase === "bank" && (
         <div className="step-panel">
           <div className="flex justify-center mb-5">
-            <div className="back-btn" onClick={onGoToIdentity} role="button" tabIndex={0}>
+            <div
+              className="back-btn"
+              onClick={
+                userStage?.isKycNonCompliant === true || userStage?.isNSDL === true
+                  ? onGoToNsdl
+                  : onGoToIdentity
+              }
+              role="button"
+              tabIndex={0}
+            >
               <i className="ti ti-arrow-left" aria-hidden="true" />
             </div>
           </div>
