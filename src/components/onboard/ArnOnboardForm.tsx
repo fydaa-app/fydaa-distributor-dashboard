@@ -701,7 +701,7 @@ export default function ArnOnboardForm({
       if (result.action === "modify" && normalizeKycReason(result.reason) === "legacy") {
         window.open("https://digital.camsonline.com/kycmodification", "_blank");
         setKycLocalError(
-          result.message || "Please update your KYC on the KRA portal."
+          "KYC verification failed for Legacy user. Please update your KYC on the KRA portal."
         );
         return;
       }
