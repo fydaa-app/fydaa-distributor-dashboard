@@ -3,19 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   createIdentityDocument,
-  createKycESign,
   getIdentityDocument,
-  getKycESign,
-  isEsignFailureStatus,
-  isEsignSuccessStatus,
   isIdentityFailureStatus,
   isIdentitySuccessStatus,
-  isSignatureAlreadyStored,
   isUnauthorizedError,
-  syncKycRequestStatus,
   updateKycRequest,
   type IdentityDocumentResult,
-  type KycESignResult,
   type UpdateKycRequestPayload,
 } from "@/services/arnKycService";
 import {
@@ -31,16 +24,11 @@ import {
   SOURCE_OF_WEALTH_OPTIONS,
   type OnboardPhase,
 } from "@/components/onboard/onboardPhases";
-import ArnSignaturePad, {
-  type ArnSignaturePadHandle,
-} from "@/components/onboard/ArnSignaturePad";
+import InvestorEsignWait from "@/components/onboard/InvestorEsignWait";
 import {
-  closePopupQuietly,
-  isNsdlEsignCallback,
   openKycPopup,
   wait,
   waitForDigilockerPopup,
-  watchPopup,
 } from "@/utils/kycPopup";
 import { toTitleCaseName } from "@/utils/kycStage";
 
@@ -49,7 +37,7 @@ interface NonCompliantKycFlowProps {
   userStage?: UserStage | null;
   onGoToQuestions: () => void;
   onGoToDigilocker: () => void;
-  onGoToSignature: () => void;
+  onGoToSignature?: () => void;
   onGoToNsdl: () => void;
   onComplete: () => void;
   onStageChange?: (stage: UserStage) => void;
@@ -92,16 +80,13 @@ async function readDeviceGeolocation(): Promise<{
 
 export default function NonCompliantKycFlow({
   phase,
-  userStage,
   onGoToQuestions,
   onGoToDigilocker,
-  onGoToSignature,
   onGoToNsdl,
   onComplete,
   onStageChange,
   onUnauthorized,
 }: NonCompliantKycFlowProps) {
-  const signatureRef = useRef<ArnSignaturePadHandle | null>(null);
   const [fatherName, setFatherName] = useState("");
   const [gender, setGender] = useState("");
   const [maritalStatus, setMaritalStatus] = useState("");
@@ -113,7 +98,7 @@ export default function NonCompliantKycFlow({
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Please wait...");
   const [digiRetry, setDigiRetry] = useState(false);
-  const [esignRetry, setEsignRetry] = useState(false);
+  const [esignDone, setEsignDone] = useState(false);
   const autoStartedDigiRef = useRef(false);
 
   const handleError = (err: unknown, fallback: string) => {
@@ -240,7 +225,7 @@ export default function NonCompliantKycFlow({
 
       if (isIdentitySuccessStatus(result.fetch.status)) {
         await reloadStage();
-        onGoToSignature();
+        onGoToNsdl();
         return;
       }
 
@@ -271,83 +256,6 @@ export default function NonCompliantKycFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  const handleSignatureSubmit = async () => {
-    if (userStage?.isNSDL === true) {
-      onGoToNsdl();
-      return;
-    }
-
-    const base64 = signatureRef.current?.toBase64Png();
-    if (!base64) {
-      setError("Please draw the signature before continuing.");
-      return;
-    }
-
-    setBusy(true);
-    setBusyLabel("Uploading signature...");
-    setError(null);
-
-    try {
-      await import("@/services/arnKycService").then((m) =>
-        m.uploadKycSignature(base64)
-      );
-      onGoToNsdl();
-    } catch (err) {
-      if (isSignatureAlreadyStored(err)) {
-        onGoToNsdl();
-        return;
-      }
-      const status =
-        err && typeof err === "object" && "statusCode" in err
-          ? Number((err as { statusCode?: number }).statusCode)
-          : 0;
-      if (status === 400) {
-        setError("Please sign again using a clearer signature.");
-        signatureRef.current?.clear();
-        return;
-      }
-      handleError(err, "Failed to upload signature. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const isEsignTerminal = (esign: KycESignResult | null): boolean => {
-    if (!esign) return false;
-    return (
-      esign.nonJsonSuccess ||
-      isEsignSuccessStatus(esign.status) ||
-      isEsignFailureStatus(esign.status)
-    );
-  };
-
-  const pollEsignStatus = async (): Promise<KycESignResult> => {
-    try {
-      return await getKycESign();
-    } catch (err) {
-      const status =
-        err && typeof err === "object" && "statusCode" in err
-          ? Number((err as { statusCode?: number }).statusCode)
-          : 0;
-      if (status === 500) {
-        await wait(2000);
-        return getKycESign();
-      }
-      throw err;
-    }
-  };
-
-  const fetchEsignUntilTerminal = async (): Promise<KycESignResult> => {
-    const maxAttempts = 48;
-    let last: KycESignResult | null = null;
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      if (attempt > 0) await wait(5000);
-      last = await pollEsignStatus();
-      if (isEsignTerminal(last)) return last;
-    }
-    return last as KycESignResult;
-  };
-
   const pollStageUntilNsdl = async (): Promise<UserStage> => {
     let stage = await reloadStage();
     for (let i = 0; i < 4 && stage.isNSDL !== true; i += 1) {
@@ -357,89 +265,13 @@ export default function NonCompliantKycFlow({
     return stage;
   };
 
-  const startNsdl = async () => {
+  const finishAfterEsign = async () => {
+    setEsignDone(true);
     setBusy(true);
-    setBusyLabel("Opening Aadhaar e-sign...");
+    setBusyLabel("Creating investor profile...");
     setError(null);
-    setEsignRetry(false);
 
     try {
-      const created = await createKycESign();
-      if (!created.redirect_url) {
-        setError("E-sign link not ready. Please try again later.");
-        setEsignRetry(true);
-        return;
-      }
-
-      const popup = openKycPopup(created.redirect_url);
-      if (!popup) {
-        setError("Could not open e-sign. Please allow pop-ups and retry.");
-        setEsignRetry(true);
-        return;
-      }
-
-      setBusyLabel("Waiting for Aadhaar e-sign...");
-      const fetched: { result: KycESignResult | null } = { result: null };
-      await new Promise<void>((resolve) => {
-        watchPopup({
-          popup,
-          isComplete: isNsdlEsignCallback,
-          pollEveryMs: 5000,
-          pollDeferFirst: true,
-          poll: async () => {
-            try {
-              fetched.result = await pollEsignStatus();
-              return isEsignTerminal(fetched.result);
-            } catch {
-              return false;
-            }
-          },
-          onComplete: () => {
-            closePopupQuietly(popup);
-            resolve();
-          },
-          onClosed: () => resolve(),
-          onTimeout: () => resolve(),
-        });
-      });
-
-      let esign = fetched.result;
-      if (!isEsignTerminal(esign)) {
-        setBusyLabel("Fetching e-sign status...");
-        esign = await fetchEsignUntilTerminal();
-      }
-
-      if (!esign) {
-        setError("Failed to check e-sign status. Please try again.");
-        setEsignRetry(true);
-        return;
-      }
-
-      if (isEsignFailureStatus(esign.status)) {
-        setError(
-          esign.reason ||
-            "Aadhaar e-sign failed. Please try again."
-        );
-        setEsignRetry(true);
-        return;
-      }
-
-      if (!esign.nonJsonSuccess && !isEsignSuccessStatus(esign.status)) {
-        setError("E-Sign is still pending. Continue to complete Aadhaar eSign.");
-        setEsignRetry(true);
-        return;
-      }
-
-      if (esign.kycRequestId) {
-        setBusyLabel("Updating KYC request...");
-        try {
-          await syncKycRequestStatus(esign.kycRequestId);
-        } catch {
-          /* GET /kyc/esign already captured the e-sign; continue MD flow */
-        }
-      }
-
-      setBusyLabel("Creating investor profile...");
       const ipAddress = await getClientIp();
       await createInvestorProfileAndMfAccount({ ipAddress });
       const stage = await pollStageUntilNsdl();
@@ -447,11 +279,9 @@ export default function NonCompliantKycFlow({
         onComplete();
         return;
       }
-      setError("E-Sign is still pending. Continue to complete Aadhaar eSign.");
-      setEsignRetry(true);
+      setError("E-sign is confirmed. Continue to finish account setup.");
     } catch (err) {
-      handleError(err, "Failed to complete Aadhaar e-sign. Please try again.");
-      setEsignRetry(true);
+      handleError(err, "Failed to create investor profile. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -631,72 +461,53 @@ export default function NonCompliantKycFlow({
     );
   }
 
-  if (phase === "signature") {
-    return (
-      <div className="step-panel">
-        <div className="flex justify-center mb-5">
-          <div
-            className="back-btn"
-            onClick={onGoToDigilocker}
-            role="button"
-            tabIndex={0}
-          >
-            <i className="ti ti-arrow-left" aria-hidden="true" />
-          </div>
-        </div>
-        <p className="step-eyebrow">Identity Verification</p>
-        <h2 className="step-title">Draw signature</h2>
-        <p className="step-helper">
-          Sign in the box below. This wet signature is stored before Aadhaar
-          e-sign.
-        </p>
-        <ArnSignaturePad ref={signatureRef} />
-        {error && (
-          <div className="field-error justify-center">
-            <i className="ti ti-alert-circle" aria-hidden="true" />
-            {error}
-          </div>
-        )}
-        <button
-          type="button"
-          className="btn-primary btn-wide"
-          style={{ marginTop: 16 }}
-          disabled={busy}
-          onClick={handleSignatureSubmit}
-        >
-          {busy ? busyLabel : "Continue to e-sign"}
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="step-panel">
       <div className="flex justify-center mb-5">
-        <div className="back-btn" onClick={onGoToSignature} role="button" tabIndex={0}>
+        <div className="back-btn" onClick={onGoToDigilocker} role="button" tabIndex={0}>
           <i className="ti ti-arrow-left" aria-hidden="true" />
         </div>
       </div>
       <p className="step-eyebrow">Identity Verification</p>
       <h2 className="step-title">Aadhaar e-sign</h2>
-      <p className="step-helper">
-        Complete NSDL Aadhaar e-sign in the window that opens. Do not close it
-        until you return here.
-      </p>
-      {error && (
-        <div className="field-error justify-center">
-          <i className="ti ti-alert-circle" aria-hidden="true" />
-          {error}
-        </div>
+      {esignDone ? (
+        <>
+          <p className="step-helper">
+            Investor e-sign is complete. Continue to create the investment
+            account.
+          </p>
+          {error && (
+            <div className="field-error justify-center">
+              <i className="ti ti-alert-circle" aria-hidden="true" />
+              {error}
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn-primary btn-wide"
+            disabled={busy}
+            onClick={finishAfterEsign}
+          >
+            {busy ? busyLabel : "Continue"}
+          </button>
+        </>
+      ) : (
+        <>
+          {error && (
+            <div className="field-error justify-center">
+              <i className="ti ti-alert-circle" aria-hidden="true" />
+              {error}
+            </div>
+          )}
+          <InvestorEsignWait
+            onCompleted={finishAfterEsign}
+            onUnauthorized={onUnauthorized}
+            completing={busy}
+            completingLabel={busyLabel}
+            flow="non_compliant"
+          />
+        </>
       )}
-      <button
-        type="button"
-        className="btn-primary btn-wide"
-        disabled={busy}
-        onClick={startNsdl}
-      >
-        {busy ? busyLabel : esignRetry ? "Continue eSign" : "Start Aadhaar e-sign"}
-      </button>
     </div>
   );
 }

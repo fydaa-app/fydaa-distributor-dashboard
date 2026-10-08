@@ -649,7 +649,7 @@ export default function ArnOnboardForm({
       return;
     }
     if (stage.isDigiLocker === true) {
-      onGoToSignature();
+      onGoToNsdl();
       return;
     }
     if (stage.isNonCompliantData === true) {

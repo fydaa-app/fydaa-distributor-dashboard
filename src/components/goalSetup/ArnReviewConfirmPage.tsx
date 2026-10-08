@@ -1002,10 +1002,7 @@ function StatusItem({
 }
 
 function formatRupee(n: number): string {
-  if (n >= 1e7) return "₹" + (n / 1e7).toFixed(1) + "Cr";
-  if (n >= 1e5) return "₹" + (n / 1e5).toFixed(1) + "L";
-  if (n >= 1e3) return "₹" + (n / 1e3).toFixed(0) + "K";
-  return "₹" + n.toLocaleString("en-IN");
+  return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 
 function formatDisplayDate(dateStr: string): string {

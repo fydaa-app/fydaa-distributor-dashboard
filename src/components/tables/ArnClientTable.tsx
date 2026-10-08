@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
 import ArnEmptyState from "@/components/common/ArnEmptyState";
 import ArnStatusTag from "@/components/common/ArnStatusTag";
+import SharePortfolioActions from "@/components/clients/SharePortfolioActions";
 import type { ArnClient, ArnKycStatus } from "@/types/arnClient";
 
 function getKycVariant(status: ArnKycStatus) {
@@ -80,8 +80,8 @@ export default function ArnClientTable({
                 <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
                   Last tx
                 </th>
-                <th className="border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
-                  Action
+                <th className="w-[150px] whitespace-nowrap border-b border-[var(--arn-bdr)] px-4 py-3 text-left text-xs font-normal text-[var(--arn-txt-3)]">
+                  Share portfolio
                 </th>
               </tr>
             </thead>
@@ -144,13 +144,7 @@ export default function ArnClientTable({
                   </td>
 
                   <td className="border-b border-[var(--arn-bdr)] px-4 py-3">
-                    <Link
-                      href={`/arn-share?clientId=${client.id}`}
-                      onClick={(event) => event.stopPropagation()}
-                      className="grid size-9 place-items-center rounded-[8px] border border-[var(--arn-bdr)] text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)]"
-                    >
-                      <i aria-hidden="true" className="ti ti-send" />
-                    </Link>
+                    <SharePortfolioActions userId={client.id} variant="icon" />
                   </td>
                 </tr>
               ))}
@@ -183,6 +177,7 @@ export default function ArnClientTable({
                 </div>
                 <div className="flex items-center gap-2">
                   <ArnStatusTag label={client.kycLabel} variant={getKycVariant(client.kycStatus)} size="task" />
+                  <SharePortfolioActions userId={client.id} variant="icon" />
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-[var(--arn-txt-3)] sm:grid-cols-4 sm:text-sm">

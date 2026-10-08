@@ -154,6 +154,79 @@ export interface KycESignResult {
   nonJsonSuccess: boolean;
 }
 
+export const ESIGN_REQUEST_COPY = {
+  emailNotVerified:
+    "Investor email is not verified. Link the investor's email before sending the e-sign request.",
+  notReady:
+    "E-sign is not ready yet. Finish DigiLocker first, then send the request.",
+  linkNotReady: "E-sign link not ready. Please try again later.",
+  sendEmailFailed: "Could not send the e-sign email. Please try again.",
+  startFailed: "Could not start Aadhaar e-sign. Please try again.",
+  invalid: "This e-sign link is invalid.",
+  expired:
+    "This e-sign link has expired. Ask your partner to send a new request.",
+  alreadySent:
+    "E-sign email already sent. Ask the investor to open the existing link. A new mail can be sent after it expires.",
+  vendorFailed: "E-sign could not be completed.",
+  serverError: "Something went wrong on our side. Please try again in a moment.",
+} as const;
+
+export type EsignRequestState =
+  | "none"
+  | "pending"
+  | "completed"
+  | "expired"
+  | "failed";
+
+export interface EsignRequestStatus {
+  status: EsignRequestState;
+  flow?: string | null;
+  emailSentTo?: string | null;
+  expiresAt?: string | null;
+  message?: string | null;
+  vendorUrl?: string | null;
+  fullName?: string | null;
+  needsSignature?: boolean;
+}
+
+function fallbackForEsignRequest(statusCode: number): string {
+  if (statusCode === 404) return ESIGN_REQUEST_COPY.invalid;
+  if (statusCode === 410) return ESIGN_REQUEST_COPY.expired;
+  if (statusCode === 409) return ESIGN_REQUEST_COPY.linkNotReady;
+  if (statusCode === 400) return ESIGN_REQUEST_COPY.sendEmailFailed;
+  return ESIGN_REQUEST_COPY.serverError;
+}
+
+function parseEsignRequestPayload(
+  payload: Record<string, unknown>
+): EsignRequestStatus {
+  const statusRaw = String(payload.status || "").toLowerCase();
+  const status: EsignRequestState =
+    statusRaw === "completed" ||
+    statusRaw === "expired" ||
+    statusRaw === "failed" ||
+    statusRaw === "none"
+      ? statusRaw
+      : "pending";
+  const expiresAt =
+    typeof payload.expiresAt === "string"
+      ? payload.expiresAt
+      : payload.expiresAt != null
+        ? String(payload.expiresAt)
+        : null;
+  return {
+    status,
+    flow: typeof payload.flow === "string" ? payload.flow : null,
+    emailSentTo:
+      typeof payload.emailSentTo === "string" ? payload.emailSentTo : null,
+    expiresAt,
+    message: typeof payload.message === "string" ? payload.message : null,
+    vendorUrl: typeof payload.vendorUrl === "string" ? payload.vendorUrl : null,
+    fullName: typeof payload.fullName === "string" ? payload.fullName : null,
+    needsSignature: payload.needsSignature === true,
+  };
+}
+
 export interface ReissuedTokens {
   accessToken: string | null;
   refreshToken: string | null;
@@ -405,6 +478,135 @@ export async function uploadKycSignature(
       "Failed to upload signature. Please try again."
     );
   }
+}
+
+export async function createEsignRequest(
+  flow?: "non_compliant" | "modify",
+  token?: string
+): Promise<EsignRequestStatus> {
+  try {
+    const payload = await authJson<Record<string, unknown>>(
+      "/kyc/esign-request",
+      { method: "POST", body: JSON.stringify(flow ? { flow } : {}) },
+      token,
+      ESIGN_REQUEST_COPY.sendEmailFailed
+    );
+    return parseEsignRequestPayload(payload);
+  } catch (error) {
+    if (error instanceof KycApiError) {
+      throw new KycApiError(
+        error.message || fallbackForEsignRequest(error.statusCode),
+        error.statusCode,
+        error.body
+      );
+    }
+    throw error;
+  }
+}
+
+export async function getEsignRequest(
+  token?: string
+): Promise<EsignRequestStatus> {
+  try {
+    const payload = await authJson<Record<string, unknown>>(
+      "/kyc/esign-request",
+      { method: "GET" },
+      token,
+      ESIGN_REQUEST_COPY.serverError
+    );
+    return parseEsignRequestPayload(payload);
+  } catch (error) {
+    if (error instanceof KycApiError) {
+      throw new KycApiError(
+        error.message || fallbackForEsignRequest(error.statusCode),
+        error.statusCode,
+        error.body
+      );
+    }
+    throw error;
+  }
+}
+
+export async function getEsignRequestByToken(
+  rawToken: string
+): Promise<EsignRequestStatus> {
+  const response = await fetch(
+    `${getApiUrl()}/kyc/esign-request/${encodeURIComponent(rawToken)}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+  const raw = await readBody(response);
+  const body = asRecord(raw);
+
+  if (response.status === 404) {
+    throw new KycApiError(ESIGN_REQUEST_COPY.invalid, 404, body);
+  }
+  if (response.status === 410) {
+    throw new KycApiError(
+      messageFromBody(body, ESIGN_REQUEST_COPY.expired),
+      410,
+      body
+    );
+  }
+
+  if (!response.ok) {
+    throw new KycApiError(
+      messageFromBody(body, fallbackForEsignRequest(response.status)),
+      response.status,
+      body
+    );
+  }
+
+  return parseEsignRequestPayload(body);
+}
+
+export async function uploadEsignRequestSignature(
+  rawToken: string,
+  signatureData: string
+): Promise<EsignRequestStatus> {
+  const response = await fetch(
+    `${getApiUrl()}/kyc/esign-request/${encodeURIComponent(rawToken)}/signature`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        signatureData: normalizeKycSignatureBase64(signatureData),
+      }),
+    }
+  );
+  const raw = await readBody(response);
+  const body = asRecord(raw);
+
+  if (response.status === 404) {
+    throw new KycApiError(ESIGN_REQUEST_COPY.invalid, 404, body);
+  }
+  if (response.status === 410) {
+    throw new KycApiError(
+      messageFromBody(body, ESIGN_REQUEST_COPY.expired),
+      410,
+      body
+    );
+  }
+  if (!response.ok) {
+    throw new KycApiError(
+      messageFromBody(body, fallbackForEsignRequest(response.status)),
+      response.status,
+      body
+    );
+  }
+
+  return {
+    ...parseEsignRequestPayload(body),
+    vendorUrl:
+      typeof body.vendorUrl === "string" ? body.vendorUrl : null,
+    needsSignature: body.needsSignature === true,
+    status: "pending",
+  };
 }
 
 export async function createKycESign(

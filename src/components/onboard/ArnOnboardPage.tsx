@@ -21,7 +21,7 @@ type Phase = OnboardPhase;
 function resolveNonCompliantPhase(stage: UserStage): Phase {
   if (stage.isNonCompliantData !== true) return "nonCompliantQuestions";
   if (stage.isDigiLocker !== true) return "digilocker";
-  if (stage.isNSDL !== true) return "signature";
+  if (stage.isNSDL !== true) return "nsdlEsign";
   if (stage.isBank && stage.isNominee) return "welcome";
   if (stage.isBank) return "nominee";
   return "bank";

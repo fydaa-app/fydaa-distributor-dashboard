@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getModifyForm,
   getModifyFormCurrent,
@@ -8,7 +8,6 @@ import {
   isUnauthorizedError,
   retryModifyProofFetch,
   updateModifyForm,
-  uploadModifySignature,
   type ModifyKycForm,
   type UpdateModifyFormDto,
 } from "@/services/arnKycService";
@@ -25,11 +24,8 @@ import {
   MODIFY_OCCUPATION_OPTIONS,
   SOURCE_OF_WEALTH_OPTIONS,
 } from "@/components/onboard/onboardPhases";
-import ArnSignaturePad, {
-  type ArnSignaturePadHandle,
-} from "@/components/onboard/ArnSignaturePad";
+import InvestorEsignWait from "@/components/onboard/InvestorEsignWait";
 import {
-  isModifyEsignCallback,
   isModifyProofCallback,
   openKycPopup,
   wait,
@@ -41,7 +37,6 @@ type WizardStep =
   | "loading"
   | "proof"
   | "questions"
-  | "signature"
   | "esign"
   | "underReview"
   | "done";
@@ -56,7 +51,6 @@ interface ModifyKycWizardProps {
 }
 
 const MODIFY_GEOLOCATION = { latitude: 9.354, longitude: 77.453 };
-const SIGNATURE_MAX_BYTES = 5 * 1024 * 1024;
 
 function formMessage(form: ModifyKycForm | null, fallback: string): string {
   return form?.reason || form?.message || fallback;
@@ -96,17 +90,6 @@ function isEsignFailed(form: ModifyKycForm | null): boolean {
   );
 }
 
-function hasEsignUrl(form: ModifyKycForm | null): boolean {
-  const url = form?.esign_details?.esign_url;
-  return typeof url === "string" && url.length > 0;
-}
-
-function isEsignReady(form: ModifyKycForm | null): boolean {
-  if (!form) return false;
-  if (isEsignAccepted(form)) return true;
-  return form.status === "awaiting_esign" && hasEsignUrl(form);
-}
-
 export default function ModifyKycWizard({
   userStage,
   introMessage,
@@ -115,7 +98,6 @@ export default function ModifyKycWizard({
   onCompleteLater,
   onUnauthorized,
 }: ModifyKycWizardProps) {
-  const signatureRef = useRef<ArnSignaturePadHandle | null>(null);
   const [step, setStep] = useState<WizardStep>("loading");
   const [form, setForm] = useState<ModifyKycForm | null>(null);
   const [stage, setStage] = useState<UserStage | null>(userStage ?? null);
@@ -123,7 +105,7 @@ export default function ModifyKycWizard({
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Please wait...");
   const [proofRetry, setProofRetry] = useState(false);
-  const [esignPending, setEsignPending] = useState(false);
+  const [, setEsignPending] = useState(false);
 
   const [fatherName, setFatherName] = useState("");
   const [gender, setGender] = useState("");
@@ -194,11 +176,7 @@ export default function ModifyKycWizard({
       setStep("questions");
       return;
     }
-    if (nextForm?.status === "awaiting_esign" || nextStage.ismodifyesign === true) {
-      setStep(nextForm?.signature_provided ? "esign" : "signature");
-      return;
-    }
-    setStep("signature");
+    setStep("esign");
   };
 
   const ensureForm = async (): Promise<ModifyKycForm | null> => {
@@ -284,6 +262,8 @@ export default function ModifyKycWizard({
   }, []);
 
   useEffect(() => {
+    setCity("");
+    setStateName("");
     if (!/^\d{6}$/.test(pincode)) {
       setPincodeError(null);
       return;
@@ -298,6 +278,8 @@ export default function ModifyKycWizard({
         setPincodeError(null);
       } catch (err) {
         if (!cancelled) {
+          setCity("");
+          setStateName("");
           setPincodeError(
             err instanceof Error
               ? err.message
@@ -489,30 +471,14 @@ export default function ModifyKycWizard({
     }
   };
 
-  const pollUntilEsignReady = async (
-    start: ModifyKycForm | null
-  ): Promise<ModifyKycForm | null> => {
-    let latest = start;
-    for (let i = 0; i < 30; i += 1) {
-      if (latest && (isEsignReady(latest) || isEsignFailed(latest))) {
-        return latest;
-      }
-      if (latest?.status === "expired") return latest;
-      await wait(2000);
-      latest = (await getModifyFormCurrent()) ?? latest;
-      setForm(latest);
-    }
-    return latest;
-  };
-
-  const startEsign = async (existing?: ModifyKycForm | null) => {
+  const finishAfterEsign = async () => {
     setBusy(true);
-    setBusyLabel("Preparing e-sign...");
+    setBusyLabel("Confirming e-sign...");
     setError(null);
     setEsignPending(false);
 
     try {
-      let current = existing ?? (await getModifyFormCurrent());
+      let current = (await getModifyFormCurrent()) ?? form;
       setForm(current);
 
       if (!current) {
@@ -530,103 +496,22 @@ export default function ModifyKycWizard({
         return;
       }
 
-      if (!isEsignReady(current)) {
-        current = await pollUntilEsignReady(current);
+      for (let i = 0; i < 10 && current && !isEsignAccepted(current) && !isEsignFailed(current); i += 1) {
+        await wait(2000);
+        current = (await getModifyFormCurrent()) ?? current;
         setForm(current);
       }
 
-      if (!current) {
-        setError("KYC form not ready. Please restart modify KYC from the beginning.");
-        setEsignPending(true);
-        return;
-      }
-      if (current.status === "expired") {
-        setError("Session expired. Please start again.");
-        return;
-      }
       if (isEsignFailed(current)) {
         setError(formMessage(current, "E-sign could not be completed."));
         setEsignPending(true);
         return;
       }
 
-      if (isEsignAccepted(current)) {
-        if (
-          current.status === "awaiting_submission" ||
-          current.status === "submitted"
-        ) {
-          const submitted = await pollUntilSubmitted(current);
-          if (!submitted) return;
-          current = submitted;
-        }
-        const nextStage = await pollStageUntilNsdl();
-        if (nextStage.ismodifynsdl === true) {
-          routeFrom(nextStage, current);
-          return;
-        }
-        setEsignPending(true);
-        setStep("esign");
-        return;
-      }
-
-      const esignUrl = current.esign_details?.esign_url;
-      if (!esignUrl) {
-        setError("E-sign link not ready. Please try again later.");
-        setEsignPending(true);
-        setStep("esign");
-        return;
-      }
-
-      setBusyLabel("Opening e-sign...");
-      setStep("esign");
-      const popup = openKycPopup(esignUrl);
-      if (!popup) {
-        setError("Could not open e-sign. Please allow pop-ups and retry.");
-        setEsignPending(true);
-        return;
-      }
-
-      const fetched: { form: ModifyKycForm | null } = { form: current };
-      const waitReason = await waitForModifyPopup(popup, {
-        isComplete: isModifyEsignCallback,
-        pollEveryMs: 5000,
-        pollComplete: async () => {
-          const latest = await getModifyFormCurrent();
-          fetched.form = latest ?? fetched.form;
-          if (latest) setForm(latest);
-          return isEsignAccepted(latest) || isEsignFailed(latest);
-        },
-      });
-
-      setBusyLabel("Fetching e-sign status...");
-      let refreshed = fetched.form;
-      const alreadyTerminal =
-        waitReason === "server" &&
-        (isEsignAccepted(refreshed) || isEsignFailed(refreshed));
-      if (!alreadyTerminal) {
-        await wait(2000);
-        refreshed = (await getModifyFormCurrent()) ?? refreshed;
-        setForm(refreshed);
-      }
-
-      if (isEsignFailed(refreshed)) {
-        setError(formMessage(refreshed, "E-sign could not be completed."));
-        setEsignPending(true);
-        setStep("esign");
-        return;
-      }
-
-      if (!isEsignAccepted(refreshed)) {
-        setError("E-Sign is still pending. Continue to complete Aadhaar eSign.");
-        setEsignPending(true);
-        setStep("esign");
-        return;
-      }
-
-      current = refreshed;
       if (
-        current?.status === "awaiting_submission" ||
-        current?.status === "submitted"
+        current.status === "awaiting_submission" ||
+        current.status === "submitted" ||
+        isEsignAccepted(current)
       ) {
         const submitted = await pollUntilSubmitted(current);
         if (!submitted) return;
@@ -690,60 +575,6 @@ export default function ModifyKycWizard({
       next = await reloadStage();
     }
     return next;
-  };
-
-  const handleSignatureSubmit = async () => {
-    if (!form?.id) {
-      setError("KYC form not ready. Please restart modify KYC from the beginning.");
-      return;
-    }
-
-    setBusy(true);
-    setBusyLabel("Uploading signature...");
-    setError(null);
-
-    try {
-      let current = form;
-      if (current.signature_provided) {
-        setStep("esign");
-        await startEsign(current);
-        return;
-      }
-
-      const file = await signatureRef.current?.toPngFile();
-      if (!file) {
-        setError("Please draw the signature before continuing.");
-        setBusy(false);
-        return;
-      }
-      if (file.size > SIGNATURE_MAX_BYTES) {
-        setError("Signature image must be under 5 MB.");
-        setBusy(false);
-        return;
-      }
-
-      try {
-        current = await uploadModifySignature(form.id, file);
-        setForm(current);
-      } catch (err) {
-        const message = err instanceof Error ? err.message.toLowerCase() : "";
-        if (message.includes("limit") || message.includes("not allowed")) {
-          const refreshed = await getModifyFormCurrent();
-          setForm(refreshed);
-          setStep("esign");
-          await startEsign(refreshed);
-          return;
-        }
-        throw err;
-      }
-
-      setStep("esign");
-      await startEsign(current);
-    } catch (err) {
-      handleError(err, "Failed to upload signature. Please try again.");
-    } finally {
-      setBusy(false);
-    }
   };
 
   const questionsValid =
@@ -931,11 +762,21 @@ export default function ModifyKycWizard({
             </div>
             <div className="field-group">
               <label className="field-label">City</label>
-              <input className="field-input" value={city} onChange={(e) => setCity(e.target.value)} />
+              <input
+                className="field-input cursor-default bg-[var(--arn-bg-3)]"
+                value={city}
+                readOnly
+                placeholder="Filled from pincode"
+              />
             </div>
             <div className="field-group">
               <label className="field-label">State</label>
-              <input className="field-input" value={stateName} onChange={(e) => setStateName(e.target.value)} />
+              <input
+                className="field-input cursor-default bg-[var(--arn-bg-3)]"
+                value={stateName}
+                readOnly
+                placeholder="Filled from pincode"
+              />
             </div>
           </div>
           <label className="onboard-check">
@@ -964,59 +805,22 @@ export default function ModifyKycWizard({
         </>
       )}
 
-      {step === "signature" && (
-        <>
-          <p className="step-helper">
-            Draw the signature that will be uploaded to the KYC form. Maximum size 5 MB.
-          </p>
-          <ArnSignaturePad ref={signatureRef} />
-          {error && (
-            <div className="field-error justify-center">
-              <i className="ti ti-alert-circle" aria-hidden="true" />
-              {error}
-            </div>
-          )}
-          <button
-            type="button"
-            className="btn-primary btn-wide"
-            style={{ marginTop: 16 }}
-            disabled={busy}
-            onClick={handleSignatureSubmit}
-          >
-            {busy ? busyLabel : "Continue to e-sign"}
-          </button>
-        </>
-      )}
-
       {step === "esign" && (
         <>
-          <p className="step-helper">
-            Complete Aadhaar e-sign in the window that opens. Stay on intermediate
-            OTP pages until you return here.
-          </p>
           {error && (
             <div className="field-error justify-center">
               <i className="ti ti-alert-circle" aria-hidden="true" />
               {error}
             </div>
           )}
-          {esignPending && (
-            <div className="glass-card rounded-[10px] border border-[var(--arn-bdr)] p-4 mb-4">
-              <div className="card-title">E-Sign Pending</div>
-              <div className="card-sub">
-                E-sign is not confirmed yet. Complete it now, or come back later.
-              </div>
-            </div>
-          )}
-          <button
-            type="button"
-            className="btn-primary btn-wide"
-            disabled={busy}
-            onClick={() => startEsign()}
-          >
-            {busy ? busyLabel : esignPending ? "Complete Now" : "Continue eSign"}
-          </button>
-          {esignPending && onCompleteLater && (
+          <InvestorEsignWait
+            onCompleted={finishAfterEsign}
+            onUnauthorized={onUnauthorized}
+            completing={busy}
+            completingLabel={busyLabel}
+            flow="modify"
+          />
+          {onCompleteLater && (
             <button
               type="button"
               className="btn-primary btn-wide"

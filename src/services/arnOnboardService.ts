@@ -671,8 +671,14 @@ export interface CreateModifyKycFormResult {
 
 const MODIFY_PROOF_CALLBACK =
   "https://fydaa.com/kyc-modify?proof=callback";
-const MODIFY_ESIGN_CALLBACK =
-  "https://fydaa.com/kyc-modify?esign=callback";
+
+function getAuthOrigin(): string {
+  return (
+    process.env.NEXT_PUBLIC_AUTHENTICATION_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:3005"
+  ).replace(/\/$/, "");
+}
 
 /**
  * Creates the Cybrilla modify KYC form so `ismodify` becomes true on getUserStage.
@@ -701,7 +707,7 @@ export async function createModifyKycForm(
       name: params.name,
       date_of_birth: params.date_of_birth,
       proof_details_callback_url: MODIFY_PROOF_CALLBACK,
-      esign_callback_url: MODIFY_ESIGN_CALLBACK,
+      esign_callback_url: `${getAuthOrigin()}/kyc/esign/modify-callback`,
     }),
   });
 
