@@ -4,6 +4,18 @@ function isRecord(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null;
 }
 
+function readApiMessage(payload: unknown, fallback: string): string {
+  if (!isRecord(payload)) return fallback;
+  if (typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message;
+  }
+  const data = payload.data;
+  if (isRecord(data) && typeof data.message === "string" && data.message.trim()) {
+    return data.message;
+  }
+  return fallback;
+}
+
 function getStockApiUrl(): string {
   return (
     process.env.NEXT_PUBLIC_STOCK_API_URL || ""
@@ -31,11 +43,7 @@ async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> 
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message =
-      isRecord(payload) && typeof payload.message === "string"
-        ? payload.message
-        : "Request failed. Please try again.";
-    throw new Error(message);
+    throw new Error(readApiMessage(payload, "Request failed. Please try again."));
   }
 
   return payload as T;
@@ -187,6 +195,27 @@ export interface AllFundSearchResponse {
   currentPage?: number;
   limit?: number;
   [key: string]: unknown;
+}
+
+export type SharePortfolioChannel = "whatsapp" | "email";
+
+export async function sharePortfolio(
+  userId: number,
+  channel: SharePortfolioChannel
+): Promise<string> {
+  const path =
+    channel === "whatsapp"
+      ? "/portfolio/share-portfolio-whatsapp"
+      : "/portfolio/share-portfolio-email";
+  const payload = await fetchJson<unknown>(`${getStockApiUrl()}${path}`, {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  });
+  const fallback =
+    channel === "whatsapp"
+      ? "Portfolio shared on WhatsApp."
+      : "Portfolio shared by email.";
+  return readApiMessage(payload, fallback);
 }
 
 export async function searchAllFunds(params: {

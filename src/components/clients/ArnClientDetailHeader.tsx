@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ArnClientAvatar from "@/components/common/ArnClientAvatar";
+import SharePortfolioActions from "@/components/clients/SharePortfolioActions";
 import ArnIncompleteOnboardingModal from "@/components/goalSetup/ArnIncompleteOnboardingModal";
 import { getUserStage } from "@/services/arnReviewApi";
 import { isKycReadyToProceed } from "@/utils/kycStage";
@@ -97,13 +97,7 @@ export default function ArnClientDetailHeader({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/arn-share?clientId=${clientId}`}
-            className="inline-flex items-center justify-center gap-1 rounded-[8px] border border-[var(--arn-bdr-2)] px-4 py-2.5 text-sm font-bold text-[var(--arn-txt-2)] transition-colors hover:bg-[var(--arn-bg-2)]"
-          >
-            <i aria-hidden="true" className="ti ti-send" />
-            Share report
-          </Link>
+          <SharePortfolioActions userId={clientId} variant="labeled" />
           <button
             type="button"
             onClick={handleNewSipClick}

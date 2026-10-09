@@ -4,95 +4,127 @@ import { getCookie, setCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ArnOnboardForm from "./ArnOnboardForm";
+import type { OnboardPhase } from "./onboardPhases";
 import type { RiskProfileQuestion, UserStage } from "@/services/arnOnboardService";
+import { isUnauthorizedError } from "@/services/arnKycService";
 import {
   checkKycRequiresModify,
   isKycReadyToProceed,
   isModifyKycComplete,
+  isNonCompliantInProgress,
+  isPanMissingOnProfile,
   needsKycModify,
 } from "@/utils/kycStage";
 
-type Phase = "mobile" | "otp" | "risk" | "riskScore" | "email" | "emailOtp" | "kyc" | "kycCompliant" | "identity" | "bank" | "nominee" | "welcome" | "modifyKyc";
+type Phase = OnboardPhase;
 
-/**
- * Resume onboard phase from getUserStage.
- * Call only after confirming check-kyc is not still action=modify (when risk+email done).
- */
-function resolvePhaseFromStage(stage: UserStage): Phase | null {
-  if (stage.isRiskProfileComplete && stage.isEmail && needsKycModify(stage)) {
-    return "modifyKyc";
-  }
-  if (
-    stage.isRiskProfileComplete &&
-    stage.isEmail &&
-    isKycReadyToProceed(stage) &&
-    stage.isBank &&
-    stage.isNominee
-  ) {
-    return "welcome";
-  }
-  if (
-    stage.isRiskProfileComplete &&
-    stage.isEmail &&
-    isKycReadyToProceed(stage) &&
-    stage.isBank
-  ) {
-    return "nominee";
-  }
-  if (
-    stage.isRiskProfileComplete &&
-    stage.isEmail &&
-    isKycReadyToProceed(stage) &&
-    !!stage.kycExtraData
-  ) {
-    return "bank";
-  }
-  if (stage.isRiskProfileComplete && stage.isEmail && isKycReadyToProceed(stage)) {
-    return "kycCompliant";
-  }
-  if (stage.isRiskProfileComplete && stage.isEmail) {
-    return "kyc";
-  }
-  return null;
+function resolveNonCompliantPhase(stage: UserStage): Phase {
+  if (stage.isNonCompliantData !== true) return "nonCompliantQuestions";
+  if (stage.isDigiLocker !== true) return "digilocker";
+  if (stage.isNSDL !== true) return "nsdlEsign";
+  if (stage.isBank && stage.isNominee) return "welcome";
+  if (stage.isBank) return "nominee";
+  return "bank";
 }
 
 /**
- * When risk+email are done, block on incomplete modify (stage flags) or check-kyc action=modify.
- * If check-kyc still says modify but ismodify is not set yet, create the form so the mobile
- * app can enter Modify KYC (PAN alone must not look "complete").
+ * Resume onboard phase from getUserStage.
+ * Priority: modify → expired → risk → email → PAN → compliant questions →
+ * compliant bank/nominee → non-compliant resume → fresh non-compliant.
+ */
+function resolvePhaseFromStage(stage: UserStage): Phase {
+  if (stage.ismodify === true) {
+    if (
+      stage.ismodifydigilocker === true &&
+      stage.ismodifyquestions === true &&
+      stage.ismodifyesign === true &&
+      stage.ismodifynsdl === true &&
+      stage.isKycCompliant === true
+    ) {
+      if (stage.isBank && stage.isNominee) return "welcome";
+      if (stage.isBank) return "nominee";
+      return "bank";
+    }
+    return "modifyKyc";
+  }
+
+  if (stage.isKycExpired === true) return "kyc";
+  if (stage.isRiskProfileComplete !== true) return "risk";
+  if (stage.isEmail !== true) return "email";
+  if (stage.isPan !== true || stage.isDob !== true) return "kyc";
+
+  // Leftover isKycCompliant / kycExtraData must not skip DigiLocker/NSDL.
+  if (isNonCompliantInProgress(stage)) {
+    return resolveNonCompliantPhase(stage);
+  }
+
+  if (stage.isKycCompliant === true && stage.kycExtraData !== true) {
+    return "identity";
+  }
+
+  if (stage.isKycCompliant === true || isKycReadyToProceed(stage)) {
+    if (stage.isBank && stage.isNominee) return "welcome";
+    if (stage.isBank) return "nominee";
+    return "bank";
+  }
+
+  if (stage.isKycNonCompliant === true) {
+    return resolveNonCompliantPhase(stage);
+  }
+
+  return resolveNonCompliantPhase(stage);
+}
+
+/**
+ * When risk+email+PAN are done, block on incomplete modify (stage flags) or
+ * check-kyc action=modify. Never call check-kyc before PAN is on the profile.
  */
 async function resolvePhaseWithKycGate(
   stage: UserStage,
   token: string
-): Promise<Phase | null> {
-  if (stage.isRiskProfileComplete && stage.isEmail) {
-    if (needsKycModify(stage)) {
-      return "modifyKyc";
-    }
+): Promise<{ phase: Phase; kycMessage?: string | null }> {
+  if (stage.isRiskProfileComplete !== true || stage.isEmail !== true) {
+    return { phase: resolvePhaseFromStage(stage) };
+  }
 
-    if (!isModifyKycComplete(stage)) {
-      try {
-        const { checkKyc, createModifyKycForm, loadModifyKycDetails, getUserStage } =
-          await import("@/services/arnOnboardService");
-        const check = await checkKyc(token);
-        if (checkKycRequiresModify(check)) {
-          if (stage.ismodify !== true) {
-            const details = loadModifyKycDetails();
-            if (details) {
-              await createModifyKycForm(details, token);
-              const refreshed = await getUserStage(token);
-              Object.assign(stage, refreshed);
-            }
+  if (stage.isPan !== true || stage.isDob !== true) {
+    return { phase: "kyc" };
+  }
+
+  if (needsKycModify(stage)) {
+    return { phase: "modifyKyc" };
+  }
+
+  if (!isModifyKycComplete(stage)) {
+    try {
+      const { checkKyc, createModifyKycForm, loadModifyKycDetails, getUserStage } =
+        await import("@/services/arnOnboardService");
+      const check = await checkKyc(token);
+      const refreshed = await getUserStage(token);
+      Object.assign(stage, refreshed);
+
+      if (checkKycRequiresModify(check)) {
+        if (stage.ismodify !== true) {
+          const details = loadModifyKycDetails();
+          if (details) {
+            await createModifyKycForm(details, token);
+            const afterCreate = await getUserStage(token);
+            Object.assign(stage, afterCreate);
           }
-          return "modifyKyc";
         }
-      } catch {
-        // If check-kyc / create fails, fall through to stage-only routing
+        return { phase: "modifyKyc" };
       }
+    } catch (err) {
+      if (isUnauthorizedError(err)) throw err;
+      const message = err instanceof Error ? err.message : "";
+      if (isPanMissingOnProfile(message)) {
+        return { phase: "kyc", kycMessage: message };
+      }
+      // Other check-kyc failures: continue with stage-only routing
     }
   }
 
-  return resolvePhaseFromStage(stage);
+  return { phase: resolvePhaseFromStage(stage) };
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -200,6 +232,8 @@ export default function ArnOnboardPage() {
   const [kycError, setKycError] = useState<string | null>(null);
   const [isCheckingModifyKyc, setIsCheckingModifyKyc] = useState(false);
   const [modifyKycStatusMessage, setModifyKycStatusMessage] = useState<string | null>(null);
+  const [modifySheetMessage, setModifySheetMessage] = useState<string | null>(null);
+  const [stageLoadError, setStageLoadError] = useState<string | null>(null);
 
   const router = useRouter();
   const [skipStage, setSkipStage] = useState<UserStage | null>(null);
@@ -264,9 +298,20 @@ export default function ArnOnboardPage() {
 
   const goToIdentity = () => setPhase("identity");
   const goToKycCompliant = () => setPhase("kycCompliant");
-  const goToModifyKyc = () => {
+  const goToModifyKyc = (message?: string) => {
     setModifyKycStatusMessage(null);
+    setModifySheetMessage(
+      message || "Your KYC needs to be updated. Tap below to proceed."
+    );
     setPhase("modifyKyc");
+  };
+  const goToNonCompliantQuestions = () => setPhase("nonCompliantQuestions");
+  const goToDigilocker = () => setPhase("digilocker");
+  const goToSignature = () => setPhase("signature");
+  const goToNsdl = () => setPhase("nsdlEsign");
+  const goToLogin = () => {
+    setOnboardedToken("");
+    setPhase("mobile");
   };
 
   const goToEmail = () => setPhase("email");
@@ -298,9 +343,22 @@ export default function ArnOnboardPage() {
     stage: UserStage,
     token: string
   ): Promise<boolean> => {
-    const nextPhase = await resolvePhaseWithKycGate(stage, token);
+    const { phase: nextPhase, kycMessage } = await resolvePhaseWithKycGate(
+      stage,
+      token
+    );
     if (!nextPhase) return false;
     setSkipStage(stage);
+    setKycError(kycMessage ?? null);
+    if (nextPhase === "risk") {
+      const { getRiskProfileQuestionnaire } = await import(
+        "@/services/arnOnboardService"
+      );
+      const questions = await getRiskProfileQuestionnaire(token);
+      setRiskQuestions(questions);
+      setRiskIndex(0);
+      setRiskAnswers({});
+    }
     setPhase(nextPhase);
     return true;
   };
@@ -314,8 +372,13 @@ export default function ArnOnboardPage() {
       let stage = await getUserStage(onboardedToken);
       setSkipStage(stage);
 
-      // If modify was required but form was never created (PAN updated, ismodify still false),
-      // create it now so the mobile app can resume Modify KYC.
+      if (stage.isPan !== true || stage.isDob !== true) {
+        setPhase("kyc");
+        return;
+      }
+
+      // If modify was required but form was never created, create it now
+      // then enter the in-app wizard.
       if (
         !needsKycModify(stage) &&
         !isModifyKycComplete(stage) &&
@@ -323,6 +386,8 @@ export default function ArnOnboardPage() {
       ) {
         const details = loadModifyKycDetails();
         const check = await checkKyc(onboardedToken);
+        stage = await getUserStage(onboardedToken);
+        setSkipStage(stage);
         if (checkKycRequiresModify(check) && details) {
           await createModifyKycForm(details, onboardedToken);
           stage = await getUserStage(onboardedToken);
@@ -330,61 +395,54 @@ export default function ArnOnboardPage() {
         } else if (checkKycRequiresModify(check)) {
           setModifyKycStatusMessage(
             check.message ||
-              "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
+              "Your KYC needs to be updated. Tap below to proceed."
           );
+          setPhase("modifyKyc");
           return;
         }
       }
 
-      // Incomplete in-app modify: stay until ismodifynsdl (do not trust isKycCompliant)
-      if (needsKycModify(stage)) {
-        setModifyKycStatusMessage(
-          "KYC update is still required. Please complete DigiLocker, questions, and e-sign in the Fydaa mobile app, then check again."
-        );
+      if (needsKycModify(stage) || stage.ismodify === true) {
+        setPhase("modifyKyc");
         return;
       }
 
-      // Leave this screen only when Modify KYC is fully submitted (ismodifynsdl)
       if (!isModifyKycComplete(stage)) {
         const check = await checkKyc(onboardedToken);
         if (checkKycRequiresModify(check)) {
-          setModifyKycStatusMessage(
-            check.message ||
-              "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
-          );
+          setPhase("modifyKyc");
           return;
         }
-        setModifyKycStatusMessage(
-          "KYC update is still required. Please complete Modify KYC on the Fydaa mobile app, then check again."
-        );
-        return;
       }
 
       const nextPhase = resolvePhaseFromStage(stage);
-      if (!nextPhase || nextPhase === "modifyKyc" || nextPhase === "kyc") {
-        setModifyKycStatusMessage(
-          "Modify KYC is complete, but onboarding could not continue. Please try again."
-        );
+      if (nextPhase === "modifyKyc") {
+        setPhase("modifyKyc");
         return;
       }
-
       setPhase(nextPhase);
     } catch (err) {
-      setModifyKycStatusMessage(
+      if (isUnauthorizedError(err)) {
+        goToLogin();
+        return;
+      }
+      const message =
         err instanceof Error
           ? err.message
-          : "Failed to check KYC status. Please try again."
-      );
+          : "Failed to check KYC status. Please try again.";
+      if (isPanMissingOnProfile(message)) {
+        setKycError(message);
+        setPhase("kyc");
+        return;
+      }
+      setModifyKycStatusMessage(message);
     } finally {
       setIsCheckingModifyKyc(false);
     }
   };
 
-  const handleOtpVerified = (token: string) => {
-    setOnboardedToken(token);
-    setRiskError(null);
-    setScoreError(null);
-    setModifyKycStatusMessage(null);
+  const resumeFromStage = (token: string) => {
+    setStageLoadError(null);
     setIsLoadingRisk(true);
     setPhase("risk");
 
@@ -404,7 +462,10 @@ export default function ArnOnboardPage() {
             }
             return getUserStage(effectiveToken);
           })
-          .catch(() => getUserStage(effectiveToken));
+          .catch((err) => {
+            if (isUnauthorizedError(err)) throw err;
+            return getUserStage(effectiveToken);
+          });
       })
       .then(async (stage) => {
         if (await applyStageResume(stage, effectiveToken)) {
@@ -424,13 +485,26 @@ export default function ArnOnboardPage() {
           });
       })
       .catch((err) => {
-        setRiskError(
+        if (isUnauthorizedError(err)) {
+          goToLogin();
+          return;
+        }
+        setStageLoadError(
           err instanceof Error
             ? err.message
-            : "Failed to load risk profile. Please try again."
+            : "Failed to load onboarding status. Please try again."
         );
+        setPhase("stageRetry");
       })
       .finally(() => setIsLoadingRisk(false));
+  };
+
+  const handleOtpVerified = (token: string) => {
+    setOnboardedToken(token);
+    setRiskError(null);
+    setScoreError(null);
+    setModifyKycStatusMessage(null);
+    resumeFromStage(token);
   };
 
   const handleRiskAnswerChange = (questionId: number, optionIndex: number) => {
@@ -483,8 +557,18 @@ export default function ArnOnboardPage() {
           onCheckModifyKycStatus={handleCheckModifyKycStatus}
           isCheckingModifyKyc={isCheckingModifyKyc}
           modifyKycStatusMessage={modifyKycStatusMessage}
+          modifySheetMessage={modifySheetMessage}
           onGoToIdentity={goToIdentity}
           onGoToKycCompliant={goToKycCompliant}
+          onGoToNonCompliantQuestions={goToNonCompliantQuestions}
+          onGoToDigilocker={goToDigilocker}
+          onGoToSignature={goToSignature}
+          onGoToNsdl={goToNsdl}
+          onUnauthorized={goToLogin}
+          onRetryStageLoad={() => resumeFromStage(onboardedToken)}
+          stageLoadError={stageLoadError}
+          onUserStageChange={setSkipStage}
+          onTokenChange={setOnboardedToken}
           onGoToEmail={goToEmail}
           onGoToEmailOtp={goToEmailOtp}
           onEmailVerified={goToKyc}

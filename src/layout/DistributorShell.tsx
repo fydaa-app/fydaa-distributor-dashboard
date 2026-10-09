@@ -59,7 +59,11 @@ export default function DistributorShell({
   const isPublicPath = isPathHidden(pathname, publicPaths);
 
   if (isPublicPath) {
-    return <>{children}</>;
+    return (
+      <div className={`tone-${COLORS.currentBrand} min-h-screen`}>
+        {children}
+      </div>
+    );
   }
 
   return (

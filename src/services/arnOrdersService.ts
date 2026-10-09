@@ -142,7 +142,7 @@ function normalizeOrder(value: unknown, index: number): ArnOrderItem {
   const source = isRecord(value) ? value : {};
   const type = normalizeOrderType(source.type || source.orderType || source.transactionType);
   const status = normalizeOrderStatus(source.status || source.orderStatus);
-  const orderAmountInPaise = getNumber(source.amount, 0);
+  const orderAmountInPaise = getNumber(source.orderAmount ?? source.amount, 0);
   const processedAmountInPaise = getNumber(source.processedAmount, 0);
   const rawUnits = getNumber(source.units, NaN);
   const clientName = getString(source.clientName || source.name || source.fullName, `Client ${index + 1}`);

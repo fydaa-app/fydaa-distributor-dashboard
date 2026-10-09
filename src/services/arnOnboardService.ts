@@ -311,9 +311,14 @@ export interface UserStage {
   isKycNonCompliant?: boolean;
   isKycExpired?: boolean;
   isEmail?: boolean;
+  isPan?: boolean;
+  isDob?: boolean;
   isBank?: boolean;
   isNominee?: boolean;
   kycExtraData?: boolean;
+  isNonCompliantData?: boolean;
+  isDigiLocker?: boolean;
+  isNSDL?: boolean;
   ismodify?: boolean;
   ismodifydigilocker?: boolean;
   ismodifyquestions?: boolean;
@@ -336,13 +341,23 @@ export async function getUserStage(token?: string): Promise<UserStage> {
   const response = await fetch(url, { method: "GET", headers });
 
   const data = await response.json().catch(() => null);
+  const payload = isRecord(data) ? data : {};
+
+  if (response.status === 401) {
+    const error = new Error(
+      typeof payload.message === "string"
+        ? payload.message
+        : "Session expired. Please sign in again."
+    ) as Error & { statusCode: number };
+    error.statusCode = 401;
+    throw error;
+  }
 
   if (!response.ok) {
     const message =
-      (data && typeof data === "object" && typeof data.message === "string"
-        ? data.message
-        : null) ||
-      "Failed to fetch user stage. Please try again.";
+      typeof payload.message === "string"
+        ? payload.message
+        : "Failed to fetch user stage. Please try again.";
     throw new Error(message);
   }
 
@@ -383,7 +398,9 @@ export async function checkKyc(token?: string): Promise<CheckKycResult> {
       typeof payload.message === "string"
         ? payload.message
         : "Failed to check KYC status. Please try again.";
-    throw new Error(message);
+    const error = new Error(message) as Error & { statusCode: number };
+    error.statusCode = response.status;
+    throw error;
   }
 
   const actionRaw = nested?.action ?? payload.action;
@@ -525,6 +542,7 @@ export interface KycFetchResult {
   message: string;
   data: Record<string, unknown> | null;
   isKycCompliant: boolean;
+  isMigratedUser?: boolean;
   reason: string | null;
   action: string | null;
   issues: KycFetchIssue[];
@@ -542,18 +560,13 @@ function asStringArray(value: unknown): string[] {
 function asIssueArray(value: unknown): KycFetchIssue[] {
   if (!Array.isArray(value)) return [];
   return value
-    .filter(
-      (item): item is KycFetchIssue =>
-        isRecord(item) &&
-        typeof item.field === "string" &&
-        typeof item.code === "string" &&
-        typeof item.reason === "string"
-    )
+    .filter((item): item is Record<string, unknown> => isRecord(item))
     .map((item) => ({
-      field: item.field,
-      code: item.code,
-      reason: item.reason,
-    }));
+      field: typeof item.field === "string" ? item.field : "",
+      code: typeof item.code === "string" ? item.code : "",
+      reason: typeof item.reason === "string" ? item.reason : "",
+    }))
+    .filter((item) => item.code || item.reason);
 }
 
 export async function fetchKycData(
@@ -578,8 +591,17 @@ export async function fetchKycData(
 
   const data = await response.json().catch(() => null);
   const payload = isRecord(data) ? data : {};
+  const nested = isRecord(payload.data) ? payload.data : null;
+  const hasStructuredResult = Boolean(
+    payload.action ||
+      nested?.action ||
+      payload.issues ||
+      payload.verificationStatus ||
+      payload.reason ||
+      nested?.reason
+  );
 
-  if (!response.ok) {
+  if (!response.ok && !hasStructuredResult) {
     const message =
       typeof payload.message === "string"
         ? payload.message
@@ -587,7 +609,6 @@ export async function fetchKycData(
     throw new Error(message);
   }
 
-  const nested = isRecord(payload.data) ? payload.data : null;
   const action =
     typeof payload.action === "string"
       ? payload.action
@@ -606,6 +627,8 @@ export async function fetchKycData(
       : typeof nested?.message === "string"
         ? nested.message
         : "";
+  const isMigratedUser =
+    payload.isMigratedUser === true || nested?.isMigratedUser === true;
 
   return {
     status: payload.status === true || payload.status === "true",
@@ -618,13 +641,18 @@ export async function fetchKycData(
         : payload.isKycCompliant === true ||
           payload.status === true ||
           payload.status === "true",
+    isMigratedUser,
     reason,
     action,
-    issues: asIssueArray(payload.issues),
-    recommendations: asStringArray(payload.recommendations),
+    issues: asIssueArray(payload.issues ?? nested?.issues),
+    recommendations: asStringArray(
+      payload.recommendations ?? nested?.recommendations
+    ),
     verificationStatus: isRecord(payload.verificationStatus)
       ? payload.verificationStatus
-      : null,
+      : isRecord(nested?.verificationStatus)
+        ? nested.verificationStatus
+        : null,
   };
 }
 
@@ -643,8 +671,14 @@ export interface CreateModifyKycFormResult {
 
 const MODIFY_PROOF_CALLBACK =
   "https://fydaa.com/kyc-modify?proof=callback";
-const MODIFY_ESIGN_CALLBACK =
-  "https://fydaa.com/kyc-modify?esign=callback";
+
+function getAuthOrigin(): string {
+  return (
+    process.env.NEXT_PUBLIC_AUTHENTICATION_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:3005"
+  ).replace(/\/$/, "");
+}
 
 /**
  * Creates the Cybrilla modify KYC form so `ismodify` becomes true on getUserStage.
@@ -673,7 +707,7 @@ export async function createModifyKycForm(
       name: params.name,
       date_of_birth: params.date_of_birth,
       proof_details_callback_url: MODIFY_PROOF_CALLBACK,
-      esign_callback_url: MODIFY_ESIGN_CALLBACK,
+      esign_callback_url: `${getAuthOrigin()}/kyc/esign/modify-callback`,
     }),
   });
 
@@ -734,9 +768,6 @@ export function loadModifyKycDetails(): CreateModifyKycFormParams | null {
 }
 
 export interface KycExtraParams {
-  father_name: string;
-  gender: "male" | "female" | "others";
-  marital_status: "single" | "married";
   income_slab:
     | "upto_1lakh"
     | "above_1lakh_upto_5lakh"

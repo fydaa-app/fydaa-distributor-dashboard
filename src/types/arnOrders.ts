@@ -103,6 +103,24 @@ export interface ArnOrdersBackendPagination {
   hasMore: boolean;
 }
 
+export interface ArnOrdersBackendOrder {
+  orderId?: number | string;
+  userId?: number | string;
+  clientName?: string;
+  initials?: string;
+  fund?: string;
+  orderType?: string;
+  amount?: number;
+  processedAmount?: number | null;
+  units?: number | null;
+  status?: string;
+  createdAt?: string;
+  failureReason?: string | null;
+  sipId?: number | null;
+  mfId?: number | null;
+  state?: string | null;
+}
+
 export interface ArnOrdersBackendResponse {
   success: boolean;
   distributor: unknown;
@@ -123,7 +141,7 @@ export interface ArnOrdersBackendResponse {
     failed: number;
     in_progress: number;
   };
-  orders: unknown[];
+  orders: ArnOrdersBackendOrder[];
   pagination: ArnOrdersBackendPagination;
 }
 
