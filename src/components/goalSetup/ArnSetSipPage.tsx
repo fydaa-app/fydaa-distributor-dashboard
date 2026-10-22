@@ -48,10 +48,20 @@ function formatRupeeFull(n: number): string {
   return "₹" + n.toLocaleString("en-IN");
 }
 
+/** Daily keeps a finer step; monthly + lumpsum always use ₹100. */
+const AMOUNT_STEP_DEFAULT = 100;
+
 const AMOUNT_LIMITS: Record<"daily" | "monthly", { min: number; max: number; step: number }> = {
   daily: { min: 100, max: 1000, step: 50 },
-  monthly: { min: 1000, max: 100000, step: 500 },
+  monthly: { min: 1000, max: 100000, step: AMOUNT_STEP_DEFAULT },
 };
+
+function snapAmount(value: number, min: number, max: number, step: number): number {
+  const clamped = Math.min(max, Math.max(min, value));
+  if (step <= 0) return clamped;
+  const snapped = min + Math.round((clamped - min) / step) * step;
+  return Math.min(max, Math.max(min, snapped));
+}
 
 const TENURE_LIMITS: Record<"daily" | "monthly", { min: number; max: number }> = {
   daily: { min: 1, max: 4 },
@@ -135,11 +145,13 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const [lumpsumAmountLimits, setLumpsumAmountLimits] = useState({
       min: 0,
       max: 10000000,
-      step: 1000,
+      step: AMOUNT_STEP_DEFAULT,
     });
     const [sipAmountLimits, setSipAmountLimits] = useState<{ min: number; max: number; step: number } | null>(null);
     const [userSelectedFund, setUserSelectedFund] = useState(false);
     const [portfolioId, setPortfolioId] = useState<number | null>(null);
+    const [amountDraft, setAmountDraft] = useState("");
+    const [isEditingAmount, setIsEditingAmount] = useState(false);
 
     const debouncedQuery = useDebounce(fundSearchQuery, 300);
     const searchRef = useRef<HTMLDivElement>(null);
@@ -250,7 +262,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       setLumpsumAmountLimits({
         min,
         max: 10000000,
-        step: min || 1000,
+        step: AMOUNT_STEP_DEFAULT,
       });
       setSipAmount((prev) => (prev < min ? min : prev));
     }, [recommendedPortfolio, investmentMode, userSelectedFund]);
@@ -396,7 +408,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
           setLumpsumAmountLimits({
             min: 0,
             max: 10000000,
-            step: 1000,
+            step: AMOUNT_STEP_DEFAULT,
           });
         }
       } else {
@@ -419,7 +431,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
           setLumpsumAmountLimits({
             min: fund.minInitialInvestment,
             max: 10000000,
-            step: fund.minInitialInvestment,
+            step: AMOUNT_STEP_DEFAULT,
           });
         }
         if (fund.minSipAmount) {
@@ -436,6 +448,10 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const amountLimits = isGoalMode && !preselectedFund ? AMOUNT_LIMITS.monthly : AMOUNT_LIMITS[frequency];
     const activeSipLimits = sipAmountLimits ?? amountLimits;
     const activeAmountLimits = investmentMode === "lumpsum" ? lumpsumAmountLimits : activeSipLimits;
+    const activeStep =
+      investmentMode === "sip" && !(isGoalMode && !preselectedFund) && frequency === "daily"
+        ? AMOUNT_LIMITS.daily.step
+        : AMOUNT_STEP_DEFAULT;
 
     const tenureMin = isGoalMode && !preselectedFund
       ? Math.round(selectedGoal!.tenureMin / 12)
@@ -448,9 +464,41 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const handleSliderChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
         setSipAmount(Number(e.target.value));
+        setIsEditingAmount(false);
       },
       []
     );
+
+    const handleAmountFocus = useCallback(() => {
+      setIsEditingAmount(true);
+      setAmountDraft(String(sipAmount));
+    }, [sipAmount]);
+
+    const handleAmountChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const digits = e.target.value.replace(/[^0-9]/g, "");
+        setAmountDraft(digits);
+        if (!digits) return;
+        const num = Number(digits);
+        setSipAmount(
+          Math.min(activeAmountLimits.max, Math.max(activeAmountLimits.min, num))
+        );
+      },
+      [activeAmountLimits.min, activeAmountLimits.max]
+    );
+
+    const handleAmountBlur = useCallback(() => {
+      setIsEditingAmount(false);
+      const raw = Number(amountDraft.replace(/[^0-9]/g, ""));
+      const next = snapAmount(
+        Number.isFinite(raw) && amountDraft ? raw : activeAmountLimits.min,
+        activeAmountLimits.min,
+        activeAmountLimits.max,
+        activeStep
+      );
+      setSipAmount(next);
+      setAmountDraft(String(next));
+    }, [amountDraft, activeAmountLimits.min, activeAmountLimits.max, activeStep]);
 
     const handleTenureChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -558,12 +606,21 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                   <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--arn-amber)]">
                     {investmentMode === "lumpsum" ? "YOU INVEST" : "YOU INVEST"}
                   </div>
-                   <div className="mt-1 flex items-baseline gap-1">
+                   <div className="mt-1 flex items-baseline gap-0.5">
+                     <span className="text-3xl font-extrabold text-[var(--arn-txt)] sm:text-[38px]">₹</span>
                      <input
                        type="text"
-                       readOnly
-                       value={formatRupeeFull(sipAmount)}
-                       className="w-full max-w-[200px] bg-transparent text-3xl font-extrabold text-[var(--arn-txt)] outline-none sm:text-[38px]"
+                       inputMode="numeric"
+                       value={
+                         isEditingAmount
+                           ? amountDraft
+                           : sipAmount.toLocaleString("en-IN")
+                       }
+                       onFocus={handleAmountFocus}
+                       onChange={handleAmountChange}
+                       onBlur={handleAmountBlur}
+                       aria-label="Investment amount"
+                       className="w-full max-w-[220px] border-b border-transparent bg-transparent text-3xl font-extrabold text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)] sm:text-[38px]"
                      />
                    </div>
                   <div className="mt-1 text-xs font-medium text-[var(--arn-txt-3)]">
@@ -621,9 +678,9 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
               </div>
               <input
                 type="range"
-                min={investmentMode === "lumpsum" ? lumpsumAmountLimits.min : amountLimits.min}
-                max={investmentMode === "lumpsum" ? lumpsumAmountLimits.max : amountLimits.max}
-                step={investmentMode === "lumpsum" ? lumpsumAmountLimits.step : amountLimits.step}
+                min={activeAmountLimits.min}
+                max={activeAmountLimits.max}
+                step={activeStep}
                 value={sipAmount}
                 onChange={handleSliderChange}
                 className="arn-sip-slider mt-4 w-full h-1 cursor-pointer appearance-none rounded-full"
@@ -862,7 +919,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                  <div className="mt-3 space-y-3">
                    <div>
                      <div className="text-3xl font-extrabold tracking-tight sm:text-[36px]">
-                       {formatRupee(sipAmount)}
+                       {formatRupeeFull(sipAmount)}
                      </div>
                      <div className="mt-1 text-xs font-medium text-white/45">
                        One-time investment
