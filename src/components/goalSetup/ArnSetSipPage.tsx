@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { calculateProjectedCorpus } from "@/lib/sipMath";
 import { type DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 import { type GoalSetupClient } from "@/services/arnGoalSetupService";
-import { searchFunds, getRecommendedPortfolio, type GoalResponse } from "@/services/arnStockApi";
+import { searchFunds, getRecommendedPortfolio, type BasketItem, type GoalResponse } from "@/services/arnStockApi";
 import type { FundOption, RecommendedPortfolioResponse } from "@/services/arnStockApi";
 
 export interface ArnSetSipPageRef {
@@ -29,8 +29,10 @@ interface ArnSetSipPageProps {
   selectedClient: GoalSetupClient | null;
   selectedGoal: GoalResponse | null;
   selectedProduct: DirectProduct | null;
-  mode: "goal" | "direct";
+  selectedBasket?: BasketItem | null;
+  mode: "goal" | "direct" | "basket";
   investmentMode: "sip" | "lumpsum";
+  modeLocked?: boolean;
   onBack: () => void;
   onModeChange?: (mode: "sip" | "lumpsum") => void;
   onConfigChange?: (config: ReturnType<ArnSetSipPageRef["getConfig"]>) => void;
@@ -88,9 +90,43 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
-  function ArnSetSipPage({ selectedClient, selectedGoal, selectedProduct, mode, investmentMode, onBack, onModeChange, onConfigChange, preselectedFund }, ref) {
+  function ArnSetSipPage({
+    selectedClient,
+    selectedGoal,
+    selectedProduct,
+    selectedBasket = null,
+    mode,
+    investmentMode,
+    modeLocked = false,
+    onBack,
+    onModeChange,
+    onConfigChange,
+    preselectedFund,
+  }, ref) {
     const isGoalMode = mode === "goal" && selectedGoal != null;
-    const product = isGoalMode
+    const isBasketMode = mode === "basket" && selectedBasket != null;
+    const basketAmountLocked =
+      isBasketMode &&
+      selectedBasket != null &&
+      Number(selectedBasket.investAmount) > 0;
+    const product = isBasketMode
+      ? {
+          key: `basket-${selectedBasket!.id}`,
+          name: selectedBasket!.name,
+          assumedCagr: "12%",
+          goalId: 0,
+          stockType: "IndianStock",
+          defAmt: Math.max(
+            1000,
+            Number(selectedBasket!.investAmount) ||
+              Number(selectedBasket!.minInvestment) ||
+              1000
+          ),
+          defTenure: 10,
+          tenures: [3, 5, 10, 20, 30],
+          defFund: "",
+        }
+      : isGoalMode
       ? {
           key: selectedGoal.name.toLowerCase().replace(/\s+/g, "-"),
           name: selectedGoal.name,
@@ -174,7 +210,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     const projection = useMemo(() => {
       const corpus = calculateProjectedCorpus({
         sipAmount,
-        frequency: isGoalMode && !preselectedFund ? "monthly" : frequency,
+        frequency:
+          isBasketMode || (isGoalMode && !preselectedFund) ? "monthly" : frequency,
         tenure,
         expectedCagr,
       });
@@ -189,21 +226,25 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         gains: Math.round(gains),
         growth: Math.round(growth),
       };
-    }, [sipAmount, frequency, tenure, expectedCagr, isGoalMode, preselectedFund]);
+    }, [sipAmount, frequency, tenure, expectedCagr, isGoalMode, isBasketMode, preselectedFund]);
 
     const fundDisplayName = useMemo(() => {
-      if (!isGoalMode && fundMode === "rec" && recommendedPortfolio?.schemeAllocations?.[0]?.stockName) {
+      if (
+        (isBasketMode || !isGoalMode) &&
+        fundMode === "rec" &&
+        recommendedPortfolio?.schemeAllocations?.[0]?.stockName
+      ) {
         return recommendedPortfolio.schemeAllocations[0].stockName;
       }
       if (fundMode === "own") {
         return selectedFund ? selectedFund.split(" —")[0] || selectedFund : "";
       }
       return selectedFund ? selectedFund.split(" —")[0] || selectedFund : "";
-    }, [isGoalMode, fundMode, selectedFund, recommendedPortfolio]);
+    }, [isGoalMode, isBasketMode, fundMode, selectedFund, recommendedPortfolio]);
 
     useEffect(() => {
       if (!selectedClient) return;
-      if (preselectedFund) {
+      if (preselectedFund && !isBasketMode) {
         setIsLoadingRec(false);
         setRecError(null);
         return;
@@ -213,25 +254,62 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       setIsLoadingRec(true);
       setRecError(null);
 
-      const goalId = isGoalMode ? selectedGoal!.id : product.goalId;
+      const request = isBasketMode
+        ? getRecommendedPortfolio(selectedClient.userId, { basketId: selectedBasket!.id })
+        : getRecommendedPortfolio(
+            selectedClient.userId,
+            isGoalMode ? selectedGoal!.id : product.goalId
+          );
 
-      getRecommendedPortfolio(selectedClient.userId, goalId)
+      request
         .then((data) => {
           if (!cancelled) {
             setRecommendedPortfolio(data);
             if (data?.portfolio?.id) {
               setPortfolioId(data.portfolio.id);
             }
-              if (data?.schemeAllocations?.[0]?.stockName) {
-                const primary = data.schemeAllocations[0];
-                const stockName = primary.stockName || "";
-                setSelectedFund(
-                  stockName || product.defFund
-                );
-                if (!isGoalMode && primary.mutualFundId) {
-                  setSelectedMfId(primary.mutualFundId);
-                }
+            if (data?.schemeAllocations?.[0]?.stockName) {
+              const primary = data.schemeAllocations[0];
+              const stockName = primary.stockName || "";
+              setSelectedFund(stockName || product.defFund);
+              if ((!isGoalMode || isBasketMode) && primary.mutualFundId) {
+                setSelectedMfId(primary.mutualFundId);
               }
+            }
+            if (isBasketMode) {
+              const lockedAmt = Number(selectedBasket?.investAmount);
+              const minFromBasket =
+                Number(data?.basket?.minInvestment) ||
+                Number(selectedBasket?.minInvestment) ||
+                Number(data?.portfolio?.minimumInvestment) ||
+                1000;
+              if (Number.isFinite(lockedAmt) && lockedAmt > 0) {
+                setSipAmount(lockedAmt);
+                setLumpsumAmountLimits({
+                  min: lockedAmt,
+                  max: lockedAmt,
+                  step: AMOUNT_STEP_DEFAULT,
+                });
+                setSipAmountLimits({
+                  min: lockedAmt,
+                  max: lockedAmt,
+                  step: AMOUNT_STEP_DEFAULT,
+                });
+              } else {
+                setLumpsumAmountLimits({
+                  min: minFromBasket,
+                  max: 10000000,
+                  step: AMOUNT_STEP_DEFAULT,
+                });
+                setSipAmountLimits({
+                  min: minFromBasket,
+                  max: AMOUNT_LIMITS.monthly.max,
+                  step: AMOUNT_LIMITS.monthly.step,
+                });
+                setSipAmount((prev) => Math.max(prev, minFromBasket));
+              }
+              setFrequency("monthly");
+            }
           }
         })
         .catch((err) => {
@@ -247,7 +325,21 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       return () => {
         cancelled = true;
       };
-    }, [selectedClient, selectedClient?.userId, isGoalMode, selectedGoal, selectedGoal?.id, product.goalId, product.defFund, preselectedFund]);
+    }, [
+      selectedClient,
+      selectedClient?.userId,
+      isGoalMode,
+      isBasketMode,
+      selectedGoal,
+      selectedGoal?.id,
+      selectedBasket,
+      selectedBasket?.id,
+      selectedBasket?.investAmount,
+      selectedBasket?.minInvestment,
+      product.goalId,
+      product.defFund,
+      preselectedFund,
+    ]);
 
     useEffect(() => {
       if (investmentMode !== "lumpsum") return;
@@ -268,7 +360,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     }, [recommendedPortfolio, investmentMode, userSelectedFund]);
 
     useEffect(() => {
-      if (fundMode !== "own" || isGoalMode) {
+      if (fundMode !== "own" || isGoalMode || isBasketMode) {
         setFundResults([]);
         setFundSearchQuery("");
         return;
@@ -298,20 +390,21 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       return () => {
         cancelled = true;
       };
-    }, [fundMode, debouncedQuery, product.stockType, isGoalMode]);
+    }, [fundMode, debouncedQuery, product.stockType, isGoalMode, isBasketMode]);
 
     useEffect(() => {
       if (!chartRef.current) return;
       const svg = chartRef.current;
       const W = 400;
       const H = 56;
-      const periodsPerYear = isGoalMode ? 12 : frequency === "daily" ? 264 : 12;
+      const periodsPerYear =
+        isGoalMode || isBasketMode ? 12 : frequency === "daily" ? 264 : 12;
       const n = periodsPerYear * tenure;
       const rPer = Math.pow(1 + expectedCagr, 1 / periodsPerYear) - 1;
       const pts: { x: number; y: number }[] = [];
       let v = 0;
       for (let i = 0; i <= n; i++) {
-        v += sipAmount * (isGoalMode || frequency === "monthly" ? 1 : 30);
+        v += sipAmount * (isGoalMode || isBasketMode || frequency === "monthly" ? 1 : 30);
         v *= 1 + rPer;
         pts.push({ x: (i / n) * W, y: 4 + (1 - v / (projection.corpus || 1)) * (H - 8) });
       }
@@ -337,13 +430,19 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         <path d="${pathD}" fill="url(#cg)"/>
         <path d="${lineD}" fill="none" stroke="rgba(232,213,160,.6)" stroke-width="1.5"/>
       `;
-    }, [projection.corpus, sipAmount, frequency, tenure, expectedCagr, isGoalMode]);
+    }, [projection.corpus, sipAmount, frequency, tenure, expectedCagr, isGoalMode, isBasketMode]);
 
     useEffect(() => {
       setDisplayTenure(String(tenure));
     }, [tenure]);
 
     useEffect(() => {
+      if (basketAmountLocked) {
+        const locked = Number(selectedBasket?.investAmount) || product.defAmt;
+        setSipAmount(locked);
+        setFrequency("monthly");
+        return;
+      }
       if (investmentMode === "sip") {
         setFrequency("monthly");
         setTenure(product.defTenure);
@@ -351,7 +450,14 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       } else {
         setSipAmount(lumpsumAmountLimits.min || product.defAmt);
       }
-    }, [investmentMode, lumpsumAmountLimits.min, product.defAmt, product.defTenure]);
+    }, [
+      investmentMode,
+      lumpsumAmountLimits.min,
+      product.defAmt,
+      product.defTenure,
+      basketAmountLocked,
+      selectedBasket?.investAmount,
+    ]);
 
     useImperativeHandle(ref, () => ({
       getConfig: () => ({
@@ -373,7 +479,8 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
     useEffect(() => {
       onConfigChange?.({
         sipAmount,
-        frequency: isGoalMode && !preselectedFund ? "monthly" : frequency,
+        frequency:
+          isBasketMode || (isGoalMode && !preselectedFund) ? "monthly" : frequency,
         tenure,
         selectedFund: fundDisplayName,
         selectedScheme,
@@ -382,11 +489,31 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         expectedCagr,
         portfolioId,
         schemeAllocations: recommendedPortfolio?.schemeAllocations ?? null,
-        userSelectedFund,
+        userSelectedFund: isBasketMode ? false : userSelectedFund,
       });
-    }, [sipAmount, frequency, tenure, fundDisplayName, selectedScheme, selectedMfId, investmentMode, expectedCagr, portfolioId, onConfigChange, isGoalMode, preselectedFund, recommendedPortfolio, userSelectedFund]);
+    }, [
+      sipAmount,
+      frequency,
+      tenure,
+      fundDisplayName,
+      selectedScheme,
+      selectedMfId,
+      investmentMode,
+      expectedCagr,
+      portfolioId,
+      onConfigChange,
+      isGoalMode,
+      isBasketMode,
+      preselectedFund,
+      recommendedPortfolio,
+      userSelectedFund,
+    ]);
 
     useEffect(() => {
+      if (isBasketMode) {
+        setFrequency("monthly");
+        return;
+      }
       if (isGoalMode && !preselectedFund) {
         setSipAmount(product.defAmt);
         setTenure(product.defTenure);
@@ -399,9 +526,10 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         setSipAmount((prev) => Math.max(sipAmountLimits?.min ?? 1000, prev));
         setTenure(5);
       }
-    }, [frequency, isGoalMode, preselectedFund, product.defAmt, product.defTenure, sipAmountLimits]);
+    }, [frequency, isGoalMode, isBasketMode, preselectedFund, product.defAmt, product.defTenure, sipAmountLimits]);
 
     useEffect(() => {
+      if (isBasketMode) return;
       if (fundMode === "own") {
         setSipAmountLimits(null);
         if (!preselectedFund) {
@@ -415,7 +543,7 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
         setSipAmountLimits(null);
         setUserSelectedFund(false);
       }
-    }, [fundMode, preselectedFund]);
+    }, [fundMode, preselectedFund, isBasketMode]);
 
     const handleFundSelect = useCallback(
       (fund: FundOption) => {
@@ -445,21 +573,33 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
       [frequency]
     );
 
-    const amountLimits = isGoalMode && !preselectedFund ? AMOUNT_LIMITS.monthly : AMOUNT_LIMITS[frequency];
+    const amountLimits =
+      isBasketMode || (isGoalMode && !preselectedFund)
+        ? AMOUNT_LIMITS.monthly
+        : AMOUNT_LIMITS[frequency];
     const activeSipLimits = sipAmountLimits ?? amountLimits;
     const activeAmountLimits = investmentMode === "lumpsum" ? lumpsumAmountLimits : activeSipLimits;
     const activeStep =
-      investmentMode === "sip" && !(isGoalMode && !preselectedFund) && frequency === "daily"
+      investmentMode === "sip" &&
+      !isBasketMode &&
+      !(isGoalMode && !preselectedFund) &&
+      frequency === "daily"
         ? AMOUNT_LIMITS.daily.step
         : AMOUNT_STEP_DEFAULT;
 
-    const tenureMin = isGoalMode && !preselectedFund
-      ? Math.round(selectedGoal!.tenureMin / 12)
-      : TENURE_LIMITS[frequency].min;
+    const tenureMin =
+      isBasketMode
+        ? TENURE_LIMITS.monthly.min
+        : isGoalMode && !preselectedFund
+          ? Math.round(selectedGoal!.tenureMin / 12)
+          : TENURE_LIMITS[frequency].min;
 
-    const tenureMax = isGoalMode && !preselectedFund
-      ? Math.round(selectedGoal!.tenureMax / 12)
-      : TENURE_LIMITS[frequency].max;
+    const tenureMax =
+      isBasketMode
+        ? TENURE_LIMITS.monthly.max
+        : isGoalMode && !preselectedFund
+          ? Math.round(selectedGoal!.tenureMax / 12)
+          : TENURE_LIMITS[frequency].max;
 
     const handleSliderChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -563,7 +703,14 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
          <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-extrabold text-[var(--arn-txt)] sm:text-2xl">
-                Set up <span className="text-[var(--arn-amber)]">{isGoalMode ? selectedGoal!.name : product.name}</span>
+                Set up{" "}
+                <span className="text-[var(--arn-amber)]">
+                  {isBasketMode
+                    ? selectedBasket!.name
+                    : isGoalMode
+                      ? selectedGoal!.name
+                      : product.name}
+                </span>
               </h2>
               <p className="mt-1 text-sm text-[var(--arn-txt-2)] sm:text-base">
                 Configure the investment for {clientName}.
@@ -582,17 +729,19 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
            {/* LEFT: Investment Card */}
            <div className="rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 sm:p-6">
             {/* Mode toggle (SIP / One-time) */}
-            <div className="mb-4 flex rounded-[8px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-[3px] w-fit">
+            <div className="mb-4 flex w-fit rounded-[8px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-[3px]">
               {(["sip", "lumpsum"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
+                  disabled={modeLocked || !onModeChange}
                   onClick={() => onModeChange?.(m)}
                   className={cn(
                     "rounded-[6px] px-3 py-1.5 text-xs font-semibold transition-all sm:px-4",
                     investmentMode === m
                       ? "bg-[var(--arn-bg)] text-[var(--arn-txt)] shadow-[0_1px_3px_rgba(0,0,0,.06)]"
-                      : "text-[var(--arn-txt-3)] hover:text-[var(--arn-txt-2)]"
+                      : "text-[var(--arn-txt-3)] hover:text-[var(--arn-txt-2)]",
+                    (modeLocked || !onModeChange) && "cursor-default opacity-90"
                   )}
                 >
                   {m === "sip" ? "SIP" : "One-time"}
@@ -611,29 +760,41 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                      <input
                        type="text"
                        inputMode="numeric"
+                       readOnly={basketAmountLocked}
                        value={
                          isEditingAmount
                            ? amountDraft
                            : sipAmount.toLocaleString("en-IN")
                        }
-                       onFocus={handleAmountFocus}
-                       onChange={handleAmountChange}
-                       onBlur={handleAmountBlur}
+                       onFocus={basketAmountLocked ? undefined : handleAmountFocus}
+                       onChange={basketAmountLocked ? undefined : handleAmountChange}
+                       onBlur={basketAmountLocked ? undefined : handleAmountBlur}
                        aria-label="Investment amount"
-                       className="w-full max-w-[220px] border-b border-transparent bg-transparent text-3xl font-extrabold text-[var(--arn-txt)] outline-none transition-colors focus:border-[var(--arn-amber)] sm:text-[38px]"
+                       className={cn(
+                         "w-full max-w-[220px] border-b border-transparent bg-transparent text-3xl font-extrabold text-[var(--arn-txt)] outline-none transition-colors sm:text-[38px]",
+                         basketAmountLocked
+                           ? "cursor-default"
+                           : "focus:border-[var(--arn-amber)]"
+                       )}
                      />
                    </div>
                   <div className="mt-1 text-xs font-medium text-[var(--arn-txt-3)]">
                     {investmentMode === "lumpsum"
                       ? "One-time investment"
-                      : (isGoalMode && !preselectedFund ? "per month" : frequency === "daily" ? "per day" : "per month")}
+                      : isBasketMode || (isGoalMode && !preselectedFund)
+                        ? "per month"
+                        : frequency === "daily"
+                          ? "per day"
+                          : "per month"}
                   </div>
                   <div className="mt-0.5 text-[10px] font-semibold text-[var(--arn-txt-3)]">
-                    Min ₹{activeAmountLimits.min.toLocaleString("en-IN")} — Max ₹{activeAmountLimits.max.toLocaleString("en-IN")}
+                    {basketAmountLocked
+                      ? "Amount is set on this basket"
+                      : `Min ₹${activeAmountLimits.min.toLocaleString("en-IN")} — Max ₹${activeAmountLimits.max.toLocaleString("en-IN")}`}
                   </div>
                 </div>
 
-                {investmentMode === "sip" && (!isGoalMode || !!preselectedFund) && (
+                {investmentMode === "sip" && !isBasketMode && (!isGoalMode || !!preselectedFund) && (
                  <div className="flex-shrink-0">
                    <div className="flex rounded-[8px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] p-[3px]">
                      {(["daily", "monthly"] as const).map((f) => (
@@ -672,53 +833,59 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
              </div>
              )}
 
-              {/* Slider */}
-              <div className="mt-4 text-[10px] font-bold uppercase tracking-wider text-[var(--arn-amber)] sm:mt-5 md:mt-6">
-                {investmentMode === "lumpsum" ? "Edit your investment amount" : "Edit your investment amount"}
-              </div>
-              <input
-                type="range"
-                min={activeAmountLimits.min}
-                max={activeAmountLimits.max}
-                step={activeStep}
-                value={sipAmount}
-                onChange={handleSliderChange}
-                className="arn-sip-slider mt-4 w-full h-1 cursor-pointer appearance-none rounded-full"
-                style={{
-                  background: `linear-gradient(to right, var(--arn-amber) ${sliderPct}%, var(--arn-bdr) ${sliderPct}%)`,
-                }}
-              />
+              {!basketAmountLocked && (
+                <>
+                  {/* Slider */}
+                  <div className="mt-4 text-[10px] font-bold uppercase tracking-wider text-[var(--arn-amber)] sm:mt-5 md:mt-6">
+                    Edit your investment amount
+                  </div>
+                  <input
+                    type="range"
+                    min={activeAmountLimits.min}
+                    max={activeAmountLimits.max}
+                    step={activeStep}
+                    value={sipAmount}
+                    onChange={handleSliderChange}
+                    className="arn-sip-slider mt-4 h-1 w-full cursor-pointer appearance-none rounded-full"
+                    style={{
+                      background: `linear-gradient(to right, var(--arn-amber) ${sliderPct}%, var(--arn-bdr) ${sliderPct}%)`,
+                    }}
+                  />
 
-              {/* Quick Picks */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                 {(investmentMode === "lumpsum"
-                   ? [
-                       lumpsumAmountLimits.min,
-                       Math.min(lumpsumAmountLimits.min * 2, lumpsumAmountLimits.max),
-                       Math.min(lumpsumAmountLimits.min * 5, lumpsumAmountLimits.max),
-                       Math.min(100000, lumpsumAmountLimits.max),
-                       Math.min(500000, lumpsumAmountLimits.max),
-                       lumpsumAmountLimits.max,
-                     ].filter((v, i, a) => a.indexOf(v) === i)
-                    : AMOUNT_PICKS[isGoalMode && !preselectedFund ? "monthly" : frequency].map(
-                        (pick) => Math.max(pick, sipAmountLimits?.min ?? 0)
-                      )
-                 ).map((pick) => (
-                  <button
-                    key={pick}
-                    type="button"
-                    onClick={() => setSipAmount(pick)}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
-                      sipAmount === pick
-                        ? "border-[var(--arn-amber)] bg-[var(--arn-amber)] text-white"
-                        : "border-[var(--arn-bdr)] bg-[var(--arn-bg)] text-[var(--arn-txt-2)] hover:border-[var(--arn-bdr-2)]"
-                    )}
-                  >
-                    {formatRupee(pick)}
-                  </button>
-                ))}
-              </div>
+                  {/* Quick Picks */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(investmentMode === "lumpsum"
+                      ? [
+                          lumpsumAmountLimits.min,
+                          Math.min(lumpsumAmountLimits.min * 2, lumpsumAmountLimits.max),
+                          Math.min(lumpsumAmountLimits.min * 5, lumpsumAmountLimits.max),
+                          Math.min(100000, lumpsumAmountLimits.max),
+                          Math.min(500000, lumpsumAmountLimits.max),
+                          lumpsumAmountLimits.max,
+                        ].filter((v, i, a) => a.indexOf(v) === i)
+                      : AMOUNT_PICKS[
+                          isBasketMode || (isGoalMode && !preselectedFund)
+                            ? "monthly"
+                            : frequency
+                        ].map((pick) => Math.max(pick, sipAmountLimits?.min ?? 0))
+                    ).map((pick) => (
+                      <button
+                        key={pick}
+                        type="button"
+                        onClick={() => setSipAmount(pick)}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                          sipAmount === pick
+                            ? "border-[var(--arn-amber)] bg-[var(--arn-amber)] text-white"
+                            : "border-[var(--arn-bdr)] bg-[var(--arn-bg)] text-[var(--arn-txt-2)] hover:border-[var(--arn-bdr-2)]"
+                        )}
+                      >
+                        {formatRupee(pick)}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
              {investmentMode === "sip" && <>
              <div className="my-4 h-px bg-[var(--arn-bdr)]" />
@@ -773,8 +940,37 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
              <div className="my-4 h-px bg-[var(--arn-bdr)]" />
              </>}
 
-              {/* Fund */}
-              {isGoalMode || !!preselectedFund ? (
+              {/* Fund / Basket allocation */}
+              {isBasketMode ? (
+                <div className="space-y-3">
+                  <span className="text-sm font-semibold text-[var(--arn-txt)]">Basket funds</span>
+                  {isLoadingRec ? (
+                    <div className="rounded-[12px] border border-[var(--arn-bdr)] px-3 py-2.5 text-sm text-[var(--arn-txt-3)]">
+                      Loading basket portfolio…
+                    </div>
+                  ) : recError ? (
+                    <div className="rounded-[12px] border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600">
+                      {recError}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {(recommendedPortfolio?.schemeAllocations || []).map((sa) => (
+                        <div
+                          key={`${sa.mutualFundId}-${sa.ticker || sa.stockName}`}
+                          className="flex items-center justify-between gap-3 rounded-[12px] border border-[var(--arn-bdr)] px-3 py-2.5"
+                        >
+                          <span className="min-w-0 truncate text-sm font-medium text-[var(--arn-txt)]">
+                            {sa.stockName || sa.ticker || `Fund ${sa.mutualFundId}`}
+                          </span>
+                          <span className="shrink-0 text-sm font-bold text-[var(--arn-txt)]">
+                            {Math.round(sa.weightPercent || 0)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : isGoalMode || !!preselectedFund ? (
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-semibold text-[var(--arn-txt)]">
                     Fund
@@ -991,7 +1187,12 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] px-3 py-2.5">
                  <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--arn-amber)]" />
                  <span className="flex-1 truncate text-xs font-semibold text-[var(--arn-txt)]">
-                   {isGoalMode ? selectedGoal!.name : product.name} · {fundDisplayName}
+                   {isBasketMode
+                     ? selectedBasket!.name
+                     : isGoalMode
+                       ? selectedGoal!.name
+                       : product.name}
+                   {!isBasketMode && fundDisplayName ? ` · ${fundDisplayName}` : ""}
                  </span>
                  <span className="text-xs font-bold text-[var(--arn-amber)]">100%</span>
                 </div>

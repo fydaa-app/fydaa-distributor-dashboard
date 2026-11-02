@@ -8,6 +8,7 @@ import { type DirectProduct } from "@/components/goalSetup/ArnDirectProductSelec
 import type { ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
 import type { ArnSetSipDatePageRef } from "@/components/goalSetup/ArnSetSipDatePage";
 import { calculateProjectedCorpus } from "@/lib/sipMath";
+import type { BasketItem } from "@/services/arnStockApi";
 import {
   checkKycForUser,
   sendConsentOtpForUser,
@@ -40,6 +41,7 @@ interface ArnReviewConfirmPageProps {
   selectedClient: GoalSetupClient;
   selectedProduct: DirectProduct | null;
   selectedGoal?: { name: string } | null;
+  selectedBasket?: BasketItem | null;
   sipConfig: ReturnType<ArnSetSipPageRef["getConfig"]>;
   dateConfig: ReturnType<ArnSetSipDatePageRef["getDateConfig"]>;
   investmentMode: "sip" | "lumpsum";
@@ -65,7 +67,17 @@ const INITIAL_READINESS: ReadinessState = {
 
 const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfirmPageProps>(
   function ArnReviewConfirmPage(
-    { selectedClient, selectedProduct, selectedGoal, sipConfig, dateConfig, investmentMode, onBack, onCtaChange },
+    {
+      selectedClient,
+      selectedProduct,
+      selectedGoal,
+      selectedBasket = null,
+      sipConfig,
+      dateConfig,
+      investmentMode,
+      onBack,
+      onCtaChange,
+    },
     ref
   ) {
     const router = useRouter();
@@ -87,27 +99,47 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
     const [investmentComplete, setInvestmentComplete] = useState(false);
     const paymentWindowRef = useRef<Window | null>(null);
 
+    const isBasketMode = !!selectedBasket && Number(selectedBasket.id) > 0;
+
     const product = useMemo(
       () =>
-        selectedProduct ?? {
-          key: "equity",
-          name: "Equity",
-          assumedCagr: "12%",
-          goalId: 36,
-          stockType: "IndianStock",
-          defAmt: 10000,
-          defTenure: 10,
-          tenures: [3, 5, 10, 20, 30],
-          defFund: "HDFC Flexi Cap Fund — Direct Plan — Growth",
-        },
-      [selectedProduct]
+        isBasketMode
+          ? {
+              key: `basket-${selectedBasket!.id}`,
+              name: selectedBasket!.name,
+              assumedCagr: "12%",
+              goalId: 0,
+              stockType: "IndianStock",
+              defAmt: Math.max(
+                1000,
+                Number(selectedBasket!.investAmount) ||
+                  Number(selectedBasket!.minInvestment) ||
+                  1000
+              ),
+              defTenure: 10,
+              tenures: [3, 5, 10, 20, 30],
+              defFund: "",
+            }
+          : selectedProduct ?? {
+              key: "equity",
+              name: "Equity",
+              assumedCagr: "12%",
+              goalId: 36,
+              stockType: "IndianStock",
+              defAmt: 10000,
+              defTenure: 10,
+              tenures: [3, 5, 10, 20, 30],
+              defFund: "HDFC Flexi Cap Fund — Direct Plan — Growth",
+            },
+      [selectedProduct, selectedBasket, isBasketMode]
     );
 
     const goalName = useMemo(() => {
+      if (selectedBasket) return selectedBasket.name;
       if (selectedProduct) return selectedProduct.name;
       if (selectedGoal?.name) return selectedGoal.name;
       return "Goal-based investing";
-    }, [selectedProduct, selectedGoal]);
+    }, [selectedProduct, selectedGoal, selectedBasket]);
 
     const projectedCorpus = useMemo(
       () =>
@@ -224,7 +256,9 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
 
     useImperativeHandle(ref, () => ({
       getPayload: () => ({
-        goalId: product.goalId,
+        ...(isBasketMode
+          ? { basketId: selectedBasket!.id, goalId: null }
+          : { goalId: product.goalId }),
         sipAmount: sipConfig.sipAmount.toFixed(2),
         sipName: product.name,
         goalAmount: investmentMode === "sip" ? projectedCorpus.toFixed(2) : sipConfig.sipAmount.toFixed(2),
@@ -235,8 +269,8 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         sipTenure: String(sipConfig.tenure * 12),
         sipFrequency: dateConfig.sipFrequency,
         ...(dateConfig.sipFrequency === "monthly" && { sipDate: dateConfig.startDate }),
-        ...(sipConfig.selectedScheme && { selectedScheme: sipConfig.selectedScheme }),
-        ...(sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
+        ...(!isBasketMode && sipConfig.selectedScheme && { selectedScheme: sipConfig.selectedScheme }),
+        ...(!isBasketMode && sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
         investmentMode,
         paymentMethod,
         ...(investmentMode === "lumpsum" && lumpsumId ? { lumpsumId } : {}),
@@ -318,31 +352,43 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             throw new Error("Failed to update MF investment account");
           }
 
-          const canCreate = await checkLumpsumCanCreate(
-            selectedClient.userId,
-            product.goalId,
-            sipConfig.selectedMfId ?? undefined,
-            sipConfig.selectedScheme ?? undefined
-          );
-
           let currentLumpsumId: number;
           let portfolioId: number;
 
-          if (canCreate.action === "add_money" && canCreate.existingLumpsum) {
-            currentLumpsumId = canCreate.existingLumpsum.id;
-            portfolioId = canCreate.existingLumpsum.portfolioId;
-          } else {
+          if (isBasketMode) {
             const createPayload: LumpsumCreatePayload = {
               investedAmount: sipConfig.sipAmount,
-              goalId: product.goalId,
+              basketId: selectedBasket!.id,
               investmentDate: new Date().toISOString(),
               ...(sipConfig.portfolioId && { portfolioId: sipConfig.portfolioId }),
-              ...(sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
-              ...(sipConfig.selectedScheme && { selectedScheme: sipConfig.selectedScheme }),
             };
             const createRes = await createLumpsumForUser(selectedClient.userId, createPayload);
             currentLumpsumId = createRes.lumpsumData.id ?? createRes.lumpsumId;
             portfolioId = createRes.lumpsumData.portfolioId ?? createRes.portfolioId ?? 0;
+          } else {
+            const canCreate = await checkLumpsumCanCreate(
+              selectedClient.userId,
+              product.goalId,
+              sipConfig.selectedMfId ?? undefined,
+              sipConfig.selectedScheme ?? undefined
+            );
+
+            if (canCreate.action === "add_money" && canCreate.existingLumpsum) {
+              currentLumpsumId = canCreate.existingLumpsum.id;
+              portfolioId = canCreate.existingLumpsum.portfolioId;
+            } else {
+              const createPayload: LumpsumCreatePayload = {
+                investedAmount: sipConfig.sipAmount,
+                goalId: product.goalId,
+                investmentDate: new Date().toISOString(),
+                ...(sipConfig.portfolioId && { portfolioId: sipConfig.portfolioId }),
+                ...(sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
+                ...(sipConfig.selectedScheme && { selectedScheme: sipConfig.selectedScheme }),
+              };
+              const createRes = await createLumpsumForUser(selectedClient.userId, createPayload);
+              currentLumpsumId = createRes.lumpsumData.id ?? createRes.lumpsumId;
+              portfolioId = createRes.lumpsumData.portfolioId ?? createRes.portfolioId ?? 0;
+            }
           }
 
           setLumpsumId(currentLumpsumId);
@@ -539,7 +585,9 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
         setIsSubmitting(true);
         try {
           const payload: SipSetupPayload = {
-            goalId: product.goalId,
+            ...(isBasketMode
+              ? { basketId: selectedBasket!.id, goalId: null }
+              : { goalId: product.goalId }),
             sipAmount: sipConfig.sipAmount.toFixed(2),
             sipName: product.name,
             goalAmount: projectedCorpus.toFixed(2),
@@ -550,8 +598,10 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
             sipTenure: String(sipConfig.tenure * 12),
             sipFrequency: dateConfig.sipFrequency,
             ...(dateConfig.sipFrequency === "monthly" && { sipDate: dateConfig.startDate }),
-            ...(sipConfig.selectedScheme && { selectedScheme: sipConfig.selectedScheme }),
-            ...(sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
+            ...(!isBasketMode &&
+              sipConfig.selectedScheme && { selectedScheme: sipConfig.selectedScheme }),
+            ...(!isBasketMode &&
+              sipConfig.selectedMfId && { selectedMfId: sipConfig.selectedMfId }),
           };
 
           // Step A: Create the SIP first so we have a sipId
@@ -702,6 +752,8 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
       projectedCorpus,
       product,
       selectedClient,
+      selectedBasket,
+      isBasketMode,
       router,
       paymentMethod,
       investmentMode,

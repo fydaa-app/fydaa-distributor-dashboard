@@ -53,6 +53,7 @@ export const ArnDashboardEndpoints = {
 
 export const ArnPartnerEndpoints = {
   PROFILE_PHOTO: "/arn/partner/profile-photo",
+  WEBSITE: "/arn/partner/website",
 } as const;
 
 export const ArnLeadEndpoints = {

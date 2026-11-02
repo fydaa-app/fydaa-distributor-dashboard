@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
+import ProfilePhotoCropModal from "@/components/arn-euins/ProfilePhotoCropModal";
+import WebsiteProfileForm from "@/components/arn-euins/WebsiteProfileForm";
 import { useProfilePhoto } from "@/context/ProfilePhotoContext";
 import { uploadPartnerProfilePhoto } from "@/services/arnProfileService";
 
 const allowedImageTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
-const maxImageBytes = 5 * 1024 * 1024;
+const maxImageBytes = 15 * 1024 * 1024;
 
 function ProfilePhotoPlaceholder() {
   return (
-    <div className="flex size-24 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] text-[var(--arn-txt-3)]">
+    <div className="flex h-[120px] w-[105px] shrink-0 items-center justify-center rounded-[12px] border-2 border-dashed border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] text-[var(--arn-txt-3)]">
       <i aria-hidden="true" className="ti ti-user text-3xl" />
     </div>
   );
@@ -21,33 +23,36 @@ function ProfilePhotoImage({ url }: { url: string }) {
     <img
       src={url}
       alt="Profile"
-      className="size-24 shrink-0 rounded-full border-2 border-[var(--arn-bdr)] object-cover"
+      className="h-[120px] w-[105px] shrink-0 rounded-[12px] border-2 border-[var(--arn-bdr)] object-cover"
     />
   );
 }
 
 export default function ProfilePage() {
-  const { hasActiveRm, photoUrl, refreshProfilePhoto } = useProfilePhoto();
-  const [preview, setPreview] = useState<string | null>(null);
+  const { photoUrl, refreshProfilePhoto, isLoading } = useProfilePhoto();
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [pendingFileMeta, setPendingFileMeta] = useState<{
+    name: string;
+    type: string;
+  } | null>(null);
 
-  if (!hasActiveRm) {
-    return (
-      <div className="mx-auto w-full max-w-[1440px] p-5 sm:p-6 lg:p-8">
-        <ComponentCard title="Profile">
-          <p className="text-sm text-[var(--arn-txt-2)]">
-            Profile photo is not available yet. Contact support to complete
-            your setup.
-          </p>
-        </ComponentCard>
-      </div>
-    );
-  }
+  useEffect(() => {
+    return () => {
+      if (cropSrc) URL.revokeObjectURL(cropSrc);
+    };
+  }, [cropSrc]);
 
-  const displayUrl = preview || photoUrl;
+  const hasPhoto = Boolean(photoUrl);
 
-  const handleFileSelect = async (file: File) => {
+  const clearCropState = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    setPendingFileMeta(null);
+  };
+
+  const handleFileSelect = (file: File) => {
     setError(null);
 
     if (!allowedImageTypes.includes(file.type)) {
@@ -56,26 +61,14 @@ export default function ProfilePage() {
     }
 
     if (file.size > maxImageBytes) {
-      setError("Image must be 5MB or smaller");
+      setError("Image must be 15MB or smaller");
       return;
     }
 
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
     const objectUrl = URL.createObjectURL(file);
-    setPreview(objectUrl);
-    setIsUploading(true);
-
-    try {
-      await uploadPartnerProfilePhoto(file);
-      setPreview(null);
-      URL.revokeObjectURL(objectUrl);
-      refreshProfilePhoto();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Image upload failed");
-      setPreview(null);
-      URL.revokeObjectURL(objectUrl);
-    } finally {
-      setIsUploading(false);
-    }
+    setCropSrc(objectUrl);
+    setPendingFileMeta({ name: file.name, type: file.type });
   };
 
   const handleUploadClick = () => {
@@ -89,23 +82,38 @@ export default function ProfilePage() {
     input.click();
   };
 
+  const handleCropApply = async (file: File) => {
+    setIsUploading(true);
+    setError(null);
+    try {
+      await uploadPartnerProfilePhoto(file);
+      clearCropState();
+      refreshProfilePhoto();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Image upload failed");
+      throw err;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
       <ComponentCard title="Profile">
         <div className="flex flex-col items-center gap-4">
-          {displayUrl ? (
-            <ProfilePhotoImage url={displayUrl} />
+          {photoUrl ? (
+            <ProfilePhotoImage url={photoUrl} />
           ) : (
             <ProfilePhotoPlaceholder />
           )}
 
-          {isUploading ? (
+          {isUploading || isLoading ? (
             <div className="flex items-center gap-2 text-sm text-[var(--arn-txt-2)]">
               <i
                 aria-hidden="true"
                 className="ti ti-loader animate-spin text-[var(--arn-amber)]"
               />
-              Uploading...
+              {isUploading ? "Uploading..." : "Loading..."}
             </div>
           ) : (
             <button
@@ -117,11 +125,34 @@ export default function ProfilePage() {
             </button>
           )}
 
+          <p className="text-center text-xs text-[var(--arn-txt-3)]">
+            Required ratio 7:8 (420 × 480). Max size 15MB.
+          </p>
+
+          {!hasPhoto && (
+            <p className="text-center text-sm font-medium text-[var(--arn-txt)]">
+              Upload your photo to start building your website.
+            </p>
+          )}
+
           {error && (
             <p className="text-xs text-[var(--arn-red)]">{error}</p>
           )}
         </div>
       </ComponentCard>
+
+      {hasPhoto && <WebsiteProfileForm hasPhoto={hasPhoto} />}
+
+      {cropSrc && pendingFileMeta ? (
+        <ProfilePhotoCropModal
+          imageSrc={cropSrc}
+          fileName={pendingFileMeta.name}
+          mimeType={pendingFileMeta.type}
+          isApplying={isUploading}
+          onCancel={clearCropState}
+          onApply={handleCropApply}
+        />
+      ) : null}
     </div>
   );
 }

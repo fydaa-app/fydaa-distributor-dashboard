@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 export default function ProfilePhotoReminder() {
   const router = useRouter();
   const pathname = usePathname();
-  const { hasActiveRm, photoUrl, isLoading } = useProfilePhoto();
+  const { photoUrl, isLoading } = useProfilePhoto();
 
   if (isLoading) return null;
-  if (!hasActiveRm) return null;
+  // Nudge partners to upload even before an RM exists (upload now auto-creates RM).
   if (photoUrl) return null;
   if (isReminderHidden(pathname)) return null;
 

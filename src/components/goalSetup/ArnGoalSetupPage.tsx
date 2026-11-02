@@ -6,8 +6,10 @@ import ArnGoalSetupStepper from "@/components/goalSetup/ArnGoalSetupStepper";
 import ArnClientSelector from "@/components/goalSetup/ArnClientSelector";
 import ArnClientPreview from "@/components/goalSetup/ArnClientPreview";
 import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar";
-import ArnGoalPathSelector from "@/components/goalSetup/ArnGoalPathSelector";
+import { ArnGoalPathHeader, ArnGoalPathCards } from "@/components/goalSetup/ArnGoalPathSelector";
 import ArnFundSearchBar from "@/components/goalSetup/ArnFundSearchBar";
+import ArnBasketSection from "@/components/goalSetup/ArnBasketSection";
+import { basketModeLocked } from "@/components/goalSetup/arnBasketUtils";
 import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
 import ArnGoalGrid from "@/components/goalSetup/ArnGoalGrid";
 import ArnSetSipPage, { type ArnSetSipPageRef } from "@/components/goalSetup/ArnSetSipPage";
@@ -15,7 +17,7 @@ import ArnSetSipDatePage, { type ArnSetSipDatePageRef } from "@/components/goalS
 import ArnReviewConfirmPage, { type ArnReviewConfirmPageRef } from "@/components/goalSetup/ArnReviewConfirmPage";
 import ArnIncompleteOnboardingModal from "@/components/goalSetup/ArnIncompleteOnboardingModal";
 import type { GoalSetupClient } from "@/services/arnGoalSetupService";
-import type { GoalResponse, FundOption } from "@/services/arnStockApi";
+import type { BasketItem, GoalResponse, FundOption } from "@/services/arnStockApi";
 import type { DirectProduct } from "@/components/goalSetup/ArnDirectProductSelector";
 import { getUserStage } from "@/services/arnReviewApi";
 import { isKycReadyToProceed } from "@/utils/kycStage";
@@ -104,9 +106,11 @@ export default function ArnGoalSetupPage() {
 
   const [step, setStep] = useState(shouldSkipClientStep ? 2 : 1);
   const [selectedClient, setSelectedClient] = useState<GoalSetupClient | null>(initialClient);
-  const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | null>(null);
+  const [selectedPath, setSelectedPath] = useState<"goal" | "direct" | "basket" | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<GoalResponse | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<DirectProduct | null>(null);
+  const [selectedBasket, setSelectedBasket] = useState<BasketItem | null>(null);
+  const [awaitingBasketMode, setAwaitingBasketMode] = useState(false);
   const [preselectedFund, setPreselectedFund] = useState<FundOption | null>(null);
   const [fundSelectError, setFundSelectError] = useState<string | null>(null);
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
@@ -224,6 +228,8 @@ export default function ArnGoalSetupPage() {
     setSelectedPath(path);
     setSelectedGoal(null);
     setSelectedProduct(null);
+    setSelectedBasket(null);
+    setAwaitingBasketMode(false);
     setPreselectedFund(null);
     setFundSelectError(null);
   }, []);
@@ -240,12 +246,56 @@ export default function ArnGoalSetupPage() {
     setFundSelectError(null);
   }, []);
 
+  const enterBasketInvest = useCallback((basket: BasketItem, mode: "sip" | "lumpsum") => {
+    setSelectedPath("basket");
+    setSelectedBasket(basket);
+    setSelectedGoal(null);
+    setSelectedProduct(null);
+    setPreselectedFund(null);
+    setFundSelectError(null);
+    setAwaitingBasketMode(false);
+    setInvestmentMode(mode);
+    setStep(3);
+  }, []);
+
+  const handleBasketSelect = useCallback(
+    (basket: BasketItem) => {
+      const locked = basketModeLocked(basket);
+      if (locked === "SIP") {
+        enterBasketInvest(basket, "sip");
+        return;
+      }
+      if (locked === "LUMPSUM") {
+        enterBasketInvest(basket, "lumpsum");
+        return;
+      }
+      setSelectedPath("basket");
+      setSelectedBasket(basket);
+      setSelectedGoal(null);
+      setSelectedProduct(null);
+      setPreselectedFund(null);
+      setFundSelectError(null);
+      setAwaitingBasketMode(true);
+    },
+    [enterBasketInvest]
+  );
+
+  const handleBasketCreated = useCallback(
+    (basket: BasketItem) => {
+      const locked = basketModeLocked(basket);
+      enterBasketInvest(basket, locked === "LUMPSUM" ? "lumpsum" : "sip");
+    },
+    [enterBasketInvest]
+  );
+
   const handleSearchFundSelect = useCallback((fund: FundOption) => {
     const normalized = normalizeFundGoal(fund);
     setFundSelectError(null);
     setSelectedPath("goal");
     setSelectedGoal(null);
     setSelectedProduct(null);
+    setSelectedBasket(null);
+    setAwaitingBasketMode(false);
     setPreselectedFund(normalized);
   }, []);
 
@@ -343,7 +393,23 @@ export default function ArnGoalSetupPage() {
 
   const handleBack = useCallback(() => {
     if (step > 1) {
-      if (step === 3) setInvestmentMode("sip");
+      if (step === 3) {
+        setInvestmentMode("sip");
+        if (selectedPath === "basket") {
+          setSelectedBasket(null);
+          setSelectedPath(null);
+          setAwaitingBasketMode(false);
+          setStep(2);
+          return;
+        }
+      }
+
+      if (step === 2 && selectedPath === "basket" && awaitingBasketMode) {
+        setSelectedBasket(null);
+        setSelectedPath(null);
+        setAwaitingBasketMode(false);
+        return;
+      }
 
       if (step === 5 && investmentMode === "lumpsum") {
         setStep(3);
@@ -351,7 +417,7 @@ export default function ArnGoalSetupPage() {
         setStep(step - 1);
       }
     }
-  }, [step, investmentMode]);
+  }, [step, investmentMode, selectedPath, awaitingBasketMode]);
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
@@ -448,19 +514,69 @@ export default function ArnGoalSetupPage() {
                 </div>
               </div>
             )
-          ) : (
-              <div className="space-y-6">
-                <ArnGoalPathSelector
-                  selectedClient={selectedClient!}
-                  onSelect={handlePathSelect}
-                />
-                <div className="mt-6">
-                  <ArnFundSearchBar onSelect={handleSearchFundSelect} />
-                  {fundSelectError && (
-                    <p className="mt-2 text-xs text-[var(--arn-red)]">{fundSelectError}</p>
-                  )}
-                </div>
+          ) : selectedPath === "basket" && awaitingBasketMode && selectedBasket ? (
+            <div className="mx-auto max-w-md space-y-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPath(null);
+                  setSelectedBasket(null);
+                  setAwaitingBasketMode(false);
+                }}
+                className="text-xs font-semibold text-[var(--arn-amber)] hover:opacity-70"
+              >
+                ← Change path
+              </button>
+              <div>
+                <h2 className="text-xl font-extrabold text-[var(--arn-txt)]">
+                  How should{" "}
+                  <span className="text-[var(--arn-amber)]">{selectedBasket.name}</span> be
+                  invested?
+                </h2>
+                <p className="mt-1 text-sm text-[var(--arn-txt-2)]">
+                  This curated basket lets you choose SIP or a one-time amount.
+                </p>
               </div>
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => enterBasketInvest(selectedBasket, "sip")}
+                  className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 text-left transition-all hover:border-[var(--arn-amber)]"
+                >
+                  <div className="text-base font-bold text-[var(--arn-txt)]">SIP</div>
+                  <div className="mt-1 text-sm text-[var(--arn-txt-2)]">
+                    Monthly SIP from ₹1,000
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => enterBasketInvest(selectedBasket, "lumpsum")}
+                  className="rounded-[14px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 text-left transition-all hover:border-[var(--arn-amber)]"
+                >
+                  <div className="text-base font-bold text-[var(--arn-txt)]">One-time</div>
+                  <div className="mt-1 text-sm text-[var(--arn-txt-2)]">
+                    Invest a single amount from ₹1,000
+                  </div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <ArnGoalPathHeader selectedClient={selectedClient!} />
+              <div>
+                <ArnFundSearchBar onSelect={handleSearchFundSelect} />
+                {fundSelectError && (
+                  <p className="mt-2 text-xs text-[var(--arn-red)]">{fundSelectError}</p>
+                )}
+              </div>
+              <ArnGoalPathCards onSelect={handlePathSelect} />
+              <ArnBasketSection
+                userId={selectedClient!.userId}
+                clientName={selectedClient!.name}
+                onSelect={handleBasketSelect}
+                onCreated={handleBasketCreated}
+              />
+            </div>
           )}
         </div>
       )}
@@ -472,9 +588,23 @@ export default function ArnGoalSetupPage() {
             selectedClient={selectedClient!}
             selectedGoal={selectedPath === "goal" ? selectedGoal : null}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
-            mode={selectedPath === "goal" ? "goal" : "direct"}
+            selectedBasket={selectedPath === "basket" ? selectedBasket : null}
+            mode={
+              selectedPath === "goal"
+                ? "goal"
+                : selectedPath === "basket"
+                  ? "basket"
+                  : "direct"
+            }
             investmentMode={investmentMode}
-            onModeChange={setInvestmentMode}
+            onModeChange={
+              selectedPath === "basket" && basketModeLocked(selectedBasket)
+                ? undefined
+                : setInvestmentMode
+            }
+            modeLocked={
+              selectedPath === "basket" ? !!basketModeLocked(selectedBasket) : false
+            }
             onBack={handleBack}
             onConfigChange={setSipConfig}
             preselectedFund={preselectedFund}
@@ -500,7 +630,8 @@ export default function ArnGoalSetupPage() {
             ref={reviewPageRef}
             selectedClient={selectedClient!}
             selectedProduct={selectedPath === "direct" ? selectedProduct : null}
-            selectedGoal={null}
+            selectedGoal={selectedPath === "goal" ? selectedGoal : null}
+            selectedBasket={selectedPath === "basket" ? selectedBasket : null}
             sipConfig={sipConfig}
             dateConfig={dateConfig}
             onBack={handleBack}
@@ -524,7 +655,9 @@ export default function ArnGoalSetupPage() {
                 ? !!selectedProduct
                 : selectedPath === "goal"
                   ? !!selectedGoal || !!preselectedFund
-                  : !!preselectedFund
+                  : selectedPath === "basket"
+                    ? false
+                    : !!preselectedFund
               : step === 3
                 ? !sipPageRef.current?.hasTenureError
                 : step === 4 && investmentMode === "sip"
