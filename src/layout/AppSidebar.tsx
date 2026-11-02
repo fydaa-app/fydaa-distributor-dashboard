@@ -39,6 +39,7 @@ const navSections: Array<{ title: string; items: NavItem[] }> = [
         { label: "Onboard client", href: "/arn-onboard", icon: "user-plus" },
         { label: "Financial Plan", href: "/arn-financial-plan", icon: "file-analytics" },
         { label: "Reports", href: "/arn-reports", icon: "chart-bar" },
+        { label: "Create Website", href: "/profile", icon: "world" },
        // { label: "Share portfolio", href: "/arn-share", icon: "send" },
       ],
     },

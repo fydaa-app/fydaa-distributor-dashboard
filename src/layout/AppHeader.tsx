@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useProfilePhoto } from "@/context/ProfilePhotoContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -167,7 +166,6 @@ export default function AppHeader() {
   const { theme, toggleTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
   const { user, logout, isPartner, isImpersonating } = useAuth();
-  const { hasActiveRm } = useProfilePhoto();
   const [open, setOpen] = useState(false);
 
   const employeeName = user?.name || "Distributor";
@@ -180,7 +178,7 @@ export default function AppHeader() {
     year: "numeric",
   }).format(new Date());
 
-  const showProfile = isPartner && hasActiveRm;
+  const showProfile = isPartner;
 
   const handleSignOut = () => {
     logout();

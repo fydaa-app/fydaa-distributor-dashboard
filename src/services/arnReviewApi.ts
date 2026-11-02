@@ -141,7 +141,8 @@ export interface KycCheckResponse {
 }
 
 export interface SipSetupPayload {
-  goalId: number;
+  goalId?: number | null;
+  basketId?: number | null;
   sipAmount: string;
   sipName: string;
   goalAmount: string;
@@ -467,7 +468,8 @@ export interface LumpsumCanCreateResponse {
 
 export interface LumpsumCreatePayload {
   investedAmount: number;
-  goalId: number;
+  goalId?: number | null;
+  basketId?: number | null;
   investmentDate: string;
   portfolioId?: number;
   selectedMfId?: number;
