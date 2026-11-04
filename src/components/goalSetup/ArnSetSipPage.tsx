@@ -230,7 +230,19 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
 
     const fundDisplayName = useMemo(() => {
       if (
-        (isBasketMode || !isGoalMode) &&
+        isBasketMode &&
+        fundMode === "rec" &&
+        Array.isArray(recommendedPortfolio?.schemeAllocations) &&
+        recommendedPortfolio.schemeAllocations.length > 0
+      ) {
+        const names = recommendedPortfolio.schemeAllocations
+          .map((sa) => sa.stockName || sa.ticker || "")
+          .filter(Boolean);
+        if (names.length > 0) return names.join(", ");
+      }
+      if (
+        !isBasketMode &&
+        !isGoalMode &&
         fundMode === "rec" &&
         recommendedPortfolio?.schemeAllocations?.[0]?.stockName
       ) {
@@ -268,7 +280,18 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
             if (data?.portfolio?.id) {
               setPortfolioId(data.portfolio.id);
             }
-            if (data?.schemeAllocations?.[0]?.stockName) {
+            if (isBasketMode && Array.isArray(data?.schemeAllocations) && data.schemeAllocations.length > 0) {
+              const names = data.schemeAllocations
+                .map((sa) => sa.stockName || sa.ticker || "")
+                .filter(Boolean);
+              if (names.length > 0) {
+                setSelectedFund(names.join(", "));
+              }
+              const primary = data.schemeAllocations[0];
+              if (primary?.mutualFundId) {
+                setSelectedMfId(primary.mutualFundId);
+              }
+            } else if (data?.schemeAllocations?.[0]?.stockName) {
               const primary = data.schemeAllocations[0];
               const stockName = primary.stockName || "";
               setSelectedFund(stockName || product.defFund);
@@ -1123,9 +1146,11 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                    </div>
                    <div className="border-t border-white/8 pt-3">
                      <div className="text-[10px] font-medium text-white/35">Fund</div>
-                     <div className="mt-1 text-sm font-bold text-white">
-                       {fundDisplayName.split(" —")[0] || fundDisplayName}
-                     </div>
+                    <div className="mt-1 text-sm font-bold text-white">
+                      {isBasketMode
+                        ? fundDisplayName
+                        : fundDisplayName.split(" —")[0] || fundDisplayName}
+                    </div>
                    </div>
                  </div>
                </div>
@@ -1184,18 +1209,22 @@ const ArnSetSipPage = forwardRef<ArnSetSipPageRef, ArnSetSipPageProps>(
                </div>
              )}
 
-               <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] px-3 py-2.5">
-                 <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--arn-amber)]" />
-                 <span className="flex-1 truncate text-xs font-semibold text-[var(--arn-txt)]">
-                   {isBasketMode
-                     ? selectedBasket!.name
-                     : isGoalMode
-                       ? selectedGoal!.name
-                       : product.name}
-                   {!isBasketMode && fundDisplayName ? ` · ${fundDisplayName}` : ""}
-                 </span>
-                 <span className="text-xs font-bold text-[var(--arn-amber)]">100%</span>
-                </div>
+                <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] px-3 py-2.5">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--arn-amber)]" />
+                  <span className="flex-1 truncate text-xs font-semibold text-[var(--arn-txt)]">
+                    {isBasketMode
+                      ? selectedBasket!.name
+                      : isGoalMode
+                        ? selectedGoal!.name
+                        : product.name}
+                    {fundDisplayName && isBasketMode
+                      ? ` · ${fundDisplayName}`
+                      : !isBasketMode && fundDisplayName
+                        ? ` · ${fundDisplayName}`
+                        : ""}
+                  </span>
+                  <span className="text-xs font-bold text-[var(--arn-amber)]">100%</span>
+                 </div>
          </div>
        </div>
         </div>

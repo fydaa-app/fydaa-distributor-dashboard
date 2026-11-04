@@ -23,6 +23,8 @@ interface ArnBasketSectionProps {
   clientName: string;
   onSelect: (basket: BasketItem) => void;
   onCreated: (basket: BasketItem) => void;
+  onCreateNew?: () => void;
+  onEdit?: (basket: BasketItem) => void;
 }
 
 function AllocationBar({ funds }: { funds: BasketItem["funds"] }) {
@@ -151,6 +153,8 @@ export default function ArnBasketSection({
   clientName,
   onSelect,
   onCreated,
+  onCreateNew,
+  onEdit,
 }: ArnBasketSectionProps) {
   const [defaults, setDefaults] = useState<BasketItem[]>([]);
   const [customs, setCustoms] = useState<BasketItem[]>([]);
@@ -235,6 +239,10 @@ export default function ArnBasketSection({
         <button
           type="button"
           onClick={() => {
+            if (onCreateNew) {
+              onCreateNew();
+              return;
+            }
             setEditBasket(null);
             setWizardOpen(true);
           }}
@@ -287,6 +295,10 @@ export default function ArnBasketSection({
               <button
                 type="button"
                 onClick={() => {
+                  if (onCreateNew) {
+                    onCreateNew();
+                    return;
+                  }
                   setEditBasket(null);
                   setWizardOpen(true);
                 }}
@@ -309,6 +321,10 @@ export default function ArnBasketSection({
                     onEdit={
                       canEditBasketFunds(basket)
                         ? () => {
+                            if (onEdit) {
+                              onEdit(basket);
+                              return;
+                            }
                             setEditBasket(basket);
                             setWizardOpen(true);
                           }
@@ -331,6 +347,7 @@ export default function ArnBasketSection({
         <ArnBasketWizard
           userId={userId}
           editBasket={editBasket}
+          inline
           onClose={() => {
             setWizardOpen(false);
             setEditBasket(null);

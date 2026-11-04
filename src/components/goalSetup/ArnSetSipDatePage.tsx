@@ -29,7 +29,7 @@ interface ArnSetSipDatePageProps {
   onDateConfigChange?: (config: ReturnType<ArnSetSipDatePageRef["getDateConfig"]>) => void;
 }
 
-const DATE_OPTIONS = [1, 5, 10, 15, 20, 25, 28];
+const DATE_OPTIONS = Array.from({ length: 28 }, (_, i) => i + 1);
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();

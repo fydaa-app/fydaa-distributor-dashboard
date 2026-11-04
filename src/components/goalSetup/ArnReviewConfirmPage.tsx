@@ -792,7 +792,20 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
               {investmentMode === "lumpsum" ? (
                 <>
                   <ConfirmRow label="Amount" value={formatRupee(sipConfig.sipAmount)} />
-                  <ConfirmRow label="Fund" value={sipConfig.selectedFund.split(" —")[0] || sipConfig.selectedFund} />
+                  <ConfirmRow
+                    label="Fund"
+                    value={
+                      isBasketMode
+                        ? sipConfig.selectedFund ||
+                          (Array.isArray(sipConfig.schemeAllocations)
+                            ? sipConfig.schemeAllocations
+                                .map((sa) => sa.stockName || sa.ticker)
+                                .filter(Boolean)
+                                .join(", ")
+                            : "")
+                        : sipConfig.selectedFund.split(" —")[0] || sipConfig.selectedFund
+                    }
+                  />
                 </>
               ) : (
                 <>
@@ -811,7 +824,17 @@ const ArnReviewConfirmPage = forwardRef<ArnReviewConfirmPageRef, ArnReviewConfir
                   <ConfirmRow label="Next debit" value={formatDisplayDate(dateConfig.startDate)} />
                   <ConfirmRow
                     label="Fund"
-                    value={sipConfig.selectedFund.split(" —")[0] || sipConfig.selectedFund}
+                    value={
+                      isBasketMode
+                        ? sipConfig.selectedFund ||
+                          (Array.isArray(sipConfig.schemeAllocations)
+                            ? sipConfig.schemeAllocations
+                                .map((sa) => sa.stockName || sa.ticker)
+                                .filter(Boolean)
+                                .join(", ")
+                            : "")
+                        : sipConfig.selectedFund.split(" —")[0] || sipConfig.selectedFund
+                    }
                   />
                 </>
               )}

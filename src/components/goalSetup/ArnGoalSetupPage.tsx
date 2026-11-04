@@ -9,6 +9,7 @@ import ArnGoalSetupBottomBar from "@/components/goalSetup/ArnGoalSetupBottomBar"
 import { ArnGoalPathHeader, ArnGoalPathCards } from "@/components/goalSetup/ArnGoalPathSelector";
 import ArnFundSearchBar from "@/components/goalSetup/ArnFundSearchBar";
 import ArnBasketSection from "@/components/goalSetup/ArnBasketSection";
+import ArnBasketWizard from "@/components/goalSetup/ArnBasketWizard";
 import { basketModeLocked } from "@/components/goalSetup/arnBasketUtils";
 import ArnDirectProductSelector from "@/components/goalSetup/ArnDirectProductSelector";
 import ArnGoalGrid from "@/components/goalSetup/ArnGoalGrid";
@@ -118,6 +119,8 @@ export default function ArnGoalSetupPage() {
   const [incompleteUserMobile, setIncompleteUserMobile] = useState("");
   const [isCheckingStage, setIsCheckingStage] = useState(false);
   const [investmentMode, setInvestmentMode] = useState<"sip" | "lumpsum">("sip");
+  const [basketWizardMode, setBasketWizardMode] = useState<"create" | "edit" | null>(null);
+  const [basketToEdit, setBasketToEdit] = useState<BasketItem | null>(null);
   const sipPageRef = useRef<ArnSetSipPageRef>(null);
   const sipDatePageRef = useRef<ArnSetSipDatePageRef>(null);
   const reviewPageRef = useRef<ArnReviewConfirmPageRef>(null);
@@ -282,6 +285,8 @@ export default function ArnGoalSetupPage() {
 
   const handleBasketCreated = useCallback(
     (basket: BasketItem) => {
+      setBasketWizardMode(null);
+      setBasketToEdit(null);
       const locked = basketModeLocked(basket);
       enterBasketInvest(basket, locked === "LUMPSUM" ? "lumpsum" : "sip");
     },
@@ -392,6 +397,12 @@ export default function ArnGoalSetupPage() {
   }, [selectedClient, selectedPath, selectedGoal, selectedProduct, step, preselectedFund, isCheckingStage, investmentMode]);
 
   const handleBack = useCallback(() => {
+    if (basketWizardMode) {
+      setBasketWizardMode(null);
+      setBasketToEdit(null);
+      return;
+    }
+
     if (step > 1) {
       if (step === 3) {
         setInvestmentMode("sip");
@@ -417,7 +428,7 @@ export default function ArnGoalSetupPage() {
         setStep(step - 1);
       }
     }
-  }, [step, investmentMode, selectedPath, awaitingBasketMode]);
+  }, [step, investmentMode, selectedPath, awaitingBasketMode, basketWizardMode]);
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
@@ -453,7 +464,36 @@ export default function ArnGoalSetupPage() {
 
       {step === 2 && selectedClient && (
         <div>
-          {selectedPath === "direct" ? (
+          {basketWizardMode ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setBasketWizardMode(null);
+                  setBasketToEdit(null);
+                }}
+                className="mb-4 shrink-0 text-xs font-semibold text-[var(--arn-amber)] transition-opacity hover:opacity-70"
+              >
+                ← Back
+              </button>
+              <ArnBasketWizard
+                userId={selectedClient.userId}
+                editBasket={basketToEdit}
+                inline
+                onClose={() => {
+                  setBasketWizardMode(null);
+                  setBasketToEdit(null);
+                }}
+                onCreated={handleBasketCreated}
+                onSaved={async (basket) => {
+                  setBasketWizardMode(null);
+                  setBasketToEdit(null);
+                  const locked = basketModeLocked(basket);
+                  enterBasketInvest(basket, locked === "LUMPSUM" ? "lumpsum" : "sip");
+                }}
+              />
+            </div>
+          ) : selectedPath === "direct" ? (
             <ArnDirectProductSelector
               selectedClient={selectedClient!}
               selectedProductKey={selectedProduct?.key ?? null}
@@ -574,7 +614,19 @@ export default function ArnGoalSetupPage() {
                 userId={selectedClient!.userId}
                 clientName={selectedClient!.name}
                 onSelect={handleBasketSelect}
-                onCreated={handleBasketCreated}
+                onCreated={(basket) => {
+                  setBasketWizardMode(null);
+                  setBasketToEdit(null);
+                  handleBasketCreated(basket);
+                }}
+                onCreateNew={() => {
+                  setBasketToEdit(null);
+                  setBasketWizardMode("create");
+                }}
+                onEdit={(basket) => {
+                  setBasketToEdit(basket);
+                  setBasketWizardMode("edit");
+                }}
               />
             </div>
           )}
@@ -641,34 +693,36 @@ export default function ArnGoalSetupPage() {
         </div>
       )}
 
-      <ArnGoalSetupBottomBar
-        step={step}
-        stepName={STEP_NAMES[step]}
-        investmentMode={investmentMode}
-        onBack={handleBack}
-        onContinue={handleContinue}
-        canContinue={
-          step === 1
-            ? !!selectedClient
-            : step === 2
-              ? selectedPath === "direct"
-                ? !!selectedProduct
-                : selectedPath === "goal"
-                  ? !!selectedGoal || !!preselectedFund
-                  : selectedPath === "basket"
-                    ? false
-                    : !!preselectedFund
-              : step === 3
-                ? !sipPageRef.current?.hasTenureError
-                : step === 4 && investmentMode === "sip"
-                  ? true
-                  : step === 5
-                    ? !reviewCta.disabled
-                    : false
-        }
-        continueLabel={step === 5 ? reviewCta.label : "Continue →"}
-        isLoading={step === 5 ? reviewCta.isLoading : false}
-      />
+      {!basketWizardMode && (
+        <ArnGoalSetupBottomBar
+          step={step}
+          stepName={STEP_NAMES[step]}
+          investmentMode={investmentMode}
+          onBack={handleBack}
+          onContinue={handleContinue}
+          canContinue={
+            step === 1
+              ? !!selectedClient
+              : step === 2
+                ? selectedPath === "direct"
+                  ? !!selectedProduct
+                  : selectedPath === "goal"
+                    ? !!selectedGoal || !!preselectedFund
+                    : selectedPath === "basket"
+                      ? false
+                      : !!preselectedFund
+                : step === 3
+                  ? !sipPageRef.current?.hasTenureError
+                  : step === 4 && investmentMode === "sip"
+                    ? true
+                    : step === 5
+                      ? !reviewCta.disabled
+                      : false
+          }
+          continueLabel={step === 5 ? reviewCta.label : "Continue →"}
+          isLoading={step === 5 ? reviewCta.isLoading : false}
+        />
+      )}
 
       {showIncompleteModal && (
         <ArnIncompleteOnboardingModal
