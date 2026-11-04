@@ -163,20 +163,45 @@ export default function ArnBasketSection({
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [d, c] = await Promise.all([
-        getBasketDefaults(),
-        getMyBasketsForUser(userId),
-      ]);
-      setDefaults(d);
-      setCustoms(c);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load baskets");
+
+    const hasValidUserId = Number.isFinite(userId) && userId > 0;
+
+    const defaultsPromise = getBasketDefaults();
+    const customsPromise = hasValidUserId
+      ? getMyBasketsForUser(userId)
+      : Promise.reject(new Error("Client userId is missing"));
+
+    const [defaultsResult, customsResult] = await Promise.allSettled([
+      defaultsPromise,
+      customsPromise,
+    ]);
+
+    if (defaultsResult.status === "fulfilled") {
+      setDefaults(defaultsResult.value);
+    } else {
       setDefaults([]);
-      setCustoms([]);
-    } finally {
-      setLoading(false);
     }
+
+    if (customsResult.status === "fulfilled") {
+      setCustoms(customsResult.value);
+    } else {
+      setCustoms([]);
+    }
+
+    const messages: string[] = [];
+    if (defaultsResult.status === "rejected") {
+      const raw =
+        defaultsResult.reason instanceof Error
+          ? defaultsResult.reason.message
+          : "Unable to load curated baskets";
+      // Quiet Nest :id ParseIntPipe noise; still surface other defaults failures.
+      if (!/numeric string is expected/i.test(raw)) {
+        messages.push(raw);
+      }
+    }
+    // Customs list failures: empty section only (no ParseIntPipe / missing-route banner).
+    setError(messages.length ? messages.join(" ") : null);
+    setLoading(false);
   }, [userId]);
 
   useEffect(() => {
@@ -231,7 +256,7 @@ export default function ArnBasketSection({
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && (
         <>
           <div>
             <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--arn-txt-3)]">
