@@ -274,7 +274,8 @@ export async function getMyBasketsForUser(
   const params = new URLSearchParams();
   params.set("userId", String(userId));
   if (investmentMode) params.set("investmentMode", investmentMode);
-  const url = `${getStockApiUrl()}/basket/my-for-user?${params.toString()}`;
+  // Multi-segment path avoids Nest GET :id capturing "my-for-user" (ParseIntPipe 400).
+  const url = `${getStockApiUrl()}/basket/for-user/my?${params.toString()}`;
   const payload = await fetchJson<unknown>(url);
   return unwrapBasketList(payload).filter((b) => Number(b.id) > 0);
 }

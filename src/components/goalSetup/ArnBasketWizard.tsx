@@ -39,6 +39,7 @@ interface ArnBasketWizardProps {
   onClose: () => void;
   onCreated: (basket: BasketItem) => void;
   onSaved: (basket: BasketItem) => void;
+  inline?: boolean;
 }
 
 function fundMfId(fund: FundOption): number {
@@ -92,6 +93,7 @@ export default function ArnBasketWizard({
   onClose,
   onCreated,
   onSaved,
+  inline = true,
 }: ArnBasketWizardProps) {
   const isEdit = Number(editBasket?.id) > 0;
   const [mode, setMode] = useState<BasketInvestmentMode | null>(null);
@@ -276,9 +278,15 @@ export default function ArnBasketWizard({
   }
 
   if (!mode) {
+    const containerClass = inline
+      ? "w-full"
+      : "fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center";
+    const cardClass = inline
+      ? "w-full max-w-md rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5"
+      : "w-full max-w-md rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 shadow-xl";
     return (
-      <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center">
-        <div className="w-full max-w-md rounded-[16px] border border-[var(--arn-bdr)] bg-[var(--arn-bg)] p-5 shadow-xl">
+      <div className={containerClass}>
+        <div className={cardClass}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-[var(--arn-txt)]">Create a basket</h3>
@@ -337,26 +345,36 @@ export default function ArnBasketWizard({
     },
   } as const;
 
+  const containerClass = inline
+    ? "w-full"
+    : "fixed inset-0 z-[80] flex flex-col bg-[var(--arn-bg)]";
+  const innerClass = inline
+    ? "mx-auto flex w-full max-w-2xl flex-col px-4 py-5 sm:px-6"
+    : "mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden px-4 py-5 sm:px-6";
+  const scrollClass = inline ? "pb-6" : "min-h-0 flex-1 overflow-y-auto pb-6";
+
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col bg-[var(--arn-bg)]">
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden px-4 py-5 sm:px-6">
+    <div className={containerClass}>
+      <div className={innerClass}>
         <div className="mb-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (step === 1) {
-                if (isEdit) onClose();
-                else setMode(null);
-                return;
-              }
-              setError("");
-              setStep((s) => s - 1);
-            }}
-            className="text-xs font-semibold text-[var(--arn-amber)] hover:opacity-70"
-          >
-            ← Back
-          </button>
-          <div className="min-w-0 flex-1 text-center pr-10">
+          {step === 1 ? null : (
+            <button
+              type="button"
+              onClick={() => {
+                if (step === 1) {
+                  if (isEdit) onClose();
+                  else setMode(null);
+                  return;
+                }
+                setError("");
+                setStep((s) => s - 1);
+              }}
+              className="text-xs font-semibold text-[var(--arn-amber)] hover:opacity-70"
+            >
+              ← Back
+            </button>
+          )}
+          <div className={step === 1 ? "min-w-0 flex-1 text-center" : "min-w-0 flex-1 text-center pr-10"}>
             <h2 className="text-lg font-bold text-[var(--arn-txt)]">{titles[step as 1 | 2 | 3].title}</h2>
             <p className="mt-0.5 text-xs text-[var(--arn-txt-2)]">{titles[step as 1 | 2 | 3].sub}</p>
           </div>
@@ -369,7 +387,7 @@ export default function ArnBasketWizard({
           />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+        <div className={scrollClass}>
           {step === 1 && (
             <div className="space-y-4">
               <div className="text-sm text-[var(--arn-txt-3)]">
