@@ -37,9 +37,47 @@ function toCamelCase(str: string): string {
     .join(" ");
 }
 
-function extractItems(
-  response: unknown
-): { title: string; subtitle: string; identity: string; raw: FundOption }[] {
+type SearchResultItem = {
+  title: string;
+  subtitle: string;
+  identity: string;
+  amcLogo?: string;
+  amcName?: string;
+  raw: FundOption;
+};
+
+function AmcLogoIcon({
+  logo,
+  name,
+}: {
+  logo?: string;
+  name?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const initial = (name || "?").trim().charAt(0).toUpperCase() || "?";
+
+  if (!logo || failed) {
+    return (
+      <div
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[var(--arn-bdr)] bg-[var(--arn-bg-2)] text-xs font-bold text-[var(--arn-txt-2)]"
+        aria-hidden="true"
+      >
+        {initial}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={logo}
+      alt={name ? `${name} logo` : "AMC logo"}
+      className="h-9 w-9 shrink-0 rounded-[10px] border border-[var(--arn-bdr)] bg-white object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function extractItems(response: unknown): SearchResultItem[] {
   if (!response || typeof response !== "object") return [];
 
   const obj = response as Record<string, unknown>;
@@ -65,6 +103,14 @@ function extractItems(
       const row = item as FundOption & Record<string, unknown>;
       const resolvedId =
         Number(row.localMfId ?? row.selectedMfId ?? row.mfId ?? row.id) || null;
+      const amcLogo =
+        typeof row.amcLogo === "string" && row.amcLogo.trim()
+          ? row.amcLogo.trim()
+          : undefined;
+      const amcName =
+        typeof row.amcName === "string" && row.amcName.trim()
+          ? row.amcName.trim()
+          : undefined;
       const fund: FundOption = {
         ...row,
         id: resolvedId,
@@ -78,6 +124,8 @@ function extractItems(
         scheme: row.scheme || row.ticker || row.isin || "",
         isin: row.isin || row.ticker || row.scheme || "",
         schemeCode: row.schemeCode || "",
+        amcLogo,
+        amcName,
         sipAllowed: row.sipAllowed !== false && row.sip_allowed !== false,
         purchaseAllowed:
           row.purchaseAllowed !== false && row.purchase_allowed !== false,
@@ -95,15 +143,13 @@ function extractItems(
       const subtitle = fund.fund_category
         ? toCamelCase(fund.fund_category)
         : "Market";
-      return { title, subtitle, identity, raw: fund };
+      return { title, subtitle, identity, amcLogo, amcName, raw: fund };
     });
 }
 
 export default function ArnFundSearchBar({ onSelect }: ArnFundSearchBarProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<
-    { title: string; subtitle: string; identity: string; raw: FundOption }[]
-  >([]);
+  const [results, setResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,9 +274,10 @@ export default function ArnFundSearchBar({ onSelect }: ArnFundSearchBarProps) {
               key={`${item.identity}-${index}`}
               type="button"
               onClick={() => handleFundSelect(item.raw)}
-              className="flex w-full items-start justify-between gap-3 border-b border-[var(--arn-bdr)] px-4 py-3 text-left last:border-b-0 hover:bg-[var(--arn-bg-2)]"
+              className="flex w-full items-center gap-3 border-b border-[var(--arn-bdr)] px-4 py-3 text-left last:border-b-0 hover:bg-[var(--arn-bg-2)]"
             >
-              <div className="min-w-0">
+              <AmcLogoIcon logo={item.amcLogo} name={item.amcName || item.title} />
+              <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-[var(--arn-txt)]">
                   {item.title}
                 </div>

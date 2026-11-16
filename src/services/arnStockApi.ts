@@ -67,6 +67,8 @@ export interface FundOption {
   suggestedGoalName?: string;
   stockType?: string;
   fund_category?: string;
+  amcName?: string;
+  amcLogo?: string;
   minInitialInvestment?: number;
   minSipAmount?: number;
   sipAllowed?: boolean;
