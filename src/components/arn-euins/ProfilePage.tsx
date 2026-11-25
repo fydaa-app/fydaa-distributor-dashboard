@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import ProfilePhotoCropModal from "@/components/arn-euins/ProfilePhotoCropModal";
+import ProfilePhotoCropModal, {
+  type ProfilePhotoProcessingPhase,
+} from "@/components/arn-euins/ProfilePhotoCropModal";
 import WebsiteProfileForm from "@/components/arn-euins/WebsiteProfileForm";
+import { removeProfilePhotoBackground } from "@/components/arn-euins/removeProfilePhotoBackground";
 import { useProfilePhoto } from "@/context/ProfilePhotoContext";
 import { uploadPartnerProfilePhoto } from "@/services/arnProfileService";
 
@@ -31,12 +34,20 @@ function ProfilePhotoImage({ url }: { url: string }) {
 export default function ProfilePage() {
   const { photoUrl, refreshProfilePhoto, isLoading } = useProfilePhoto();
   const [error, setError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [processingPhase, setProcessingPhase] =
+    useState<ProfilePhotoProcessingPhase>("idle");
+  const [processingProgress, setProcessingProgress] = useState(0);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [processedPreviewUrl, setProcessedPreviewUrl] = useState<string | null>(
+    null,
+  );
   const [pendingFileMeta, setPendingFileMeta] = useState<{
     name: string;
     type: string;
   } | null>(null);
+  const processedFileRef = useRef<File | null>(null);
+  const processedPreviewUrlRef = useRef<string | null>(null);
+  const previousPhotoUrlRef = useRef(photoUrl);
 
   useEffect(() => {
     return () => {
@@ -44,16 +55,81 @@ export default function ProfilePage() {
     };
   }, [cropSrc]);
 
+  useEffect(() => {
+    return () => {
+      if (processedPreviewUrlRef.current) {
+        URL.revokeObjectURL(processedPreviewUrlRef.current);
+      }
+    };
+  }, []);
+
+  // Drop the local processed preview once the server photo URL refreshes.
+  useEffect(() => {
+    if (
+      previousPhotoUrlRef.current !== photoUrl &&
+      processedPreviewUrlRef.current
+    ) {
+      URL.revokeObjectURL(processedPreviewUrlRef.current);
+      processedPreviewUrlRef.current = null;
+      setProcessedPreviewUrl(null);
+    }
+    previousPhotoUrlRef.current = photoUrl;
+  }, [photoUrl]);
+
   const hasPhoto = Boolean(photoUrl);
+  const displayPhotoUrl = processedPreviewUrl ?? photoUrl;
+  const isBusy = processingPhase !== "idle";
+
+  // Warn before closing/navigating away while processing so users don't leave mid-run.
+  useEffect(() => {
+    if (!isBusy) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isBusy]);
+
+  // Keep the meter moving during long inference gaps between worker progress events.
+  useEffect(() => {
+    if (processingPhase !== "removing-bg") return;
+    const id = window.setInterval(() => {
+      setProcessingProgress((prev) => {
+        if (prev >= 95) return prev;
+        return Math.min(95, prev + 0.8);
+      });
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [processingPhase]);
+
+  const revokeProcessedPreview = () => {
+    if (processedPreviewUrlRef.current) {
+      URL.revokeObjectURL(processedPreviewUrlRef.current);
+      processedPreviewUrlRef.current = null;
+    }
+    setProcessedPreviewUrl(null);
+  };
+
+  const clearProcessedState = () => {
+    processedFileRef.current = null;
+    revokeProcessedPreview();
+  };
 
   const clearCropState = () => {
     if (cropSrc) URL.revokeObjectURL(cropSrc);
     setCropSrc(null);
     setPendingFileMeta(null);
+    clearProcessedState();
+    setProcessingPhase("idle");
+    setProcessingProgress(0);
   };
 
   const handleFileSelect = (file: File) => {
     setError(null);
+    clearProcessedState();
+    setProcessingPhase("idle");
+    setProcessingProgress(0);
 
     if (!allowedImageTypes.includes(file.type)) {
       setError("Supported formats: JPEG, PNG, JPG, GIF");
@@ -72,6 +148,7 @@ export default function ProfilePage() {
   };
 
   const handleUploadClick = () => {
+    if (isBusy) return;
     const input = document.createElement("input");
     input.type = "file";
     input.accept = allowedImageTypes.join(",");
@@ -82,38 +159,101 @@ export default function ProfilePage() {
     input.click();
   };
 
-  const handleCropApply = async (file: File) => {
-    setIsUploading(true);
+  const handleCropApply = async (croppedFile: File) => {
+    if (isBusy) return;
+
     setError(null);
+    let activePhase: ProfilePhotoProcessingPhase = "idle";
+
     try {
-      await uploadPartnerProfilePhoto(file);
-      clearCropState();
+      let processed = processedFileRef.current;
+
+      if (!processed) {
+        activePhase = "removing-bg";
+        setProcessingPhase(activePhase);
+        setProcessingProgress(0);
+        processed = await removeProfilePhotoBackground(
+          croppedFile,
+          (percent) => {
+            setProcessingProgress((prev) => Math.max(prev, percent));
+          },
+        );
+
+        if (processed.type !== "image/png") {
+          throw new Error("Background removal did not produce a PNG image");
+        }
+
+        processedFileRef.current = processed;
+        setProcessingProgress(100);
+
+        if (processedPreviewUrlRef.current) {
+          URL.revokeObjectURL(processedPreviewUrlRef.current);
+        }
+        const previewUrl = URL.createObjectURL(processed);
+        processedPreviewUrlRef.current = previewUrl;
+        setProcessedPreviewUrl(previewUrl);
+      }
+
+      activePhase = "uploading";
+      setProcessingPhase(activePhase);
+      await uploadPartnerProfilePhoto(processed);
+
+      if (cropSrc) URL.revokeObjectURL(cropSrc);
+      setCropSrc(null);
+      setPendingFileMeta(null);
+      processedFileRef.current = null;
+      setProcessingPhase("idle");
+      setProcessingProgress(0);
       refreshProfilePhoto();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Image upload failed");
-      throw err;
-    } finally {
-      setIsUploading(false);
+      const message =
+        err instanceof Error ? err.message : "Image processing failed";
+      const isRemovalFailure =
+        activePhase === "removing-bg" || !processedFileRef.current;
+
+      if (isRemovalFailure) {
+        clearProcessedState();
+        setError(
+          message.toLowerCase().includes("background")
+            ? `${message} You can retry.`
+            : `Background removal failed. ${message} You can retry.`,
+        );
+      } else {
+        setError(`${message} You can retry.`);
+      }
+
+      setProcessingPhase("idle");
+      setProcessingProgress(0);
+      throw err instanceof Error ? err : new Error(message);
     }
   };
+
+  const statusLabel =
+    processingPhase === "removing-bg"
+      ? `Removing background... ${Math.round(processingProgress)}%`
+      : processingPhase === "uploading"
+        ? "Uploading..."
+        : isLoading
+          ? "Loading..."
+          : null;
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 p-5 sm:space-y-7 sm:p-6 lg:space-y-8 lg:p-8">
       <ComponentCard title="Profile">
         <div className="flex flex-col items-center gap-4">
-          {photoUrl ? (
-            <ProfilePhotoImage url={photoUrl} />
+          {displayPhotoUrl ? (
+            <ProfilePhotoImage url={displayPhotoUrl} />
           ) : (
             <ProfilePhotoPlaceholder />
           )}
 
-          {isUploading || isLoading ? (
+          {statusLabel ? (
             <div className="flex items-center gap-2 text-sm text-[var(--arn-txt-2)]">
               <i
                 aria-hidden="true"
                 className="ti ti-loader animate-spin text-[var(--arn-amber)]"
               />
-              {isUploading ? "Uploading..." : "Loading..."}
+              {statusLabel}
             </div>
           ) : (
             <button
@@ -121,7 +261,7 @@ export default function ProfilePage() {
               onClick={handleUploadClick}
               className="rounded-[10px] bg-[var(--arn-amber)] px-5 py-2 text-sm font-bold text-[var(--arn-white)] transition-colors hover:bg-[var(--arn-amber-hover)]"
             >
-              {photoUrl ? "Replace Photo" : "Upload Photo"}
+              {displayPhotoUrl ? "Replace Photo" : "Upload Photo"}
             </button>
           )}
 
@@ -148,7 +288,10 @@ export default function ProfilePage() {
           imageSrc={cropSrc}
           fileName={pendingFileMeta.name}
           mimeType={pendingFileMeta.type}
-          isApplying={isUploading}
+          isApplying={isBusy}
+          processingPhase={processingPhase}
+          processingProgress={processingProgress}
+          processedPreviewUrl={processedPreviewUrl}
           onCancel={clearCropState}
           onApply={handleCropApply}
         />
